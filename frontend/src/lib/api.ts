@@ -22,6 +22,13 @@ export const api = {
   listNodes: (category?: string) =>
     http<NodeOut[]>(`/api/nodes${category ? `?category=${encodeURIComponent(category)}` : ""}`),
   node:    (id: string) => http<NodeOut>(`/api/nodes/${id}`),
+  updateNode: (id: string, payload: {
+    title?: string; content?: string; category?: string;
+    keywords?: string[]; importance?: number;
+  }) => http<NodeOut>(`/api/nodes/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  }),
   deleteNode: (id: string) => http<{ deleted: string }>(`/api/nodes/${id}`, { method: "DELETE" }),
   ingest: (payload: {
     title: string; content: string;

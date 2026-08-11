@@ -48,7 +48,19 @@
     "close": "关闭 ✕",
     "importance": "重要性",
     "relatedTitle": "相关知识",
-    "relatedCount": "项"
+    "relatedCount": "项",
+    "edit": "✏️ 编辑",
+    "delete": "🗑️ 删除",
+    "editTitle": "编辑节点",
+    "save": "保存",
+    "saving": "保存中…",
+    "deleteConfirmTitle": "确认删除？",
+    "deleteConfirmBody": "节点 \"{title}\" 及其所有关联将被永久删除，且不可恢复。",
+    "deleting": "删除中…",
+    "updateSuccess": "已更新",
+    "deleteSuccess": "已删除",
+    "updateFailed": "更新失败：{message}",
+    "deleteFailed": "删除失败：{message}"
   },
   "assistant": {
     "title": "🧠 AI 助手",

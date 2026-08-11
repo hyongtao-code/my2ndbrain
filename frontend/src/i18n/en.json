@@ -48,7 +48,19 @@
     "close": "Close ✕",
     "importance": "Importance",
     "relatedTitle": "Related knowledge",
-    "relatedCount": "items"
+    "relatedCount": "items",
+    "edit": "✏️ Edit",
+    "delete": "🗑️ Delete",
+    "editTitle": "Edit node",
+    "save": "Save",
+    "saving": "Saving…",
+    "deleteConfirmTitle": "Confirm delete?",
+    "deleteConfirmBody": "Node \"{title}\" and all of its relations will be permanently deleted. This cannot be undone.",
+    "deleting": "Deleting…",
+    "updateSuccess": "Updated",
+    "deleteSuccess": "Deleted",
+    "updateFailed": "Update failed: {message}",
+    "deleteFailed": "Delete failed: {message}"
   },
   "assistant": {
     "title": "🧠 AI Assistant",

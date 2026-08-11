@@ -112,7 +112,12 @@ function AppInner() {
             )}
 
             {selected && (
-                <NodeDetail node={selected} onJump={(id) => selectNode(id)} onClose={closeDetail} />
+                <NodeDetail
+                    node={selected}
+                    onJump={(id) => selectNode(id)}
+                    onClose={closeDetail}
+                    onMutated={refresh}
+                />
             )}
 
             <AssistantPanel onJump={(id) => selectNode(id)} />
