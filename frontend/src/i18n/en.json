@@ -1,0 +1,67 @@
+{
+  "brand": {
+    "title": "MY SECOND BRAIN",
+    "subtitle": "My Second Brain"
+  },
+  "stats": {
+    "nodes": "Nodes",
+    "edges": "Edges",
+    "clusters": "Clusters"
+  },
+  "empty": {
+    "title": "Your second brain is empty",
+    "subtitle": "Click the + button at the bottom-right to add your first knowledge bubble"
+  },
+  "fab": {
+    "add": "Add knowledge"
+  },
+  "addModal": {
+    "title": "➕ Add knowledge bubble",
+    "titleDone": "✨ Added",
+    "fields": {
+      "title": "Title *",
+      "content": "Content *",
+      "category": "Category (optional — leave blank for AI to auto-classify)",
+      "importance": "Importance (0–10)"
+    },
+    "titlePlaceholder": "e.g. GRPO",
+    "contentPlaceholder": "Describe this concept in detail…",
+    "categoryPlaceholder": "e.g. AI models / Dev / Comms",
+    "error": {
+      "required": "Title and content are required"
+    },
+    "submit": "Submit →",
+    "submitting": "AI is analysing…",
+    "cancel": "Cancel",
+    "finish": "Done",
+    "titleCheck": {
+      "verdict": "📝 Title check",
+      "confidence": "confidence",
+      "suggested": "Suggested title"
+    },
+    "autoLinks": "🔗 Auto-links",
+    "cluster": "📂 Cluster",
+    "nodesCount": "nodes"
+  },
+  "detail": {
+    "title": "Knowledge detail",
+    "close": "Close ✕",
+    "importance": "Importance",
+    "relatedTitle": "Related knowledge",
+    "relatedCount": "items"
+  },
+  "assistant": {
+    "title": "🧠 AI Assistant",
+    "skills": "SKILL",
+    "placeholder": "e.g. \"What is RLHF?\" or \"organise my recent LLM notes\"",
+    "ask": "Ask",
+    "organise": "📂 Organise",
+    "genSkill": "✨ Generate Skill",
+    "thinking": "Thinking…"
+  },
+  "lang": {
+    "switch": "Switch language",
+    "zh": "中文",
+    "en": "English"
+  }
+}

@@ -1,0 +1,70 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist-build/
+.eggs/
+
+# ---- Node / frontend ----
+node_modules/
+.pnp/
+.pnp.js
+
+# Build output (Vite + FastAPI StaticFiles)
+dist/
+build/
+out/
+# TypeScript emit (we author .ts/.tsx; the .js next to them is build noise)
+*.tsbuildinfo
+tsbuildinfo
+src/**/*.js
+src/**/*.js.map
+**/src/**/*.js
+**/src/**/*.js.map
+
+# ---- Editor / OS ----
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ---- Logs / temp ----
+*.log
+logs/
+tmp/
+.tmp/
+
+# ---- Local env / secrets ----
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+secrets.yaml
+
+# ---- Runtime data (Postgres state / model caches) ----
+data/
+**/.huggingface/
+.huggingface/
+.cache/
+.run/
+
+# ---- Postgres local dumps ----
+*.sql.gz
+*.dump

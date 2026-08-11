@@ -1,0 +1,101 @@
+import { useState } from "react";
+import { useTranslations } from "next-intl";
+import { api } from "../lib/api";
+import type { IngestResponse } from "../types";
+
+type Props = { onClose: () => void; onCreated: (r: IngestResponse) => void; };
+
+export default function AddNodeModal({ onClose, onCreated }: Props) {
+    const t = useTranslations();
+    const [title, setTitle] = useState("");
+    const [content, setContent] = useState("");
+    const [category, setCategory] = useState("");
+    const [importance, setImportance] = useState(1.0);
+    const [submitting, setSubmitting] = useState(false);
+    const [preview, setPreview] = useState<IngestResponse | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    const submit = async () => {
+        if (!title.trim() || !content.trim()) {
+            setError(t("addModal.error.required"));
+            return;
+        }
+        setError(null);
+        setSubmitting(true);
+        try {
+            const res = await api.ingest({
+                title: title.trim(),
+                content: content.trim(),
+                category: category.trim() || undefined,
+                importance,
+            });
+            setPreview(res);
+            onCreated(res);
+        } catch (e: any) {
+            setError(e.message || String(e));
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="panel modal add-form" onClick={(e) => e.stopPropagation()}>
+                <h3>{preview ? t("addModal.titleDone") : t("addModal.title")}</h3>
+                {!preview && (
+                    <>
+                        <label>{t("addModal.fields.title")}</label>
+                        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("addModal.titlePlaceholder")} autoFocus />
+                        <label>{t("addModal.fields.content")}</label>
+                        <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder={t("addModal.contentPlaceholder")} />
+                        <label>{t("addModal.fields.category")}</label>
+                        <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder={t("addModal.categoryPlaceholder")} />
+                        <label>{t("addModal.fields.importance")}</label>
+                        <input type="number" min={0} max={10} step={0.5} value={importance}
+                               onChange={(e) => setImportance(parseFloat(e.target.value || "1"))} />
+                        {error && <div style={{ color: "var(--danger)", fontSize: 12 }}>{error}</div>}
+                        <div className="actions">
+                            <button className="btn-secondary" onClick={onClose}>{t("addModal.cancel")}</button>
+                            <button className="btn-primary" onClick={submit} disabled={submitting}>
+                                {submitting ? t("addModal.submitting") : t("addModal.submit")}
+                            </button>
+                        </div>
+                    </>
+                )}
+                {preview && (
+                    <>
+                        <div className={`check ${preview.title_check.ok ? "ok" : ""}`}>
+                            <div>📝 <b>{t("addModal.titleCheck.verdict")}</b> · {t("addModal.titleCheck.confidence")} {(preview.title_check.confidence * 100).toFixed(0)}%</div>
+                            <div>{preview.title_check.reason}</div>
+                            {!preview.title_check.ok && (
+                                <div>{t("addModal.titleCheck.suggested")}: <b>{preview.title_check.suggestion}</b></div>
+                            )}
+                        </div>
+                        {preview.suggested_links.length > 0 && (
+                            <div style={{ marginTop: 10 }}>
+                                <div style={{ fontSize: 11, color: "var(--text-1)", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                                    {t("addModal.autoLinks")} ({preview.suggested_links.length})
+                                </div>
+                                {preview.suggested_links.map((l) => (
+                                    <div key={l.target_id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "4px 6px" }}>
+                                        <span>→ {l.target_title}</span>
+                                        <span style={{ color: "var(--accent-2)" }}>
+                                            {l.similarity != null ? `${(l.similarity * 100).toFixed(0)}%` : ""}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        <div style={{ marginTop: 10, fontSize: 12, color: "var(--text-1)" }}>
+                            {t("addModal.cluster")}: <span className="tag">{preview.cluster_suggestion.name}</span>
+                            <span style={{ marginLeft: 8 }}>{t("addModal.nodesCount")}: {preview.cluster_suggestion.size}</span>
+                        </div>
+                        <div className="actions">
+                            <button className="btn-primary" onClick={onClose}>{t("addModal.finish")}</button>
+                        </div>
+                    </>
+                )}
+            </div>
+        </div>
+    );
+}

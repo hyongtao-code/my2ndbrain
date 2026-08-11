@@ -1,0 +1,67 @@
+{
+  "brand": {
+    "title": "MY SECOND BRAIN",
+    "subtitle": "我的第二大脑"
+  },
+  "stats": {
+    "nodes": "节点",
+    "edges": "关联",
+    "clusters": "领域"
+  },
+  "empty": {
+    "title": "你的第二大脑还是空的",
+    "subtitle": "点击右下角 + 按钮，新增第一个知识气泡"
+  },
+  "fab": {
+    "add": "新增知识"
+  },
+  "addModal": {
+    "title": "➕ 新增知识气泡",
+    "titleDone": "✨ 已添加",
+    "fields": {
+      "title": "标题 *",
+      "content": "内容 *",
+      "category": "分类（可选，留空让 AI 自动归类）",
+      "importance": "重要性 (0–10)"
+    },
+    "titlePlaceholder": "如：GRPO",
+    "contentPlaceholder": "详细描述这个概念 …",
+    "categoryPlaceholder": "如：大模型 / 编程开发",
+    "error": {
+      "required": "标题和内容必填"
+    },
+    "submit": "提交 →",
+    "submitting": "AI 分析中…",
+    "cancel": "取消",
+    "finish": "完成",
+    "titleCheck": {
+      "verdict": "📝 标题校验",
+      "confidence": "置信度",
+      "suggested": "建议标题"
+    },
+    "autoLinks": "🔗 自动关联",
+    "cluster": "📂 分类",
+    "nodesCount": "节点数"
+  },
+  "detail": {
+    "title": "知识详情",
+    "close": "关闭 ✕",
+    "importance": "重要性",
+    "relatedTitle": "相关知识",
+    "relatedCount": "项"
+  },
+  "assistant": {
+    "title": "🧠 AI 助手",
+    "skills": "个 SKILL",
+    "placeholder": "如 \"什么是 RLHF？\" 或 \"整理我最近学的大模型\"",
+    "ask": "问",
+    "organise": "📂 整理",
+    "genSkill": "✨ 生成 Skill",
+    "thinking": "思考中…"
+  },
+  "lang": {
+    "switch": "切换语言",
+    "zh": "中文",
+    "en": "English"
+  }
+}
