@@ -259,12 +259,12 @@ function SphereScene({
       {/* faint wireframe shell */}
       <mesh>
         <sphereGeometry args={[RADIUS, 48, 32]} />
-        <meshBasicMaterial color="#1a2540" wireframe transparent opacity={0.15} />
+        <meshBasicMaterial color="#1a1a1c" wireframe transparent opacity={0.10} />
       </mesh>
       {/* inner glow */}
       <mesh>
         <sphereGeometry args={[RADIUS * 0.97, 48, 32]} />
-        <meshBasicMaterial color={new THREE.Color("#0a0f1f")} transparent opacity={0.92} />
+        <meshBasicMaterial color={new THREE.Color("#0b0b0e")} transparent opacity={0.92} />
       </mesh>
 
       <KnowledgeEdges nodes={nodes} edges={edges} selectedId={selectedId} />
@@ -301,7 +301,7 @@ export default function KnowledgeSphere(props: Props) {
       dpr={[1, 2]}
       gl={{ antialias: true, alpha: false }}
     >
-      <color attach="background" args={["#05060a"]} />
+      <color attach="background" args={["#000000"]} />
       <ambientLight intensity={0.6} />
       <pointLight position={[8, 8, 8]} intensity={1.1} color="#7c5cff" />
       <pointLight position={[-8, -6, -8]} intensity={0.8} color="#00d4ff" />
