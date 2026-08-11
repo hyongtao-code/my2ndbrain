@@ -18,7 +18,8 @@ async function http<T>(url: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   health: () => http<{ status: string; embedding_backend: string }>("/api/health"),
-  graph:  () => http<GraphPayload>("/api/graph"),
+  graph:  (category?: string) =>
+    http<GraphPayload>(`/api/graph${category ? `?category=${encodeURIComponent(category)}` : ""}`),
   listNodes: (category?: string) =>
     http<NodeOut[]>(`/api/nodes${category ? `?category=${encodeURIComponent(category)}` : ""}`),
   node:    (id: string) => http<NodeOut>(`/api/nodes/${id}`),

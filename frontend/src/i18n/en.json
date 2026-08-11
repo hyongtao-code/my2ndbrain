@@ -8,6 +8,10 @@
     "edges": "Edges",
     "clusters": "Clusters"
   },
+  "filter": {
+    "allCategories": "All categories",
+    "label": "Filter"
+  },
   "empty": {
     "title": "Your second brain is empty",
     "subtitle": "Click the + button at the bottom-right to add your first knowledge bubble"

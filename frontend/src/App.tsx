@@ -18,14 +18,28 @@ function AppInner() {
     const [hover, setHover] = useState<{ id: string; title: string; x: number; y: number } | null>(null);
     const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
     const [autoSpin, setAutoSpin] = useState(true);
+    const [filterCategory, setFilterCategory] = useState<string>("");
     const stageRef = useRef<HTMLDivElement>(null);
 
     const refresh = useCallback(async () => {
-        const g = await api.graph();
+        const g = await api.graph(filterCategory || undefined);
         setGraph(g);
-    }, []);
+    }, [filterCategory]);
 
     useEffect(() => { refresh(); }, [refresh]);
+
+    // If the active filter no longer matches any node in the graph
+    // (e.g. last node in that category was deleted), drop the filter
+    // so the user is never stranded on an empty view without a way out.
+    useEffect(() => {
+        if (
+            filterCategory &&
+            graph &&
+            !graph.nodes.some((n) => (n.category || "未分类") === filterCategory)
+        ) {
+            setFilterCategory("");
+        }
+    }, [graph, filterCategory]);
 
     // Pause auto-spin while a node is open for inspection, resume on close.
     useEffect(() => {
@@ -99,6 +113,22 @@ function AppInner() {
                     <span className="brand-sep">·</span>
                     <span className="brand-sub">{t("brand.subtitle")}</span>
                     <LanguageToggle />
+                </div>
+                <div className="category-filter">
+                    <label className="category-filter-label" htmlFor="category-filter-select">
+                        {t("filter.label")}
+                    </label>
+                    <select
+                        id="category-filter-select"
+                        className="category-filter-select"
+                        value={filterCategory}
+                        onChange={(e) => setFilterCategory(e.target.value)}
+                    >
+                        <option value="">{t("filter.allCategories")}</option>
+                        {(graph?.stats.categories || []).map((cat) => (
+                            <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                    </select>
                 </div>
                 <div className="stats">
                     <div className="stat">{t("stats.nodes")} <b>{graph?.stats.node_count ?? 0}</b></div>

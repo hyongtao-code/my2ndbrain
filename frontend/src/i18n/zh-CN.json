@@ -8,6 +8,10 @@
     "edges": "关联",
     "clusters": "领域"
   },
+  "filter": {
+    "allCategories": "全部领域",
+    "label": "领域"
+  },
   "empty": {
     "title": "你的第二大脑还是空的",
     "subtitle": "点击右下角 + 按钮，新增第一个知识气泡"

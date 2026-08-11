@@ -277,7 +277,7 @@ def _fibonacci_sphere(n: int) -> np.ndarray:
     return np.stack([x, y, z], axis=1)
 
 
-def build_graph_payload(db: Session) -> dict:
+def build_graph_payload(db: Session, category: str | None = None) -> dict:
     """Compose the full payload for the 3D visualisation.
 
     Nodes are first placed on a Fibonacci sphere, then pulled slightly toward
@@ -285,8 +285,22 @@ def build_graph_payload(db: Session) -> dict:
     Cluster colours are *reassigned* here so they are guaranteed unique
     across the categories present (the stored cluster.color can collide when
     the palette is smaller than the category count).
+
+    If `category` is given, restrict the payload to nodes whose category
+    matches. Edges that touch a node outside the filter are dropped (they
+    would be dangling anyway). stats are recomputed from the filtered set
+    so the UI doesn't lie.
     """
-    nodes = list_nodes(db, limit=2000)
+    if category is not None and category != "":
+        all_nodes = list_nodes(db, limit=2000)
+        # Force-fetch the category attribute on each row so the SQLAlchemy
+        # Column doesn't trip up Pyright's strict boolean check.
+        nodes = [
+            n for n in all_nodes
+            if (getattr(n, "category", None) or "未分类") == category
+        ]
+    else:
+        nodes = list_nodes(db, limit=2000)
     raw_clusters = {c.name: c for c in db.scalars(select(CategoryCluster)).all()}
 
     n = len(nodes)
@@ -344,8 +358,16 @@ def build_graph_payload(db: Session) -> dict:
             "cluster_color": final_colors[cat],
         })
 
-    # edges — load all
-    edges = list(db.scalars(select(KnowledgeEdge)))
+    # edges — load all, then drop any that touch a node not in the filtered set
+    all_edges = list(db.scalars(select(KnowledgeEdge)))
+    if category:
+        kept_ids = {str(n.id) for n in nodes}
+        edges = [
+            e for e in all_edges
+            if str(e.source_node_id) in kept_ids and str(e.target_node_id) in kept_ids
+        ]
+    else:
+        edges = all_edges
     edge_descs = [
         {
             "id": str(e.id),
