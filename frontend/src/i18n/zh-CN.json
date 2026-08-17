@@ -79,5 +79,30 @@
     "switch": "切换语言",
     "zh": "中文",
     "en": "English"
+  },
+  "drafts": {
+    "title": "草稿",
+    "includePromoted": "含已固化",
+    "composerPlaceholder": "把你临时的想法打在这儿... (Ctrl+Enter 保存)",
+    "composerHint": "Ctrl+Enter 保存",
+    "save": "保存",
+    "saving": "保存中…",
+    "saved": "已保存",
+    "selectRow": "选择",
+    "promote": "整理",
+    "delete": "删除",
+    "deleteConfirm": "删除这条草稿？",
+    "pin": "置顶",
+    "unpin": "取消置顶",
+    "selectedCount": "已选 {count} 条",
+    "promoteSelected": "✨ 整理选中",
+    "clearSelection": "清空选择",
+    "curating": "整理中…",
+    "promoteResult": "整理完成：成功 {ok}，失败 {fail}",
+    "promoteFailed": "整理失败：{message}",
+    "empty": "还没有草稿，先在上面写一条吧。",
+    "promotedSection": "已固化",
+    "promotedTo": "已固化 →",
+    "jumpToNode": "跳到节点"
   }
 }

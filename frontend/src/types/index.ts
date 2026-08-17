@@ -82,3 +82,28 @@ export type SkillOut = {
   based_on_nodes: string[];
   created_at?: string;
 };
+
+// -------- Drafts (transient inbox) --------
+
+export type DraftOut = {
+  id: string;
+  content: string;
+  source: string;
+  pinned: boolean;
+  promoted_to_node_id: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type PromoteResult = {
+  draft_id: string;
+  merged_with: string[];
+  node: any | null;        // NodeOut-shaped or null on failure
+  error: string | null;
+};
+
+export type PromoteResponse = {
+  results: PromoteResult[];
+  promoted_count: number;
+  failed_count: number;
+};

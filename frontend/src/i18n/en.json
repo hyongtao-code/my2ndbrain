@@ -79,5 +79,30 @@
     "switch": "Switch language",
     "zh": "中文",
     "en": "English"
+  },
+  "drafts": {
+    "title": "Drafts",
+    "includePromoted": "Show promoted",
+    "composerPlaceholder": "Drop a quick thought here... (Ctrl+Enter to save)",
+    "composerHint": "Ctrl+Enter to save",
+    "save": "Save",
+    "saving": "Saving...",
+    "saved": "Saved",
+    "selectRow": "Select",
+    "promote": "Promote",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this draft?",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "selectedCount": "{count} selected",
+    "promoteSelected": "✨ Promote selected",
+    "clearSelection": "Clear selection",
+    "curating": "Curating...",
+    "promoteResult": "Curated: {ok} succeeded, {fail} failed",
+    "promoteFailed": "Curate failed: {message}",
+    "empty": "No drafts yet. Type one above to get started.",
+    "promotedSection": "Promoted",
+    "promotedTo": "Promoted to",
+    "jumpToNode": "Jump to node"
   }
 }
