@@ -120,3 +120,55 @@ class SkillOut(BaseModel):
     trigger: str
     based_on_nodes: list[str]
     created_at: Optional[datetime]
+
+# -------- Draft --------
+
+class DraftCreate(BaseModel):
+    content: str = Field(..., min_length=1)
+    source: str = Field(default="chat", max_length=32)
+    pinned: bool = False
+
+
+class DraftUpdate(BaseModel):
+    content: Optional[str] = Field(default=None, min_length=1)
+    pinned: Optional[bool] = None
+
+
+class DraftOut(BaseModel):
+    id: str
+    content: str
+    source: str
+    pinned: bool
+    promoted_to_node_id: Optional[str] = None
+    created_at: Optional[datetime]
+    updated_at: Optional[datetime]
+
+
+# -------- Draft promotion (curation) --------
+
+class PromoteRequest(BaseModel):
+    """Promote one or more drafts into real KnowledgeNodes.
+
+    body: when set, replaces the AI-extracted content (lets the user
+          override the AI's title/content choice).
+    auto_link: run hybrid auto-link on the resulting node.
+    importance: explicit importance override; else AI-picked.
+    """
+    draft_ids: list[str] = Field(..., min_length=1)
+    body_override: Optional[str] = None
+    importance: Optional[float] = None
+    auto_link: bool = True
+
+
+class PromoteResult(BaseModel):
+    """One row in the PromoteResponse.results list."""
+    draft_id: str
+    merged_with: list[str] = Field(default_factory=list)  # other draft ids merged into this one
+    node: Optional[dict] = None   # _node_to_dict() output, only on success
+    error: Optional[str] = None
+
+
+class PromoteResponse(BaseModel):
+    results: list[PromoteResult]
+    promoted_count: int
+    failed_count: int

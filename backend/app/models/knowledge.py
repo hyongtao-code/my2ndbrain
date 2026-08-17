@@ -133,3 +133,37 @@ class AISkill(Base):
             "based_on_nodes": self.based_on_nodes or [],
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
+
+class KnowledgeDraft(Base):
+    """Catch-all inbox for raw ideas the user hasn't promoted yet.
+
+    Drafts are intentionally cheap to write — no embedding, no category,
+    no auto-link. They live here until the user either:
+      - edits / deletes them manually
+      - promotes them via the curation endpoint, which invokes the AI
+        extraction pipeline and writes a real KnowledgeNode + auto-links
+    """
+
+    __tablename__ = "knowledge_draft"
+
+    id = _uuid_pk()
+    content = Column(Text, nullable=False, default="")
+    source = Column(String(32), default="chat")  # chat | paste | import
+    pinned = Column(Integer, default=0)            # bool stored as int
+    promoted_to_node_id = Column(
+        UUID(as_uuid=True), ForeignKey("knowledge_node.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def to_dict(self) -> dict:
+        return {
+            "id": str(self.id),
+            "content": self.content or "",
+            "source": self.source or "chat",
+            "pinned": bool(self.pinned),
+            "promoted_to_node_id": str(self.promoted_to_node_id) if self.promoted_to_node_id else None,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }

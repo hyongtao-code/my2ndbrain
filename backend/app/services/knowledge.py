@@ -14,7 +14,7 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.models.knowledge import KnowledgeNode, KnowledgeEdge, CategoryCluster, AISkill
+from app.models.knowledge import KnowledgeNode, KnowledgeEdge, CategoryCluster, AISkill, KnowledgeDraft
 from app.services.embedding import embed_texts, get_embedder
 from app.services.llm import llm_call
 
@@ -552,3 +552,164 @@ def organise_knowledge(db: Session, *, topic: str | None = None) -> dict:
     for cat, items in tree.items():
         items.sort(key=lambda x: -x["importance"])
     return {"topic": topic, "tree": tree, "total": len(nodes)}
+
+# ============================================================
+# Drafts — transient inbox the user feeds before curation
+# ============================================================
+
+def create_draft(db: Session, *, content: str, source: str = "chat", pinned: bool = False) -> KnowledgeDraft:
+    d = KnowledgeDraft(content=content, source=source, pinned=1 if pinned else 0)
+    db.add(d)
+    db.commit()
+    db.refresh(d)
+    return d
+
+
+def list_drafts(db: Session, *, include_promoted: bool = False, limit: int = 500) -> list[KnowledgeDraft]:
+    stmt = select(KnowledgeDraft).order_by(
+        KnowledgeDraft.pinned.desc(),  # pinned first
+        KnowledgeDraft.created_at.desc(),
+    ).limit(limit)
+    drafts = list(db.scalars(stmt).all())
+    if not include_promoted:
+        drafts = [d for d in drafts if d.promoted_to_node_id is None]
+    return drafts
+
+
+def get_draft(db: Session, draft_id: str) -> KnowledgeDraft | None:
+    try:
+        uid = uuid.UUID(draft_id)
+    except ValueError:
+        return None
+    return db.get(KnowledgeDraft, uid)
+
+
+def update_draft(db: Session, draft_id: str, *, content: str | None = None, pinned: bool | None = None) -> KnowledgeDraft | None:
+    d = get_draft(db, draft_id)
+    if not d:
+        return None
+    if content is not None:
+        d.content = content
+    if pinned is not None:
+        d.pinned = 1 if pinned else 0
+    db.commit()
+    db.refresh(d)
+    return d
+
+
+def delete_draft(db: Session, draft_id: str) -> bool:
+    d = get_draft(db, draft_id)
+    if not d:
+        return False
+    db.delete(d)
+    db.commit()
+    return True
+
+
+# ----- curation -----
+
+def _group_short_drafts(drafts: list[KnowledgeDraft]) -> list[list[KnowledgeDraft]]:
+    """Heuristic: any two drafts with content <= 200 chars created within
+    60s of each other are merged into one node. Larger drafts always
+    become their own node.
+
+    Returns a list of groups (each group is one or more drafts).
+    """
+    import time
+    groups: list[list[KnowledgeDraft]] = []
+    pending: list[KnowledgeDraft] = []
+    # stable order: created_at asc within the same pinned bucket
+    for d in sorted(drafts, key=lambda x: (x.created_at or datetime.utcnow())):
+        if len(d.content or "") <= 200:
+            if pending and (d.created_at - pending[-1].created_at).total_seconds() <= 60:
+                pending.append(d)
+                continue
+            # close current pending group, start a new one
+            if pending:
+                groups.append(pending)
+            pending = [d]
+        else:
+            # flush any pending short-draft group
+            if pending:
+                groups.append(pending)
+                pending = []
+            groups.append([d])
+    if pending:
+        groups.append(pending)
+    return groups
+
+
+def promote_drafts(
+    db: Session,
+    draft_ids: list[str],
+    *,
+    body_override: str | None = None,
+    importance: float | None = None,
+    auto_link: bool = True,
+) -> dict:
+    """Turn a list of drafts into KnowledgeNodes.
+    Returns a dict shaped like PromoteResponse.
+    """
+    # 1. Load drafts
+    drafts: list[KnowledgeDraft] = []
+    for did in draft_ids:
+        d = get_draft(db, did)
+        if d is None:
+            continue
+        drafts.append(d)
+    if not drafts:
+        return {"results": [], "promoted_count": 0, "failed_count": len(draft_ids)}
+
+    # 2. Group: short drafts created close together get merged into one node
+    groups = _group_short_drafts(drafts)
+
+    results: list[dict] = []
+    promoted_count = 0
+    failed_count = 0
+
+    for group in groups:
+        try:
+            # Concatenate content if multiple drafts, join with double newline
+            merged_content = "\n\n".join((d.content or "").strip() for d in group if d.content)
+            # If user provided a body override, use it instead of the AI/merged content
+            content_for_ingest = body_override if body_override is not None else merged_content
+
+            # Use the first draft's source as the node source
+            node_source = group[0].source or "draft"
+
+            # 3. Ingest via the standard pipeline (title check, auto-link, etc.)
+            ingest_result = ingest_node(
+                db,
+                title=group[0].content[:60].strip() or "Untitled",  # initial title; AI extract may overwrite
+                content=content_for_ingest,
+                category=None,  # let AI pick
+                keywords=None,
+                importance=importance if importance is not None else 1.0,
+                source=f"draft:{node_source}",
+                auto_link=auto_link,
+            )
+            new_node = ingest_result["node"]
+
+            # 4. Mark all drafts in this group as promoted + link to new node
+            for d in group:
+                d.promoted_to_node_id = new_node["id"]
+            db.commit()
+
+            # 5. Build per-group result
+            results.append({
+                "draft_id": str(group[0].id),
+                "merged_with": [str(d.id) for d in group[1:]],
+                "node": new_node,
+                "error": None,
+            })
+            promoted_count += 1
+        except Exception as e:
+            failed_count += len(group)
+            results.append({
+                "draft_id": str(group[0].id),
+                "merged_with": [str(d.id) for d in group[1:]],
+                "node": None,
+                "error": str(e),
+            })
+
+    return {"results": results, "promoted_count": promoted_count, "failed_count": failed_count}

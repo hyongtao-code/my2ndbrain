@@ -10,10 +10,18 @@ from app.api.graph import router as graph_router
 from app.api.assistant import (
     clusters_router, assistant_router, skills_router,
 )
+
+from app.api.drafts import router as drafts_router
 from app.services.embedding import report_backend
 
-
 setup_logging()
+
+# Auto-create any missing tables (idempotent; safe to run on every start).
+from app.db.session import Base, engine
+from sqlalchemy import text
+with engine.begin() as conn:
+    conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+Base.metadata.create_all(bind=engine)
 app = FastAPI(title="MySecondBrain", version="0.1.0", description="AI 第二大脑")
 
 app.add_middleware(
@@ -36,6 +44,7 @@ app.include_router(graph_router)
 app.include_router(clusters_router)
 app.include_router(assistant_router)
 app.include_router(skills_router)
+app.include_router(drafts_router)
 
 
 # ----- static frontend (Vite build output) -----
