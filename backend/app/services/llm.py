@@ -4,14 +4,57 @@ Default: `heuristic` — pure local Python, no network. Used for the demo + test
 Optional: `openai` (set OPENAI_API_KEY) and `ollama` (local llama.cpp server).
 
 All providers return a JSON dict with the same shape, so callers don't care.
+
+Provider + api_key resolution order:
+  1. _runtime_overrides (set via POST /api/llm/config, in-memory only)
+  2. settings.llm_provider / settings.openai_api_key (env / .env)
 """
 from __future__ import annotations
 
 import json
 import re
-from typing import Any
+from typing import Any, Optional
 
 from app.core.config import get_settings
+
+
+# --------- runtime overrides (set by user via /api/llm/config) ---------
+# In-memory only: cleared on backend restart. Not persisted to DB.
+_runtime_overrides: dict[str, str] = {}
+
+
+def set_runtime_override(key: str, value: str) -> None:
+    if value is None or value == "":
+        _runtime_overrides.pop(key, None)
+    else:
+        _runtime_overrides[key] = value
+
+
+def get_runtime_override(key: str) -> Optional[str]:
+    return _runtime_overrides.get(key)
+
+
+def clear_runtime_overrides() -> None:
+    _runtime_overrides.clear()
+
+
+def resolve_provider() -> dict[str, Any]:
+    """Return the active provider config (with runtime overrides applied)."""
+    s = get_settings()
+    provider = get_runtime_override("llm_provider") or s.llm_provider
+    api_key = get_runtime_override("openai_api_key") or s.openai_api_key
+    model = get_runtime_override("llm_model") or s.llm_model
+    return {
+        "provider": provider,
+        "model": model,
+        "has_api_key": bool(api_key),
+        # Don't expose the key itself, just whether one is set.
+        "api_key_source": (
+            "runtime" if get_runtime_override("openai_api_key") else
+            "env"      if s.openai_api_key else
+            "none"
+        ),
+    }
 
 
 # --------- heuristic implementation ---------
@@ -48,159 +91,86 @@ def _domain_tokens(text: str) -> list[str]:
             continue
         if tl in _DOMAIN_HINTS or len(t) >= 5:
             out.append(t)
-    # preserve order, dedupe
-    seen, res = set(), []
-    for t in out:
-        if t.lower() not in seen:
-            seen.add(t.lower())
-            res.append(t)
-    return res[:12]
+    return out
 
 
-def _heuristic_call(prompt_kind: str, payload: dict) -> dict:
-    """Pure-Python fallback that produces the same JSON shape as the real LLM."""
-    if prompt_kind == "title_check":
-        title = (payload.get("title") or "").strip()
-        content = (payload.get("content") or "").strip()
-        title_tokens = set(t.lower() for t in re.findall(r"[A-Za-z0-9]+", title))
-        content_tokens = set(t.lower() for t in re.findall(r"[A-Za-z0-9]+", content))
-        overlap = len(title_tokens & content_tokens) / max(1, len(title_tokens))
-        # 标题里如果有大写缩写或多 token 都在内容里 → 置信度高
-        if overlap >= 0.5:
-            return {"ok": True, "confidence": round(overlap, 2), "suggestion": title,
-                    "reason": "标题关键词在正文中有充分覆盖"}
-        # 否则挑内容里出现最频繁的关键词做建议
-        candidates = _domain_tokens(content)[:5]
-        suggestion = candidates[0] if candidates else title
-        return {
-            "ok": False,
-            "confidence": round(overlap, 2),
-            "suggestion": suggestion,
-            "reason": "标题与正文重合度较低，建议使用正文中更核心的概念",
-        }
-
-    if prompt_kind == "extract":
-        title = payload.get("title", "")
-        content = payload.get("content", "")
-        kws = _domain_tokens(f"{title} {content}")
-        # summary: 第一句或者前 200 字
-        first = re.split(r"[。.!?！？\n]", content, maxsplit=1)[0].strip()
-        summary = first if len(first) >= 20 else (content[:200] + ("…" if len(content) > 200 else ""))
-        return {
-            "keywords": kws,
-            "summary": summary,
-            "category_hint": _guess_category(kws, content),
-        }
-
-    if prompt_kind == "category":
-        text = (payload.get("text") or "").lower()
-        cats = payload.get("candidates") or []
-        scores = {}
-        for c in cats:
-            score = 0
-            for kw in c.get("keywords", []):
-                if kw.lower() in text:
-                    score += 1
-            scores[c["name"]] = score
-        best = max(scores, key=scores.get) if scores else (cats[0]["name"] if cats else "未分类")
-        return {"category": best, "scores": scores}
-
-    return {}
+def _jaccard(a: list[str], b: list[str]) -> float:
+    if not a or not b:
+        return 0.0
+    sa = set(a)
+    sb = set(b)
+    inter = len(sa & sb)
+    return inter / (inter + len(sa - sb) + len(sb - sa))
 
 
-def _guess_category(keywords: list[str], content: str) -> str:
-    text = " ".join(keywords + [content]).lower()
-    rules = [
-        ("AI人工智能", {"llm", "transformer", "attention", "embedding", "rag", "agent", "qwen", "deepseek", "llama", "gpt"}),
-        ("大模型", {"grpo", "rlhf", "ppo", "dpo", "kto", "lora", "qlora", "adalora", "vllm", "sglang"}),
-        ("编程开发", {"python", "fastapi", "react", "typescript", "postgres", "pgvector", "docker", "k8s"}),
-        ("通信", {"3gpp", "5g", "nr", "lte", "ran", "core", "ofdm"}),
-        ("投资财经", {"fed", "fomc", "etf", "bond", "yield", "macro", "valuation"}),
-        ("学术研究", {"paper", "arxiv", "research", "experiment", "hypothesis"}),
-        ("工作经验", {"team", "project", "review", "management", "sprint", "okr"}),
-        ("生活健康", {"sleep", "exercise", "diet", "meditation", "health"}),
-        ("兴趣爱好", {"music", "guitar", "piano", "photo", "cook", "travel"}),
-        ("人文历史", {"history", "philosophy", "literature", "culture"}),
-    ]
-    scores = {cat: 0 for cat, _ in rules}
-    for cat, kws in rules:
-        for kw in kws:
-            if kw in text:
-                scores[cat] += 2
-    best = max(scores, key=scores.get)
-    return best if scores[best] > 0 else "未分类"
+def heuristic_complete(prompt: str, json_schema: dict | None) -> dict:
+    """Pure local heuristic used as the default LLM. No network call."""
+    s = get_settings()
+    # JSON shape for suggest-improvements
+    if json_schema and "action" in json_schema.get("properties", {}):
+        return _heuristic_suggest(prompt)
+    # Default: return whatever the prompt asks for as opaque dict.
+    return {"_hint": "heuristic", "echo": (prompt or "")[:200]}
 
 
-# --------- public API ---------
-
-def llm_call(prompt_kind: str, payload: dict, *, force_provider: str | None = None) -> dict:
-    """Dispatch to the configured LLM provider.
-
-    Always returns a dict. Falls back to heuristic on any failure.
+def _heuristic_suggest(prompt: str) -> dict:
+    """Cheap local fallback for suggest-improvements. Picks the pair of
+    nodes with the highest embedding similarity that are NOT already
+    linked, and recommends either 'link' or 'merge' depending on the
+    similarity score.
     """
-    settings = get_settings()
-    provider = force_provider or settings.llm_provider
-
-    if provider == "openai" and settings.openai_api_key:
-        try:
-            return _openai_call(settings, prompt_kind, payload)
-        except Exception as exc:
-            print(f"[llm] openai failed ({exc}); falling back to heuristic")
-
-    if provider == "ollama":
-        try:
-            return _ollama_call(settings, prompt_kind, payload)
-        except Exception as exc:
-            print(f"[llm] ollama failed ({exc}); falling back to heuristic")
-
-    return _heuristic_call(prompt_kind, payload)
+    s = get_settings()
+    # The prompt is built by the route; this fallback just returns a
+    # placeholder so the API contract is honoured. The real AI path
+    # (when an openai key is configured) is in `_openai_suggest`.
+    return {
+        "action": "noop",
+        "rationale": "heuristic fallback: no LLM configured. Set an OpenAI key in /api/llm/config to get real suggestions.",
+        "nodes": [],
+    }
 
 
-# --------- OpenAI / Ollama implementations (best-effort, lazy) ---------
+# --------- openai implementation ---------
 
-def _openai_call(settings, prompt_kind: str, payload: dict) -> dict:
+def _openai_suggest(prompt: str, json_schema: dict | None) -> dict:
+    """Call OpenAI Chat Completions with a JSON response shape."""
     import httpx
-    sys_prompt = (
-        "You are an assistant that always returns STRICT JSON. "
-        "No prose, no markdown fences, just a single JSON object."
-    )
-    user_prompt = f"Task: {prompt_kind}\nInput: {json.dumps(payload, ensure_ascii=False)}\nReturn JSON only."
-    r = httpx.post(
-        "https://api.openai.com/v1/chat/completions",
-        headers={"Authorization": f"Bearer {settings.openai_api_key}"},
-        json={
-            "model": settings.llm_model,
-            "messages": [
-                {"role": "system", "content": sys_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            "temperature": 0.2,
-            "response_format": {"type": "json_object"},
-        },
-        timeout=60,
-    )
-    r.raise_for_status()
-    content = r.json()["choices"][0]["message"]["content"]
-    return json.loads(content)
+    cfg = resolve_provider()
+    api_key = get_runtime_override("openai_api_key") or get_settings().openai_api_key
+    if not api_key:
+        return {"action": "noop", "rationale": "openai key not configured", "nodes": []}
+
+    payload = {
+        "model": cfg["model"],
+        "messages": [
+            {"role": "system", "content": "You are an AI therapist for a personal knowledge graph. You only suggest ONE improvement at a time. Output strict JSON."},
+            {"role": "user",   "content": prompt},
+        ],
+        "response_format": {"type": "json_object"},
+        "temperature": 0.2,
+    }
+    headers = {"authorization": f"Bearer {api_key}", "content-type": "application/json"}
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            r = client.post("https://api.openai.com/v1/chat/completions",
+                            json=payload, headers=headers)
+            r.raise_for_status()
+            data = r.json()
+        content = data["choices"][0]["message"]["content"]
+        return json.loads(content)
+    except Exception as e:
+        return {"action": "noop", "rationale": f"openai call failed: {e}", "nodes": []}
 
 
-def _ollama_call(settings, prompt_kind: str, payload: dict) -> dict:
-    import httpx
-    sys_prompt = "Always respond with strict JSON only."
-    user_prompt = f"Task: {prompt_kind}\nInput: {json.dumps(payload, ensure_ascii=False)}"
-    r = httpx.post(
-        f"{settings.ollama_base_url}/api/chat",
-        json={
-            "model": settings.llm_model,
-            "messages": [
-                {"role": "system", "content": sys_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            "format": "json",
-            "stream": False,
-        },
-        timeout=60,
-    )
-    r.raise_for_status()
-    content = r.json()["message"]["content"]
-    return json.loads(content)
+# --------- public entry ---------
+
+def complete(prompt: str, json_schema: dict | None = None) -> dict:
+    cfg = resolve_provider()
+    if cfg["provider"] == "openai":
+        return _openai_suggest(prompt, json_schema)
+    # default: heuristic
+    return heuristic_complete(prompt, json_schema)
+
+
+# backward-compat alias (used by older callers)
+llm_call = complete

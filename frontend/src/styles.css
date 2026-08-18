@@ -573,6 +573,7 @@ button { cursor: pointer; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(10, 132, 255, 0.5); }
 /* ─── Draft Panel (left-side inbox) ──────────────────────────────── */
 .draft-toggle {
+  pointer-events: auto;
   width: 36px; height: 36px;
   border-radius: var(--r-pill);
   background: rgba(28, 28, 30, 0.72);
@@ -693,3 +694,223 @@ button { cursor: pointer; }
   border-radius: 6px;
 }
 .btn-icon-mini:hover { color: var(--accent); background: rgba(255, 255, 255, 0.05); }
+
+/* ─── Assistant tabs (Ask / Suggest / Settings) ────────────────── */
+.assistant-tabs {
+  display: flex; gap: 4px;
+  margin-bottom: 10px;
+  background: rgba(40, 40, 42, 0.55);
+  border-radius: var(--r-pill);
+  padding: 3px;
+}
+.assistant-tabs .tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-2);
+  font-size: 11px;
+  padding: 5px 8px;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+}
+.assistant-tabs .tab.active {
+  background: var(--accent);
+  color: white;
+  font-weight: 600;
+}
+.assistant-tabs .tab:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-0);
+}
+.assistant-tab-body {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.assistant-hint {
+  font-size: 11px;
+  color: var(--text-2);
+  line-height: 1.45;
+  margin: 0;
+}
+.assistant-tab-body label {
+  font-size: 10px;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  font-weight: 600;
+}
+.assistant-tab-body label + input,
+.assistant-tab-body label + select {
+  margin-bottom: 4px;
+}
+.suggestion-card {
+  background: rgba(10, 132, 255, 0.10);
+  border: 1px solid rgba(10, 132, 255, 0.35);
+  border-radius: 12px;
+  padding: 10px;
+  font-size: 12px;
+  display: flex; flex-direction: column; gap: 6px;
+  margin-top: 4px;
+}
+.suggestion-action {
+  font-weight: 600;
+  font-size: 13px;
+}
+.provider-tag {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  font-size: 10px;
+  color: var(--text-2);
+  font-weight: 500;
+}
+.suggestion-rationale {
+  color: var(--text-1);
+  line-height: 1.5;
+}
+.suggestion-similarity {
+  font-size: 11px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.suggestion-nodes {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.node-link {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--line);
+  color: var(--text-0);
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+}
+.node-link:hover { background: var(--accent); color: white; border-color: var(--accent); }
+.apply-status {
+  font-size: 12px;
+  color: var(--text-1);
+  padding: 4px 0;
+}
+.status-line {
+  font-size: 11px;
+  color: var(--text-2);
+  padding: 4px 0;
+}
+
+/* ─── Link picker (NodeDetail) ─────────────────────────────────── */
+.link-picker-search {
+  width: 100%;
+  background: rgba(40, 40, 42, 0.55);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text-0);
+  font-size: 13px;
+  padding: 6px 10px;
+  margin: 8px 0;
+  outline: none;
+}
+.link-picker-search:focus { border-color: var(--accent); }
+.link-picker-results {
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.link-picker-row {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(40, 40, 42, 0.55);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+  color: var(--text-0);
+  font-size: 13px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.link-picker-row:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: rgba(10, 132, 255, 0.10);
+}
+.link-picker-row:disabled { opacity: 0.5; cursor: not-allowed; }
+.link-picker-title { flex: 1; }
+.link-picker-cat {
+  font-size: 10px;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.10em;
+  font-weight: 600;
+}
+
+/* ─── Draft tab (inside AssistantPanel) ────────────────────────── */
+.draft-list {
+  display: flex; flex-direction: column; gap: 6px;
+  max-height: 280px; overflow-y: auto;
+  margin-top: 4px;
+}
+.draft-row {
+  background: rgba(40, 40, 42, 0.55);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 6px 8px;
+  display: flex; gap: 8px; align-items: flex-start;
+  font-size: 12px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.draft-row:hover { border-color: rgba(10, 132, 255, 0.45); }
+.draft-row.promoted { opacity: 0.6; }
+.draft-row-content { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.draft-row-text {
+  color: var(--text-0);
+  line-height: 1.4;
+  word-break: break-word;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.draft-row-meta {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  font-size: 10px; color: var(--text-2);
+  text-transform: uppercase; letter-spacing: 0.08em;
+}
+.draft-row-actions {
+  display: flex; gap: 4px;
+  flex-shrink: 0;
+}
+.btn-mini {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  color: var(--text-0);
+  border-radius: 8px;
+  padding: 3px 6px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.btn-mini:hover:not(:disabled) { border-color: var(--accent); background: rgba(10, 132, 255, 0.15); }
+.btn-mini:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ─── AI Assistant panel (bottom-left) ────────────────────────── */
+.panel-assistant {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  width: 360px;
+  max-width: calc(100vw - 40px);
+  max-height: calc(100vh - 80px);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  background: rgba(20, 20, 22, 0.78);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 14px;
+  overflow-y: auto;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+}

@@ -64,16 +64,33 @@
     "updateSuccess": "Updated",
     "deleteSuccess": "Deleted",
     "updateFailed": "Update failed: {message}",
-    "deleteFailed": "Delete failed: {message}"
+    "deleteFailed": "Delete failed: {message}",
+    "addLink": "🔗 Add link",
+    "addLinkHint": "Pick a node to link with \"{title}\"",
+    "searchNode": "Search by title or category...",
+    "noMatches": "No matches"
   },
   "assistant": {
-    "title": "🧠 AI Assistant",
+    "title": "AI Assistant",
     "skills": "SKILL",
     "placeholder": "e.g. \"What is RLHF?\" or \"organise my recent LLM notes\"",
     "ask": "Ask",
-    "organise": "📂 Organise",
+    "organise": "Organise",
     "genSkill": "✨ Generate Skill",
-    "thinking": "Thinking…"
+    "thinking": "Thinking…",
+    "tabAsk": "Ask",
+    "tabSuggest": "Suggest",
+    "tabSettings": "Settings",
+    "settingsHint": "Configure your LLM provider and key. The key is in-memory only and cleared on backend restart.",
+    "suggestHint": "Ask the AI for ONE potential improvement to your knowledge graph (link / merge / split). Falls back to a heuristic if no LLM key is set.",
+    "suggestOne": "Suggest one improvement",
+    "applyLink": "Apply link",
+    "working": "Working...",
+    "save": "Save",
+    "clear": "Clear",
+    "askPlaceholder": "e.g. \"What is RLHF?\" or \"summarise my recent notes\"",
+    "generateSkill": "Generate Skill",
+    "tabDraft": "Draft"
   },
   "lang": {
     "switch": "Switch language",

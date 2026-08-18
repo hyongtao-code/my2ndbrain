@@ -12,6 +12,7 @@ from app.api.assistant import (
 )
 
 from app.api.drafts import router as drafts_router
+from app.api.llm import router as llm_router
 from app.services.embedding import report_backend
 
 setup_logging()
@@ -44,6 +45,7 @@ app.include_router(graph_router)
 app.include_router(clusters_router)
 app.include_router(assistant_router)
 app.include_router(skills_router)
+app.include_router(llm_router)
 app.include_router(drafts_router)
 
 
