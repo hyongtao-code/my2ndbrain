@@ -64,16 +64,33 @@
     "updateSuccess": "已更新",
     "deleteSuccess": "已删除",
     "updateFailed": "更新失败：{message}",
-    "deleteFailed": "删除失败：{message}"
+    "deleteFailed": "删除失败：{message}",
+    "addLink": "🔗 加关联",
+    "addLinkHint": "为 \"{title}\" 选一个节点建立关联",
+    "searchNode": "按标题或分类搜索...",
+    "noMatches": "没有匹配项"
   },
   "assistant": {
-    "title": "🧠 AI 助手",
+    "title": "AI 助手",
     "skills": "个 SKILL",
     "placeholder": "如 \"什么是 RLHF？\" 或 \"整理我最近学的大模型\"",
     "ask": "问",
-    "organise": "📂 整理",
+    "organise": "整理",
     "genSkill": "✨ 生成 Skill",
-    "thinking": "思考中…"
+    "thinking": "思考中…",
+    "tabAsk": "问答",
+    "tabSuggest": "AI 建议",
+    "tabSettings": "设置",
+    "settingsHint": "配置 LLM 提供商和 API Key。Key 只存内存，后端重启后清空。",
+    "suggestHint": "让 AI 给出 1 个知识图谱可改进的意见（link / merge / split）。未配 LLM 时自动 fallback 到启发式。",
+    "suggestOne": "提出 1 个建议",
+    "applyLink": "应用连接",
+    "working": "处理中...",
+    "save": "保存",
+    "clear": "清空",
+    "askPlaceholder": "如 \"什么是 RLHF？\" 或 \"我最近学了什么 LLM 笔记\"",
+    "generateSkill": "生成 Skill",
+    "tabDraft": "草稿"
   },
   "lang": {
     "switch": "切换语言",

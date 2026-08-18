@@ -15,6 +15,22 @@ AI 驱动的个人知识图谱 + 长期记忆系统。
 - 🤖 **AI 助手**：自然语言问答，从你大脑里 RAG 出答案，并标注知识盲区
 - ✨ **自动蒸馏 Skill**：从你最熟悉的领域自动提炼成结构化 Skill，可作为 Agent 记忆 / RAG 知识库
 
+## 🌿 Git 工作流 (`dev` 分支)
+
+- **不要直接 push 到 `main`** — main 是稳定 release，development 在 `dev` 分支上做。
+- 第一次 clone 这台机器后：
+  ```bash
+  git checkout -b dev origin/dev   # 创建并跟踪远端 dev
+  ```
+- 日常 push / pull 都用 `dev`：
+  ```bash
+  git push origin dev
+  git pull origin dev
+  ```
+- 本机有一个 `pre-push` hook 拦截到 `main`/`master` 的 push（`GIT_ALLOW_MAIN_PUSH=1` 可临时放行）。它在 `.git/hooks/pre-push`，新 clone 的机器还得手动装：
+  ```bash
+  ln -s ../../scripts/git-hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+  ```
 ## 🧱 架构
 
 ```

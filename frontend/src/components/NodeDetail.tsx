@@ -32,6 +32,7 @@ export default function NodeDetail({ node, onJump, onClose, onMutated }: Props) 
     const [editing, setEditing] = useState(false);
     const [draft, setDraft] = useState<EditState>(EMPTY_EDIT);
     const [confirmDelete, setConfirmDelete] = useState(false);
+    const [showLinkPicker, setShowLinkPicker] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [banner, setBanner] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
@@ -39,6 +40,7 @@ export default function NodeDetail({ node, onJump, onClose, onMutated }: Props) 
         setFull(null);
         setEditing(false);
         setConfirmDelete(false);
+        setShowLinkPicker(false);
         setBanner(null);
         fetch(`/api/nodes/${node.id}`)
             .then((r) => r.json())
@@ -109,6 +111,9 @@ export default function NodeDetail({ node, onJump, onClose, onMutated }: Props) 
                         <>
                             <button className="btn-icon" onClick={startEdit} title={t("detail.edit")}>
                                 {t("detail.edit")}
+                            </button>
+                            <button className="btn-icon" onClick={() => setShowLinkPicker(true)} title={t("detail.addLink")}>
+                                🔗
                             </button>
                             <button className="btn-icon" onClick={() => setConfirmDelete(true)} title={t("detail.delete")}>
                                 {t("detail.delete")}
@@ -216,6 +221,107 @@ export default function NodeDetail({ node, onJump, onClose, onMutated }: Props) 
                     </div>
                 </div>
             )}
+
+            {showLinkPicker && (
+                <LinkPicker
+                    sourceId={n.id}
+                    sourceTitle={n.title}
+                    onClose={() => setShowLinkPicker(false)}
+                    onAdded={(id) => { setShowLinkPicker(false); onMutated(); onJump(id); }}
+                />
+            )}
+        </div>
+    );
+}
+function LinkPicker({
+    sourceId,
+    sourceTitle,
+    onClose,
+    onAdded,
+}: {
+    sourceId: string;
+    sourceTitle: string;
+    onClose: () => void;
+    onAdded: (newTargetId: string) => void;
+}) {
+    const t = useTranslations();
+    const [q, setQ] = useState("");
+    const [options, setOptions] = useState<Array<{ id: string; title: string; category: string }>>([]);
+    const [busy, setBusy] = useState(false);
+    const [err, setErr] = useState<string | null>(null);
+
+    useEffect(() => {
+        // Use the api.graph to get all nodes (simple + good enough for small graphs)
+        api.graph(undefined).then((g) => {
+            setOptions(g.nodes
+                .filter((x) => x.id !== sourceId)
+                .map((x) => ({ id: x.id, title: x.title, category: x.category })));
+        }).catch((e) => setErr(String(e)));
+    }, [sourceId]);
+
+    const matches = q.trim()
+        ? options.filter((o) =>
+            o.title.toLowerCase().includes(q.toLowerCase()) ||
+            o.category.toLowerCase().includes(q.toLowerCase())
+        ).slice(0, 20)
+        : options.slice(0, 20);
+
+    const link = async (targetId: string) => {
+        setBusy(true);
+        setErr(null);
+        try {
+            const url = `http://127.0.0.1:8000/api/llm/link?source_id=${sourceId}&target_id=${targetId}&relation=related`;
+            const r = await fetch(url, { method: "POST" });
+            const data = await r.json();
+            if (data.detail) {
+                setErr(data.detail);
+            } else {
+                onAdded(targetId);
+            }
+        } catch (e: any) {
+            setErr(e?.message || String(e));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="panel modal" onClick={(e) => e.stopPropagation()}>
+                <h3>{t("detail.addLink")}</h3>
+                <p style={{ fontSize: 12, color: "var(--text-2)", margin: "0 0 10px 0" }}>
+                    {t("detail.addLinkHint", { title: sourceTitle })}
+                </p>
+                <input
+                    className="link-picker-search"
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    placeholder={t("detail.searchNode")}
+                    autoFocus
+                />
+                {err && <div style={{ color: "var(--danger)", fontSize: 12, margin: "6px 0" }}>{err}</div>}
+                <div className="link-picker-results">
+                    {matches.length === 0 && (
+                        <div style={{ fontSize: 12, color: "var(--text-2)", padding: 8 }}>
+                            {t("detail.noMatches")}
+                        </div>
+                    )}
+                    {matches.map((o) => (
+                        <button
+                            key={o.id}
+                            className="link-picker-row"
+                            onClick={() => link(o.id)}
+                            disabled={busy}
+                        >
+                            <span className="link-picker-title">{o.title}</span>
+                            <span className="link-picker-cat">{o.category}</span>
+                        </button>
+                    ))}
+                </div>
+                <div className="actions" style={{ marginTop: 10 }}>
+                    <button className="btn-secondary" onClick={onClose}>{t("detail.close").replace("✕", "Cancel")}</button>
+                </div>
+            </div>
         </div>
     );
 }

@@ -1,42 +1,83 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "../lib/api";
-import type { AssistantResponse, NodeOut } from "../types";
+import type { AssistantResponse, DraftOut } from "../types";
 import { useI18n } from "../i18n";
 
+type Mode = "ask" | "suggest" | "settings" | "draft";
+
 type Props = { onJump: (id: string) => void; };
+
+type LLMStatus = {
+    provider: string;
+    model: string;
+    has_api_key: boolean;
+    api_key_source: "runtime" | "env" | "none";
+};
+
+type Suggestion = {
+    action: "link" | "merge" | "split" | "noop";
+    rationale: string;
+    nodes: string[];
+    similarity?: number;
+    provider?: string;
+};
 
 export default function AssistantPanel({ onJump }: Props) {
     const t = useTranslations();
     const { locale } = useI18n();
-    const [q, setQuestion] = useState("");
+    const [mode, setMode] = useState<Mode>("draft");
+
+    return (
+        <div className="panel panel-assistant">
+            <div className="panel-title">
+                <span>🧠 {t("assistant.title")}</span>
+            </div>
+
+            <div className="assistant-tabs">
+                <button
+                    className={`tab ${mode === "ask" ? "active" : ""}`}
+                    onClick={() => setMode("ask")}
+                >
+                    💬 {t("assistant.tabAsk")}
+                </button>
+                <button
+                    className={`tab ${mode === "suggest" ? "active" : ""}`}
+                    onClick={() => setMode("suggest")}
+                >
+                    💡 {t("assistant.tabSuggest")}
+                </button>
+                <button
+                    className={`tab ${mode === "settings" ? "active" : ""}`}
+                    onClick={() => setMode("settings")}
+                >
+                    ⚙️ {t("assistant.tabSettings")}
+                </button>
+                <button
+                    className={`tab ${mode === "draft" ? "active" : ""}`}
+                    onClick={() => setMode("draft")}
+                >
+                    📝 {t("assistant.tabDraft")}
+                </button>
+            </div>
+
+            {mode === "ask" && <AskTab onJump={onJump} locale={locale} />}
+            {mode === "suggest" && <SuggestTab onJump={onJump} />}
+            {mode === "settings" && <SettingsTab />}
+            {mode === "draft" && <DraftTab onJump={onJump} />}
+        </div>
+    );
+}
+
+// ============================================================
+// Ask tab — plain local recall (no LLM call)
+// ============================================================
+function AskTab({ onJump, locale }: { onJump: (id: string) => void; locale: string }) {
+    const t = useTranslations();
+    const [q, setQ] = useState("");
     const [loading, setLoading] = useState(false);
     const [res, setRes] = useState<AssistantResponse | null>(null);
     const [skills, setSkills] = useState<any[]>([]);
-
-    // Localised static strings (UI chrome) — `res.answer` from the backend
-    // is heuristic-generated and intentionally stays in Chinese regardless
-    // of UI locale (it's domain text, not chrome).
-    const chrome = {
-        zh: {
-            topic: (t: string | undefined, total: number) => `主题：${t || "(全部)"}  共 ${total} 条`,
-            category: (c: string, n: number) => `\n【${c}】(${n})`,
-            bullet: (title: string, summary: string) => `  • ${title}${summary ? " — " + summary.slice(0, 60) : ""}`,
-            skill: (name: string, trigger: string, body: string) =>
-                `✅ 已生成 Skill：${name}\n触发关键词：${trigger}\n\n${body}`,
-        },
-        en: {
-            topic: (t: string | undefined, total: number) => `Topic: ${t || "(all)"}  ·  ${total} nodes`,
-            category: (c: string, n: number) => `\n[${c}] (${n})`,
-            bullet: (title: string, summary: string) => `  • ${title}${summary ? " — " + summary.slice(0, 60) : ""}`,
-            skill: (name: string, trigger: string, body: string) =>
-                `✅ Skill generated: ${name}\nTriggers: ${trigger}\n\n${body}`,
-        },
-    }[locale === "en" ? "en" : "zh"];
-
-    useEffect(() => {
-        api.skills().then(setSkills).catch(() => {});
-    }, []);
 
     const ask = async () => {
         if (!q.trim()) return;
@@ -49,81 +90,389 @@ export default function AssistantPanel({ onJump }: Props) {
         }
     };
 
-    const organise = async () => {
-        setLoading(true);
-        try {
-            const r = await api.organise(q.trim() || undefined);
-            const lines: string[] = [];
-            lines.push(chrome.topic(r.topic, r.total));
-            for (const [cat, items] of Object.entries(r.tree) as [string, Array<{title:string;summary:string;importance:number}>][]) {
-                lines.push(chrome.category(cat, items.length));
-                for (const it of items.slice(0, 6)) {
-                    lines.push(chrome.bullet(it.title, it.summary || ""));
+    const render = (r: AssistantResponse): string => {
+        // Localised chrome; backend answer stays in raw text (domain content).
+        if (locale.startsWith("zh")) {
+            const parts: string[] = [];
+            parts.push(`主题：${r.topic || "(全部)"}  共 ${r.total} 条`);
+            for (const [cat, items] of Object.entries(r.tree || {})) {
+                parts.push(`\n【${cat}】(${items.length})`);
+                for (const it of items) {
+                    parts.push(`  • ${it.title}${it.summary ? " — " + it.summary.slice(0, 60) : ""}`);
                 }
             }
-            setRes({
-                answer: lines.join("\n"),
-                related_nodes: [],
-            });
+            return parts.join("\n");
+        } else {
+            const parts: string[] = [];
+            parts.push(`Topic: ${r.topic || "(all)"}  ·  ${r.total} nodes`);
+            for (const [cat, items] of Object.entries(r.tree || {})) {
+                parts.push(`\n[${cat}] (${items.length})`);
+                for (const it of items) {
+                    parts.push(`  • ${it.title}${it.summary ? " — " + it.summary.slice(0, 60) : ""}`);
+                }
+            }
+            return parts.join("\n");
+        }
+    };
+
+return (
+        <div className="assistant-tab-body">
+            <textarea
+                className="textarea"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder={t("assistant.askPlaceholder")}
+                rows={2}
+            />
+            <div className="assistant-actions">
+                <button className="btn-primary" onClick={ask} disabled={loading || !q.trim()}>
+                    {t("assistant.ask")}
+                </button>
+            </div>
+            {res && (
+                <div className="answer">
+                    <pre>{render(res)}</pre>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ============================================================
+// Suggest tab — calls LLM (or heuristic fallback) for ONE suggestion
+// ============================================================
+function SuggestTab({ onJump }: { onJump: (id: string) => void }) {
+    const t = useTranslations();
+    const [loading, setLoading] = useState(false);
+    const [sug, setSug] = useState<Suggestion | null>(null);
+    const [applyMsg, setApplyMsg] = useState<string | null>(null);
+
+    const ask = async () => {
+        setLoading(true);
+        setSug(null);
+        setApplyMsg(null);
+        try {
+            const r = await fetch("http://127.0.0.1:8000/api/llm/suggest-improvements", { method: "POST" });
+            const data = await r.json();
+            setSug(data);
         } finally {
             setLoading(false);
         }
     };
 
-    const generateSkill = async () => {
+    const apply = async () => {
+        if (!sug || sug.action !== "link" || sug.nodes.length < 2) return;
         setLoading(true);
+        setApplyMsg(null);
         try {
-            const r = await api.genSkill();
-            setRes({
-                answer: chrome.skill(r.skill.name, r.skill.trigger, r.skill.body),
-                related_nodes: [],
-            });
-            setSkills(await api.skills());
+            const url = `http://127.0.0.1:8000/api/llm/link?source_id=${sug.nodes[0]}&target_id=${sug.nodes[1]}&relation=related`;
+            const r = await fetch(url, { method: "POST" });
+            const data = await r.json();
+            if (data.detail) {
+                setApplyMsg(`❌ ${data.detail}`);
+            } else {
+                setApplyMsg(`✅ Link created (id=${data.id.slice(0, 8)}, already_existed=${data.already_existed})`);
+                // jump to the first node
+                onJump(sug.nodes[0]);
+            }
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="panel panel-bottom assistant">
-            <div className="panel-title">
-                <span>{t("assistant.title")}</span>
-                <span style={{ fontSize: 11, color: "var(--text-2)" }}>
-                    {skills.length} {t("assistant.skills")}
-                </span>
-            </div>
-            <div className="ask">
-                <input
-                    value={q}
-                    onChange={(e) => setQuestion(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && ask()}
-                    placeholder={t("assistant.placeholder")}
-                />
-                <button className="btn-primary" onClick={ask} disabled={loading}>{t("assistant.ask")}</button>
-            </div>
-            <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-                <button className="btn-secondary" style={{ fontSize: 12 }} onClick={organise} disabled={loading}>
-                    {t("assistant.organise")}
-                </button>
-                <button className="btn-secondary" style={{ fontSize: 12 }} onClick={generateSkill} disabled={loading}>
-                    {t("assistant.genSkill")}
-                </button>
-            </div>
-            {res && (
-                <>
-                    <div className="answer">{loading ? t("assistant.thinking") : res.answer}</div>
-                    {res.related_nodes && res.related_nodes.length > 0 && (
-                        <div className="related">
-                            {res.related_nodes.slice(0, 6).map((n) => (
-                                <div key={n.id} className="row" onClick={() => onJump(n.id)}>
-                                    <span>→ {n.title}</span>
-                                    <span style={{ color: "var(--accent-2)" }}>{(n.similarity * 100).toFixed(0)}%</span>
-                                </div>
+        <div className="assistant-tab-body">
+            <p className="assistant-hint">
+                {t("assistant.suggestHint")}
+            </p>
+            <button className="btn-primary" onClick={ask} disabled={loading}>
+                💡 {loading ? t("assistant.working") : t("assistant.suggestOne")}
+            </button>
+            {sug && (
+                <div className="suggestion-card">
+                    <div className="suggestion-action">
+                        action: <b>{sug.action}</b>
+                        {sug.provider && <span className="provider-tag">via {sug.provider}</span>}
+                    </div>
+                    <div className="suggestion-rationale">{sug.rationale}</div>
+                    {sug.similarity !== undefined && (
+                        <div className="suggestion-similarity">similarity: {sug.similarity.toFixed(3)}</div>
+                    )}
+                    {sug.nodes.length > 0 && (
+                        <div className="suggestion-nodes">
+                            {sug.nodes.map((id, i) => (
+                                <button key={id} className="node-link" onClick={() => onJump(id)}>
+                                    {id.slice(0, 8)}
+                                </button>
                             ))}
                         </div>
                     )}
-                </>
+                    {sug.action === "link" && sug.nodes.length >= 2 && (
+                        <button className="btn-primary" onClick={apply} disabled={loading}>
+                            🔗 {loading ? t("assistant.working") : t("assistant.applyLink")}
+                        </button>
+                    )}
+                    {applyMsg && <div className="apply-status">{applyMsg}</div>}
+                </div>
             )}
+        </div>
+    );
+}
+
+// ============================================================
+// Settings tab — set OpenAI key (in-memory only)
+// ============================================================
+function SettingsTab() {
+    const t = useTranslations();
+    const [status, setStatus] = useState<LLMStatus | null>(null);
+    const [provider, setProvider] = useState("heuristic");
+    const [apiKey, setApiKey] = useState("");
+    const [model, setModel] = useState("gpt-4o-mini");
+    const [saved, setSaved] = useState<string | null>(null);
+
+    const refresh = async () => {
+        try {
+            const r = await fetch("http://127.0.0.1:8000/api/llm/status");
+            const d = await r.json();
+            setStatus(d);
+            setProvider(d.provider);
+            setModel(d.model);
+        } catch (e) {
+            // backend not reachable
+        }
+    };
+
+    useEffect(() => { refresh(); }, []);
+
+    const save = async () => {
+        try {
+            const r = await fetch("http://127.0.0.1:8000/api/llm/config", {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ provider, api_key: apiKey, model }),
+            });
+            await r.json();
+            setApiKey(""); // never keep it in memory
+            setSaved("✅ Saved");
+            await refresh();
+            setTimeout(() => setSaved(null), 2000);
+        } catch (e) {
+            setSaved("❌ " + (e as any).message);
+        }
+    };
+
+    const clear = async () => {
+        try {
+            await fetch("http://127.0.0.1:8000/api/llm/clear", { method: "POST" });
+            await refresh();
+            setSaved("✅ Cleared");
+            setTimeout(() => setSaved(null), 2000);
+        } catch (e) {
+            setSaved("❌ " + (e as any).message);
+        }
+    };
+
+    return (
+        <div className="assistant-tab-body">
+            <p className="assistant-hint">{t("assistant.settingsHint")}</p>
+            <div className="status-line">
+                <span>status: <b>{status?.provider || "..."}</b> · {status?.model || "..."} · key: {status?.has_api_key ? `✅ (${status?.api_key_source})` : "❌"}</span>
+            </div>
+            <label>provider</label>
+            <select value={provider} onChange={(e) => setProvider(e.target.value)}>
+                <option value="heuristic">heuristic (local, no network)</option>
+                <option value="openai">openai (cloud)</option>
+                <option value="ollama">ollama (local llama.cpp)</option>
+            </select>
+            <label>model</label>
+            <input value={model} onChange={(e) => setModel(e.target.value)} placeholder="gpt-4o-mini" />
+            <label>api key (only openai)</label>
+            <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="sk-..."
+            />
+            <div className="assistant-actions">
+                <button className="btn-primary" onClick={save} disabled={!apiKey && provider === "openai"}>
+                    💾 {t("assistant.save")}
+                </button>
+                <button className="btn-secondary" onClick={clear}>
+                    🗑️ {t("assistant.clear")}
+                </button>
+            </div>
+            {saved && <div className="apply-status">{saved}</div>}
+        </div>
+    );
+}
+
+// ============================================================
+// Draft tab — quick save-to-draft + list unpromoted drafts + promote
+// ============================================================
+function DraftTab({ onJump }: { onJump: (id: string) => void }) {
+    const t = useTranslations();
+    const [drafts, setDrafts] = useState<DraftOut[]>([]);
+    const [showPromoted, setShowPromoted] = useState(false);
+    const [content, setContent] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [promoting, setPromoting] = useState<Set<string>>(new Set());
+    const [banner, setBanner] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+
+    const refresh = async () => {
+        try {
+            const list = await api.listDrafts(showPromoted);
+            setDrafts(list);
+        } catch (e: any) {
+            setBanner({ kind: "err", text: `Load failed: ${e?.message || e}` });
+        }
+    };
+
+    useEffect(() => { refresh(); }, [showPromoted]);
+
+    const save = async () => {
+        const text = content.trim();
+        if (!text) return;
+        setBusy(true);
+        try {
+            await api.createDraft(text);
+            setContent("");
+            setBanner({ kind: "ok", text: t("drafts.saved") });
+            await refresh();
+        } catch (e: any) {
+            setBanner({ kind: "err", text: `${e?.message || e}` });
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const promote = async (id: string) => {
+        setPromoting((s) => { const ns = new Set(s); ns.add(id); return ns; });
+        try {
+            const res = await api.promoteDrafts([id]);
+            setBanner({
+                kind: res.failed_count === 0 ? "ok" : "err",
+                text: t("drafts.promoteResult", { ok: res.promoted_count, fail: res.failed_count }),
+            });
+            await refresh();
+        } catch (e: any) {
+            setBanner({ kind: "err", text: `${e?.message || e}` });
+        } finally {
+            setPromoting((s) => { const ns = new Set(s); ns.delete(id); return ns; });
+        }
+    };
+
+    const remove = async (id: string) => {
+        if (!confirm(t("drafts.deleteConfirm"))) return;
+        try {
+            await api.deleteDraft(id);
+            await refresh();
+        } catch (e: any) {
+            setBanner({ kind: "err", text: `${e?.message || e}` });
+        }
+    };
+
+    const unpromoted = drafts.filter((d) => !d.promoted_to_node_id);
+    const promoted = drafts.filter((d) => d.promoted_to_node_id);
+
+    return (
+        <div className="assistant-tab-body">
+            <textarea
+                className="textarea"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                placeholder={t("drafts.composerPlaceholder")}
+                rows={2}
+                onKeyDown={(e) => {
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                        e.preventDefault();
+                        save();
+                    }
+                }}
+            />
+            <div className="assistant-actions">
+                <button className="btn-primary" onClick={save} disabled={busy || !content.trim()}>
+                    {busy ? t("drafts.saving") : t("drafts.save")}
+                </button>
+                <label className="toggle-mini">
+                    <input
+                        type="checkbox"
+                        checked={showPromoted}
+                        onChange={(e) => setShowPromoted(e.target.checked)}
+                    />
+                    <span>{t("drafts.includePromoted")}</span>
+                </label>
+            </div>
+
+            {banner && (
+                <div className={`check ${banner.kind === "ok" ? "ok" : ""}`}>
+                    {banner.text}
+                </div>
+            )}
+
+            <div className="draft-list">
+                {unpromoted.length === 0 && promoted.length === 0 && (
+                    <div style={{ fontSize: 11, color: "var(--text-2)", textAlign: "center", padding: 12 }}>
+                        {t("drafts.empty")}
+                    </div>
+                )}
+
+                {unpromoted.map((d) => (
+                    <div key={d.id} className="draft-row">
+                        <div className="draft-row-content">
+                            <div className="draft-row-text">{d.content}</div>
+                            <div className="draft-row-meta">
+                                <span>{d.source}</span>
+                                {d.created_at && (
+                                    <span>{new Date(d.created_at).toLocaleString()}</span>
+                                )}
+                            </div>
+                        </div>
+                        <div className="draft-row-actions">
+                            <button
+                                className="btn-mini"
+                                onClick={() => promote(d.id)}
+                                disabled={promoting.has(d.id)}
+                                title={t("drafts.promote")}
+                            >
+                                ✨
+                            </button>
+                            <button
+                                className="btn-mini"
+                                onClick={() => remove(d.id)}
+                                title={t("drafts.delete")}
+                            >
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                ))}
+
+                {showPromoted && promoted.length > 0 && (
+                    <>
+                        <div className="drafts-section-divider">
+                            {t("drafts.promotedSection")} ({promoted.length})
+                        </div>
+                        {promoted.map((d) => (
+                            <div key={d.id} className="draft-row promoted">
+                                <div className="draft-row-content">
+                                    <div className="draft-row-text">{d.content}</div>
+                                    <div className="draft-row-meta">
+                                        {d.promoted_to_node_id && (
+                                            <button
+                                                className="badge-link"
+                                                onClick={() => onJump(d.promoted_to_node_id!)}
+                                                title={t("drafts.jumpToNode")}
+                                            >
+                                                ✅ {d.promoted_to_node_id.slice(0, 8)}
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </>
+                )}
+            </div>
         </div>
     );
 }

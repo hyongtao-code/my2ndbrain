@@ -4,7 +4,6 @@ import { api } from "./lib/api";
 import type { GraphPayload, IngestResponse, NodeOut } from "./types";
 import KnowledgeSphere from "./components/KnowledgeSphere";
 import NodeDetail from "./components/NodeDetail";
-import DraftPanel from "./components/DraftPanel";
 import AddNodeModal from "./components/AddNodeModal";
 import AssistantPanel from "./components/AssistantPanel";
 import LanguageToggle from "./components/LanguageToggle";
@@ -16,7 +15,6 @@ function AppInner() {
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [selected, setSelected] = useState<NodeOut | null>(null);
     const [showAdd, setShowAdd] = useState(false);
-    const [showDrafts, setShowDrafts] = useState(false);
     const [hover, setHover] = useState<{ id: string; title: string; x: number; y: number } | null>(null);
     const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
     const [autoSpin, setAutoSpin] = useState(true);
@@ -108,7 +106,6 @@ function AppInner() {
                 </div>
             )}
 
-            <button className="draft-toggle" onClick={() => setShowDrafts((s) => !s)} title={t("drafts.title")}>📝</button>
             <div className="topbar">
                 <div className="brand">
                     <div className="brand-dot" />
@@ -153,14 +150,6 @@ function AppInner() {
                 />
             )}
 
-            {showDrafts && (
-                <DraftPanel
-                    open={showDrafts}
-                    onClose={() => setShowDrafts(false)}
-                    onJumpToNode={selectNode}
-                    onGraphRefresh={refresh}
-                />
-            )}
             <AssistantPanel onJump={(id) => selectNode(id)} />
 
             <button className="fab" onClick={() => setShowAdd(true)} title={t("fab.add")}>＋</button>
