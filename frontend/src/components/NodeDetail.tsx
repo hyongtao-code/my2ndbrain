@@ -3,6 +3,7 @@ import { useTranslations } from "next-intl";
 import type { NodeOut } from "../types";
 import { useI18n } from "../i18n";
 import { api } from "../lib/api";
+import MarkdownEditor from "./MarkdownEditor";
 
 type Props = {
     node: NodeOut;
@@ -103,7 +104,7 @@ export default function NodeDetail({ node, onJump, onClose, onMutated }: Props) 
     };
 
     return (
-        <div className="panel panel-right detail">
+        <div className="panel panel-right-full detail">
             <div className="panel-title">
                 <span>{editing ? t("detail.editTitle") : t("detail.title")}</span>
                 <div style={{ display: "flex", gap: 6 }}>
@@ -175,10 +176,13 @@ export default function NodeDetail({ node, onJump, onClose, onMutated }: Props) 
                     <input value={draft.title}
                            onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
                            autoFocus />
-                    <label>Content *</label>
-                    <textarea value={draft.content}
-                              onChange={(e) => setDraft((d) => ({ ...d, content: e.target.value }))}
-                              style={{ minHeight: 160 }} />
+                    <label>Content * (Markdown supported)</label>
+                    <MarkdownEditor
+                        value={draft.content}
+                        onChange={(v) => setDraft((d) => ({ ...d, content: v }))}
+                        placeholder="Markdown supported: **bold**, *italic*, `code`, [link](url), lists..."
+                        minHeight={260}
+                    />
                     <label>Category</label>
                     <input value={draft.category}
                            onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value }))}

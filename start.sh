@@ -10,8 +10,7 @@
 #   6. Print the URLs.
 #
 # Stop everything: ./start.sh stop
-# Wipe local data + reseed: ./start.sh reset
-# Wipe local data + reseed (no Postgres password reset): ./start.sh reset
+# reset no longer wipes data (was destructive — see cmd_reset below).
 #
 # Requirements: bash 4+, python3, node, npm.
 # PostgreSQL must already be running with a user/db that matches .env.
@@ -212,31 +211,16 @@ cmd_status() {
 }
 
 cmd_reset() {
-    warn "this will TRUNCATE knowledge_node, knowledge_edge, category_cluster, ai_skill and reseed"
-    read -r -p "Continue? [y/N] " ans
-    if ! [[ "$ans" =~ ^[Yy]$ ]]; then
-        info "aborted"
-        exit 0
-    fi
+    # NOTE: This used to TRUNCATE knowledge_node/edge/cluster/skill and
+    # reseed. That destroys the user's real knowledge graph, which is
+    # catastrophic — the whole point of this app is the data. Removed.
+    #
+    # "reset" now means: just stop the running services and start them
+    # again. No data is touched. If you really do want a fresh empty
+    # brain, delete rows manually via ./query.sh psql.
+    warn "reset no longer truncates the database — it just restarts services"
+    info "(the old TRUNCATE + reseed behaviour was removed to protect your real data)"
     cmd_stop
-    # Use the running backend's HTTP API to reset: it already has DB credentials.
-    info "calling backend to truncate + reseed"
-    (
-        cd "$BACKEND_DIR"
-        PYTHONPATH=. python3 - <<'PYEOF'
-import os, sys
-sys.path.insert(0, '.')
-from app.db.session import SessionLocal
-from app.models.knowledge import KnowledgeNode, KnowledgeEdge, CategoryCluster, AISkill
-from sqlalchemy import text
-with SessionLocal() as s:
-    s.execute(text("TRUNCATE knowledge_node, knowledge_edge, category_cluster, ai_skill CASCADE"))
-    s.commit()
-print("truncated")
-PYEOF
-        PYTHONPATH=. python3 scripts/seed.py
-    )
-    ok "database wiped + reseeded"
     cmd_start
 }
 
@@ -253,7 +237,7 @@ case "$CMD" in
     start)  cmd_start ;;
     stop)   cmd_stop ;;
     status) cmd_status ;;
-    reset)  cmd_reset ;;
+    reset)  cmd_reset ;;  # restart only — does NOT delete data
     logs)   cmd_logs "${1:-all}" ;;
     -h|--help|help)
         cat <<EOF
@@ -263,7 +247,7 @@ Commands:
   start    Bring up backend + frontend (default).
   stop     Stop backend + frontend.
   status   Show process + HTTP health.
-  reset    Truncate all knowledge, reseed, then start.
+  reset    Restart services (does NOT touch the database — see cmd_reset).
   logs [backend|frontend|all]  Tail the logs (default: all).
 
 Logs:        $LOG_DIR
