@@ -29,7 +29,7 @@
       "importance": "重要性 (0–10)"
     },
     "titlePlaceholder": "如：GRPO",
-    "contentPlaceholder": "详细描述这个概念 …",
+    "contentPlaceholder": "支持 Markdown：用 ** 包围粗体，* 包围斜体，``` 写代码块，[文字](url) 加链接，- 或 1. 写列表…",
     "categoryPlaceholder": "如：大模型 / 编程开发",
     "error": {
       "required": "标题和内容必填"
@@ -121,5 +121,12 @@
     "promotedSection": "已固化",
     "promotedTo": "已固化 →",
     "jumpToNode": "跳到节点"
+  },
+  "markdown": {
+    "tabEdit": "编辑",
+    "tabSplit": "分屏",
+    "tabPreview": "预览",
+    "placeholder": "支持 Markdown：**粗体** *斜体* `行内代码` [链接](url) 列表 等",
+    "emptyPreview": "（预览为空 — 先在编辑模式写点东西）"
   }
 }

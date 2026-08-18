@@ -914,3 +914,157 @@ button { cursor: pointer; }
   box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
   pointer-events: auto;
 }
+
+/* ============================================================
+   Right-half panel (replaces the old 320px narrow slide-in)
+   - Used by both AddNodeModal and NodeDetail
+   - 50vw width, full height
+   ============================================================ */
+.panel-right-full {
+  position: fixed;
+  top: 60px;          /* below the topbar */
+  right: 0;
+  bottom: 0;
+  width: 50vw;
+  min-width: 480px;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  background: rgba(20, 20, 22, 0.78);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border-left: 1px solid var(--line);
+  padding: 18px;
+  overflow-y: auto;
+  box-shadow: 0 0 48px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+}
+@media (max-width: 720px) {
+  .panel-right-full { width: 100vw; min-width: 0; }
+}
+.panel-right-full .panel-title {
+  margin: -2px 0 14px 0;
+}
+
+/* ============================================================
+   Markdown editor — toolbar + textarea / preview
+   ============================================================ */
+.md-editor {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--bg-0);
+}
+.md-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 6px 6px 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.md-tool {
+  width: 30px; height: 28px;
+  background: transparent;
+  border: none;
+  color: var(--text-1);
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex; align-items: center; justify-content: center;
+}
+.md-tool:hover { background: rgba(255, 255, 255, 0.08); color: var(--text-0); }
+.md-tool-em { font-style: italic; font-weight: 500; }
+.md-tool-code { font-family: ui-monospace, monospace; }
+
+.md-tabs { margin-left: auto; display: flex; gap: 2px; }
+.md-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-2);
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  font-family: inherit;
+  letter-spacing: 0.04em;
+}
+.md-tab:hover { color: var(--text-0); }
+.md-tab.active { background: rgba(10, 132, 255, 0.20); border-color: var(--accent); color: var(--text-0); }
+
+.md-body { display: flex; min-height: 0; }
+.md-body.md-edit, .md-body.md-preview, .md-body.md-split { padding: 0; }
+.md-body.md-split { gap: 1px; background: var(--line); }
+
+.md-textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-0);
+  font-family: ui-monospace, "JetBrains Mono", Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  padding: 10px 12px;
+  resize: vertical;
+}
+.md-body.md-split .md-textarea { width: 50%; border-right: 1px solid var(--line); }
+
+.md-preview {
+  padding: 12px 16px;
+  overflow-y: auto;
+  color: var(--text-0);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.md-body.md-split .md-preview { width: 50%; background: rgba(255, 255, 255, 0.02); }
+.md-preview h1, .md-preview h2, .md-preview h3 { margin-top: 0.6em; margin-bottom: 0.4em; font-weight: 600; letter-spacing: -0.01em; }
+.md-preview h1 { font-size: 22px; }
+.md-preview h2 { font-size: 18px; }
+.md-preview h3 { font-size: 16px; }
+.md-preview p { margin: 0.4em 0; }
+.md-preview ul, .md-preview ol { padding-left: 1.4em; margin: 0.4em 0; }
+.md-preview li { margin: 0.18em 0; }
+.md-preview code {
+  font-family: ui-monospace, monospace;
+  font-size: 0.88em;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.md-preview pre {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  overflow-x: auto;
+}
+.md-preview pre code { background: transparent; padding: 0; }
+.md-preview blockquote {
+  margin: 0.5em 0;
+  padding: 4px 12px;
+  border-left: 3px solid var(--accent);
+  color: var(--text-1);
+  background: rgba(10, 132, 255, 0.05);
+}
+.md-preview a { color: var(--accent); }
+.md-preview hr { border: none; border-top: 1px solid var(--line); margin: 0.8em 0; }
+
+/* ============================================================
+   Add-node modal — uses .panel-right-full now (right half)
+   ============================================================ */
+.add-form .add-form-row2 {
+  display: grid;
+  grid-template-columns: 1fr 140px;
+  gap: 12px;
+  align-items: start;
+}
+.add-form .add-form-row2 > div { display: flex; flex-direction: column; gap: 4px; }
+.add-form .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: auto; padding-top: 16px; }
+
+/* NodeDetail still uses .panel.panel-right but with full width via .panel-right-full */
+.detail.panel-right-full .add-form .actions { margin-top: auto; padding-top: 16px; }

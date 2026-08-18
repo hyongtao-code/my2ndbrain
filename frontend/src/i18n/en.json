@@ -29,7 +29,7 @@
       "importance": "Importance (0–10)"
     },
     "titlePlaceholder": "e.g. GRPO",
-    "contentPlaceholder": "Describe this concept in detail…",
+    "contentPlaceholder": "Markdown supported: wrap **bold**, *italic*, ``` for code blocks, [text](url) for links, - or 1. for lists, ...",
     "categoryPlaceholder": "e.g. AI models / Dev / Comms",
     "error": {
       "required": "Title and content are required"
@@ -121,5 +121,12 @@
     "promotedSection": "Promoted",
     "promotedTo": "Promoted to",
     "jumpToNode": "Jump to node"
+  },
+  "markdown": {
+    "tabEdit": "Edit",
+    "tabSplit": "Split",
+    "tabPreview": "Preview",
+    "placeholder": "Markdown supported: **bold**, *italic*, `inline code`, [link](url), lists, ...",
+    "emptyPreview": "(preview is empty — type something in Edit mode)"
   }
 }

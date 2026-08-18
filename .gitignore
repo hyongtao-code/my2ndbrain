@@ -68,3 +68,6 @@ data/
 # ---- Postgres local dumps ----
 *.sql.gz
 *.dump
+
+# accidental empty config file
+.gitconfig
