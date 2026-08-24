@@ -109,8 +109,75 @@ def heuristic_complete(prompt: str, json_schema: dict | None) -> dict:
     # JSON shape for suggest-improvements
     if json_schema and "action" in json_schema.get("properties", {}):
         return _heuristic_suggest(prompt)
+    # The title_check call from ingest_node passes a dict {"title":..., "content":...}
+    # as the second arg. Detect by presence of those keys (cheap duck-typing).
+    if isinstance(json_schema, dict) and (
+        "ok" in json_schema.get("properties", {})  # real schema
+        or ("title" in json_schema and "content" in json_schema)  # legacy shape
+    ):
+        return _heuristic_title_check(prompt, json_schema)
     # Default: return whatever the prompt asks for as opaque dict.
     return {"_hint": "heuristic", "echo": (prompt or "")[:200]}
+
+
+def _heuristic_title_check(prompt: str, json_schema: dict | None) -> dict:
+    """Cheap local fallback for title_check.
+
+    The caller (services.knowledge.ingest_node) uses the slightly
+    awkward shape `llm_call("title_check", {"title": ..., "content": ...})`
+    where the second positional argument is the data, not a real JSON
+    schema. We accept both: pull title/content out of json_schema when
+    present, otherwise try to parse them from a string-form prompt that
+    uses ``title:`` / ``content:`` lines.
+    """
+    title = ""
+    content = ""
+    if isinstance(json_schema, dict) and ("title" in json_schema or "content" in json_schema):
+        title = str(json_schema.get("title", "") or "")
+        content = str(json_schema.get("content", "") or "")
+    else:
+        # The prompt looks like: title_check\ntitle: <X>\ncontent: <Y>
+        for line in (prompt or "").splitlines():
+            low = line.strip().lower()
+            if low.startswith("title:"):
+                title = line.split(":", 1)[1].strip()
+            elif low.startswith("content:"):
+                content = line.split(":", 1)[1].strip()
+
+    # Domain-token overlap between title and content. If every key word in
+    # the title is also in the content (after tokenization) the title is
+    # consistent with the content.
+    title_tokens = _domain_tokens(title)
+    content_tokens = _domain_tokens(content)
+    if not title_tokens:
+        # Title has no recognisable content words — fall back to a generic
+        # "ok" so the user does not see noise on every node add.
+        return {
+            "ok": True,
+            "confidence": 0.0,
+            "reason": "title is too short to evaluate",
+            "suggestion": "",
+        }
+    overlap = _jaccard(title_tokens, content_tokens)
+    # If a big chunk of the title tokens are present in the content, the
+    # title is supported. Otherwise it might be misleading.
+    ok = overlap >= 0.5
+    if ok:
+        reason = f"title vocabulary overlaps with content ({overlap:.0%})"
+        suggestion = ""
+    else:
+        reason = f"title vocabulary does not match content (only {overlap:.0%} overlap)"
+        # Suggest the first content-line noun phrase as a new title.
+        first_line = (content or "").splitlines()[0] if content else ""
+        suggestion = first_line[:60].strip()
+        if not suggestion:
+            suggestion = title  # give up: keep current
+    return {
+        "ok": ok,
+        "confidence": overlap,
+        "reason": reason,
+        "suggestion": suggestion,
+    }
 
 
 def _heuristic_suggest(prompt: str) -> dict:
