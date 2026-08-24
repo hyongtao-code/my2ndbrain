@@ -8,11 +8,32 @@ type Mode = "ask" | "suggest" | "settings" | "draft";
 
 type Props = { onJump: (id: string) => void; };
 
+type ProviderInfo = {
+    name: string;
+    label: string;
+    default_model: string;
+    needs_api_key: boolean;
+    api_key_label: string;
+    kind: "local" | "openai-compat" | "gemini";
+};
+
 type LLMStatus = {
     provider: string;
+    provider_label?: string;
+    provider_kind?: string;
+    base_url?: string;
     model: string;
     has_api_key: boolean;
     api_key_source: "runtime" | "env" | "none";
+    providers?: ProviderInfo[];
+};
+
+type LLMTestResult = {
+    ok: boolean;
+    provider: string;
+    provider_label: string;
+    model: string;
+    detail: string;
 };
 
 type Suggestion = {
@@ -227,16 +248,19 @@ function SettingsTab() {
     const [status, setStatus] = useState<LLMStatus | null>(null);
     const [provider, setProvider] = useState("heuristic");
     const [apiKey, setApiKey] = useState("");
-    const [model, setModel] = useState("gpt-4o-mini");
+    const [model, setModel] = useState("");
     const [saved, setSaved] = useState<string | null>(null);
+    const [testResult, setTestResult] = useState<LLMTestResult | null>(null);
+    const [testing, setTesting] = useState(false);
+    const [showKey, setShowKey] = useState(false);
 
     const refresh = async () => {
         try {
             const r = await fetch("http://127.0.0.1:8000/api/llm/status");
-            const d = await r.json();
+            const d: LLMStatus = await r.json();
             setStatus(d);
             setProvider(d.provider);
-            setModel(d.model);
+            setModel(d.model || (d.providers || []).find(p => p.name === d.provider)?.default_model || "");
         } catch (e) {
             // backend not reachable
         }
@@ -244,20 +268,30 @@ function SettingsTab() {
 
     useEffect(() => { refresh(); }, []);
 
+    // When the user picks a different provider, auto-fill the model field
+    // with that provider's default so they do not have to type it in.
+    const onProviderChange = (newProvider: string) => {
+        setProvider(newProvider);
+        const meta = (status?.providers || []).find(p => p.name === newProvider);
+        if (meta) setModel(meta.default_model);
+        setTestResult(null);
+    };
+
     const save = async () => {
         try {
-            const r = await fetch("http://127.0.0.1:8000/api/llm/config", {
+            await fetch("http://127.0.0.1:8000/api/llm/config", {
                 method: "POST",
                 headers: { "content-type": "application/json" },
                 body: JSON.stringify({ provider, api_key: apiKey, model }),
             });
-            await r.json();
-            setApiKey(""); // never keep it in memory
-            setSaved("✅ Saved");
+            setApiKey("");
+            setSaved(t("assistant.saved"));
             await refresh();
-            setTimeout(() => setSaved(null), 2000);
+            // auto-test on save so the user sees the light turn green
+            await runTest();
+            setTimeout(() => setSaved(null), 2500);
         } catch (e) {
-            setSaved("❌ " + (e as any).message);
+            setSaved(t("assistant.failed", { message: (e as any).message }));
         }
     };
 
@@ -265,42 +299,130 @@ function SettingsTab() {
         try {
             await fetch("http://127.0.0.1:8000/api/llm/clear", { method: "POST" });
             await refresh();
-            setSaved("✅ Cleared");
-            setTimeout(() => setSaved(null), 2000);
+            setSaved(t("assistant.cleared"));
+            setTestResult(null);
+            setTimeout(() => setSaved(null), 2500);
         } catch (e) {
-            setSaved("❌ " + (e as any).message);
+            setSaved(t("assistant.failed", { message: (e as any).message }));
         }
     };
+
+    const runTest = async () => {
+        setTesting(true);
+        setTestResult(null);
+        try {
+            const r = await fetch("http://127.0.0.1:8000/api/llm/test", { method: "POST" });
+            const d: LLMTestResult = await r.json();
+            setTestResult(d);
+        } catch (e: any) {
+            setTestResult({
+                ok: false,
+                provider,
+                provider_label: provider,
+                model,
+                detail: e?.message || String(e),
+            });
+        } finally {
+            setTesting(false);
+        }
+    };
+
+    const meta = (status?.providers || []).find(p => p.name === provider);
+    const needsKey = meta?.needs_api_key ?? false;
+    const isConnected = testResult?.ok === true;
+    const isFailed = testResult?.ok === false;
 
     return (
         <div className="assistant-tab-body">
             <p className="assistant-hint">{t("assistant.settingsHint")}</p>
-            <div className="status-line">
-                <span>status: <b>{status?.provider || "..."}</b> · {status?.model || "..."} · key: {status?.has_api_key ? `✅ (${status?.api_key_source})` : "❌"}</span>
+
+            {/* Connection status light. Hover for vendor name + detail. */}
+            <div
+                className={`status-light ${isConnected ? "ok" : isFailed ? "bad" : "unknown"}`}
+                title={testResult
+                    ? `${testResult.provider_label}: ${testResult.detail}`
+                    : t("assistant.lightNotTested")}
+            >
+                <span className="status-dot" />
+                <span className="status-text">
+                    {isConnected ? t("assistant.lightConnected", { name: testResult!.provider_label })
+                        : isFailed ? t("assistant.lightFailed", { name: testResult!.provider_label })
+                        : t("assistant.lightIdle")}
+                </span>
+                <button
+                    className="status-test-btn"
+                    onClick={runTest}
+                    disabled={testing || !status}
+                    title={t("assistant.testConnection")}
+                >
+                    {testing ? t("assistant.testing") : t("assistant.test")}
+                </button>
             </div>
-            <label>provider</label>
-            <select value={provider} onChange={(e) => setProvider(e.target.value)}>
-                <option value="heuristic">heuristic (local, no network)</option>
-                <option value="openai">openai (cloud)</option>
-                <option value="ollama">ollama (local llama.cpp)</option>
+
+            <label>{t("assistant.provider")}</label>
+            <select value={provider} onChange={(e) => onProviderChange(e.target.value)}>
+                {(status?.providers || []).map((p) => (
+                    <option key={p.name} value={p.name}>{p.label}</option>
+                ))}
             </select>
-            <label>model</label>
-            <input value={model} onChange={(e) => setModel(e.target.value)} placeholder="gpt-4o-mini" />
-            <label>api key (only openai)</label>
+
+            <label>{t("assistant.model")}</label>
             <input
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="sk-..."
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                placeholder={meta?.default_model || "gpt-4o-mini"}
             />
+
+            {needsKey ? (
+                <label>
+                    {t("assistant.apiKey")}
+                    <span style={{ marginLeft: 8, fontSize: 10, color: "var(--text-2)" }}>
+                        ({meta?.api_key_label || "sk-..."})
+                    </span>
+                </label>
+            ) : (
+                <label>{t("assistant.apiKeyOpt")}</label>
+            )}
+            <div style={{ display: "flex", gap: 4 }}>
+                <input
+                    type={showKey ? "text" : "password"}
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder={meta?.api_key_label || "sk-..."}
+                    disabled={!needsKey}
+                    style={{ flex: 1 }}
+                />
+                <button
+                    className="btn-icon"
+                    onClick={() => setShowKey(s => !s)}
+                    title={showKey ? t("assistant.hideKey") : t("assistant.showKey")}
+                    type="button"
+                >
+                    {showKey ? "🙈" : "👁"}
+                </button>
+            </div>
+
             <div className="assistant-actions">
-                <button className="btn-primary" onClick={save} disabled={!apiKey && provider === "openai"}>
-                    💾 {t("assistant.save")}
+                <button
+                    className="btn-primary"
+                    onClick={save}
+                    disabled={needsKey && !apiKey}
+                >
+                    {t("assistant.save")}
                 </button>
                 <button className="btn-secondary" onClick={clear}>
-                    🗑️ {t("assistant.clear")}
+                    {t("assistant.clear")}
                 </button>
             </div>
+
+            {testResult && (
+                <div
+                    className="test-detail"
+                    style={{ color: isConnected ? "var(--good, #00d97e)" : "var(--danger)" }}
+                >
+                    {testResult.detail}
+                </div>
+            )}
             {saved && <div className="apply-status">{saved}</div>}
         </div>
     );

@@ -1140,3 +1140,75 @@ button { cursor: pointer; }
 .search-field::placeholder {
   color: var(--text-2);
 }
+
+/* ============================================================
+   LLM connection status (Settings tab)
+   ============================================================ */
+.status-light {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.status-light.ok {
+  background: rgba(0, 217, 126, 0.10);
+  border-color: rgba(0, 217, 126, 0.40);
+}
+.status-light.bad {
+  background: rgba(255, 69, 58, 0.10);
+  border-color: rgba(255, 69, 58, 0.40);
+}
+.status-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--text-2);
+  flex-shrink: 0;
+}
+.status-light.ok .status-dot {
+  background: #00d97e;
+  box-shadow: 0 0 8px rgba(0, 217, 126, 0.6);
+}
+.status-light.bad .status-dot {
+  background: #ff453a;
+  box-shadow: 0 0 8px rgba(255, 69, 58, 0.6);
+}
+.status-text {
+  flex: 1;
+  font-weight: 500;
+}
+.status-test-btn {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  color: var(--text-1);
+  cursor: pointer;
+  font-family: inherit;
+}
+.status-test-btn:hover:not(:disabled) {
+  background: rgba(10, 132, 255, 0.12);
+  border-color: var(--accent);
+  color: var(--text-0);
+}
+.status-test-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.test-detail {
+  font-size: 11px;
+  font-family: ui-monospace, monospace;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, 0.03);
+  word-break: break-all;
+  line-height: 1.5;
+  margin-top: 4px;
+}

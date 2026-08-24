@@ -18,6 +18,109 @@ from typing import Any, Optional
 from app.core.config import get_settings
 
 
+# --------- provider registry ---------
+# Each provider has:
+#   - kind:        "openai-compat" or "gemini"
+#   - label:       human-readable vendor name
+#   - base_url:    API base (only used by openai-compat)
+#   - default_model: a sensible default to pre-fill the model field
+#   - api_key_label: placeholder hint shown next to the key input
+#
+# "openai-compat" providers reuse the OpenAI Chat Completions shape
+# (DeepSeek, Moonshot Kimi, Qwen DashScope, MiniMax M2 all conform).
+# "gemini" uses the Google Generative Language REST API.
+# We keep "ollama" registered too so users can target a local llama.cpp
+# server via the same UI.
+PROVIDERS = {
+    "heuristic": {
+        "kind": "local",
+        "label": "heuristic (local, no network)",
+        "default_model": "",
+        "needs_api_key": False,
+        "api_key_label": "",
+    },
+    "openai": {
+        "kind": "openai-compat",
+        "label": "OpenAI",
+        "base_url": "https://api.openai.com/v1",
+        "default_model": "gpt-4o-mini",
+        "needs_api_key": True,
+        "api_key_label": "sk-...",
+    },
+    "deepseek": {
+        "kind": "openai-compat",
+        "label": "DeepSeek",
+        "base_url": "https://api.deepseek.com/v1",
+        "default_model": "deepseek-chat",
+        "needs_api_key": True,
+        "api_key_label": "sk-...",
+    },
+    "kimi": {
+        "kind": "openai-compat",
+        "label": "Kimi (Moonshot)",
+        "base_url": "https://api.moonshot.cn/v1",
+        "default_model": "moonshot-v1-8k",
+        "needs_api_key": True,
+        "api_key_label": "sk-...",
+    },
+    "qwen": {
+        "kind": "openai-compat",
+        "label": "Qwen (DashScope)",
+        # DashScope's OpenAI-compatible endpoint:
+        "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+        "default_model": "qwen-turbo",
+        "needs_api_key": True,
+        "api_key_label": "sk-...",
+    },
+    "minimax": {
+        "kind": "openai-compat",
+        "label": "MiniMax",
+        # MiniMax M2 exposes an OpenAI-compatible endpoint.
+        "base_url": "https://api.minimax.chat/v1",
+        "default_model": "abab6.5s-chat",
+        "needs_api_key": True,
+        "api_key_label": "sk-...",
+    },
+    "gemini": {
+        "kind": "gemini",
+        "label": "Gemini (Google)",
+        # Gemini uses a different REST shape; we hit it directly.
+        "base_url": "https://generativelanguage.googleapis.com",
+        "default_model": "gemini-2.0-flash",
+        "needs_api_key": True,
+        "api_key_label": "AIza...",
+    },
+    "ollama": {
+        "kind": "openai-compat",
+        "label": "Ollama (local)",
+        "base_url": "http://localhost:11434/v1",
+        "default_model": "llama3.1",
+        "needs_api_key": False,
+        "api_key_label": "(not required)",
+    },
+}
+
+
+def provider_label(name: str) -> str:
+    return PROVIDERS.get(name, {}).get("label", name or "unknown")
+
+
+def provider_kind(name: str) -> str:
+    return PROVIDERS.get(name, {}).get("kind", "openai-compat")
+
+
+def provider_base_url(name: str) -> str:
+    return PROVIDERS.get(name, {}).get("base_url", "")
+
+
+def provider_default_model(name: str) -> str:
+    return PROVIDERS.get(name, {}).get("default_model", "")
+
+
+def provider_needs_api_key(name: str) -> bool:
+    return PROVIDERS.get(name, {}).get("needs_api_key", False)
+
+
 # --------- runtime overrides (set by user via /api/llm/config) ---------
 # In-memory only: cleared on backend restart. Not persisted to DB.
 _runtime_overrides: dict[str, str] = {}
@@ -39,16 +142,22 @@ def clear_runtime_overrides() -> None:
 
 
 def resolve_provider() -> dict[str, Any]:
-    """Return the active provider config (with runtime overrides applied)."""
+    """Return the active provider config (with runtime overrides applied).
+
+    Also returns base_url + vendor label so the frontend can show "you
+    are connected to <vendor> via <base_url>".
+    """
     s = get_settings()
     provider = get_runtime_override("llm_provider") or s.llm_provider
     api_key = get_runtime_override("openai_api_key") or s.openai_api_key
     model = get_runtime_override("llm_model") or s.llm_model
     return {
         "provider": provider,
+        "provider_label": provider_label(provider),
+        "provider_kind": provider_kind(provider),
+        "base_url": provider_base_url(provider),
         "model": model,
         "has_api_key": bool(api_key),
-        # Don't expose the key itself, just whether one is set.
         "api_key_source": (
             "runtime" if get_runtime_override("openai_api_key") else
             "env"      if s.openai_api_key else
@@ -197,15 +306,22 @@ def _heuristic_suggest(prompt: str) -> dict:
     }
 
 
-# --------- openai implementation ---------
+# --------- OpenAI-compatible client (used by OpenAI / DeepSeek / Kimi /
+# Qwen / MiniMax / Ollama / anything else with a /chat/completions route) ---
 
-def _openai_suggest(prompt: str, json_schema: dict | None) -> dict:
-    """Call OpenAI Chat Completions with a JSON response shape."""
+def _openai_compat_suggest(prompt: str, json_schema: dict | None) -> dict:
+    """Hit the configured provider's /chat/completions endpoint and return
+    the parsed JSON content. Returns a fallback `{action:"noop",...}` dict
+    on any error so the caller never crashes.
+    """
     import httpx
     cfg = resolve_provider()
     api_key = get_runtime_override("openai_api_key") or get_settings().openai_api_key
-    if not api_key:
-        return {"action": "noop", "rationale": "openai key not configured", "nodes": []}
+    base_url = cfg["base_url"]
+    if not base_url:
+        return {"action": "noop", "rationale": f"{cfg['provider']}: no base_url configured", "nodes": []}
+    if not api_key and provider_needs_api_key(cfg["provider"]):
+        return {"action": "noop", "rationale": f"{cfg['provider']}: api key not configured", "nodes": []}
 
     payload = {
         "model": cfg["model"],
@@ -213,30 +329,143 @@ def _openai_suggest(prompt: str, json_schema: dict | None) -> dict:
             {"role": "system", "content": "You are an AI therapist for a personal knowledge graph. You only suggest ONE improvement at a time. Output strict JSON."},
             {"role": "user",   "content": prompt},
         ],
-        "response_format": {"type": "json_object"},
         "temperature": 0.2,
     }
-    headers = {"authorization": f"Bearer {api_key}", "content-type": "application/json"}
+    # Only OpenAI itself supports response_format json_object reliably; the
+    # other providers may ignore it but the prompt asks for JSON anyway.
+    if cfg["provider"] == "openai":
+        payload["response_format"] = {"type": "json_object"}
+    headers = {"authorization": f"Bearer {api_key}", "content-type": "application/json"} if api_key else {"content-type": "application/json"}
+    url = base_url.rstrip("/") + "/chat/completions"
     try:
         with httpx.Client(timeout=30.0) as client:
-            r = client.post("https://api.openai.com/v1/chat/completions",
-                            json=payload, headers=headers)
+            r = client.post(url, json=payload, headers=headers)
             r.raise_for_status()
             data = r.json()
         content = data["choices"][0]["message"]["content"]
         return json.loads(content)
     except Exception as e:
-        return {"action": "noop", "rationale": f"openai call failed: {e}", "nodes": []}
+        return {"action": "noop", "rationale": f"{cfg['provider']} call failed: {e}", "nodes": []}
+
+
+# --------- Gemini (Google Generative Language API) ---------
+
+def _gemini_suggest(prompt: str, json_schema: dict | None) -> dict:
+    """Hit Gemini's generateContent endpoint. Returns parsed JSON."""
+    import httpx
+    cfg = resolve_provider()
+    api_key = get_runtime_override("openai_api_key") or get_settings().openai_api_key
+    if not api_key:
+        return {"action": "noop", "rationale": "gemini: api key not configured", "nodes": []}
+    url = f"{cfg['base_url'].rstrip('/')}/v1beta/models/{cfg['model']}:generateContent"
+    payload = {
+        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+        "generationConfig": {"temperature": 0.2},
+    }
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            r = client.post(url, params={"key": api_key}, json=payload,
+                             headers={"content-type": "application/json"})
+            r.raise_for_status()
+            data = r.json()
+        text = data["candidates"][0]["content"]["parts"][0]["text"]
+        # Gemini sometimes wraps JSON in ```json ... ``` fences — strip them.
+        text = re.sub(r"^\s*```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```\s*\Z", "", text)
+        return json.loads(text)
+    except Exception as e:
+        return {"action": "noop", "rationale": f"gemini call failed: {e}", "nodes": []}
 
 
 # --------- public entry ---------
 
 def complete(prompt: str, json_schema: dict | None = None) -> dict:
     cfg = resolve_provider()
-    if cfg["provider"] == "openai":
-        return _openai_suggest(prompt, json_schema)
-    # default: heuristic
+    name = cfg["provider"]
+    kind = provider_kind(name)
+    if kind == "openai-compat":
+        return _openai_compat_suggest(prompt, json_schema)
+    if kind == "gemini":
+        return _gemini_suggest(prompt, json_schema)
+    # "local" or unknown → heuristic
     return heuristic_complete(prompt, json_schema)
+
+
+def test_connection() -> dict:
+    """Probe the configured provider with a tiny call and report whether
+    the key + endpoint actually work. Used by the Settings tab to drive
+    the connection status light. Returns {ok, status, model, detail}.
+    """
+    import httpx
+    cfg = resolve_provider()
+    name = cfg["provider"]
+    kind = provider_kind(name)
+    api_key = get_runtime_override("openai_api_key") or get_settings().openai_api_key
+
+    # Local heuristic — we don't actually talk to the network; mark it
+    # "ok" so the light turns green and the user knows the brain is
+    # working in the default mode.
+    if kind == "local":
+        return {
+            "ok": True,
+            "provider": name,
+            "provider_label": cfg["provider_label"],
+            "model": cfg["model"] or "(none)",
+            "detail": "heuristic — runs locally, no network calls",
+        }
+
+    # No key when one is required — fail early.
+    if not api_key and provider_needs_api_key(name):
+        return {
+            "ok": False,
+            "provider": name,
+            "provider_label": cfg["provider_label"],
+            "model": cfg["model"],
+            "detail": "api key not configured",
+        }
+
+    try:
+        if kind == "openai-compat":
+            url = cfg["base_url"].rstrip("/") + "/models"
+            headers = {"authorization": f"Bearer {api_key}"} if api_key else {}
+            with httpx.Client(timeout=10.0) as client:
+                r = client.get(url, headers=headers)
+            ok = r.status_code in (200, 401)  # 401 means key is wrong but endpoint is reachable
+            detail = f"GET {url} → HTTP {r.status_code}"
+            if r.status_code == 401:
+                detail += " (key invalid — endpoint reachable)"
+            elif r.status_code == 200:
+                detail += " (key accepted)"
+            return {
+                "ok": ok,
+                "provider": name,
+                "provider_label": cfg["provider_label"],
+                "model": cfg["model"],
+                "detail": detail,
+            }
+        if kind == "gemini":
+            url = f"{cfg['base_url'].rstrip('/')}/v1beta/models"
+            with httpx.Client(timeout=10.0) as client:
+                r = client.get(url, params={"key": api_key})
+            ok = r.status_code in (200, 400, 403)
+            detail = f"GET {url} → HTTP {r.status_code}"
+            return {
+                "ok": ok,
+                "provider": name,
+                "provider_label": cfg["provider_label"],
+                "model": cfg["model"],
+                "detail": detail,
+            }
+    except Exception as e:
+        return {
+            "ok": False,
+            "provider": name,
+            "provider_label": cfg["provider_label"],
+            "model": cfg["model"],
+            "detail": f"{type(e).__name__}: {e}",
+        }
+    return {"ok": False, "provider": name, "provider_label": cfg["provider_label"],
+            "model": cfg["model"], "detail": "unsupported provider kind"}
 
 
 # backward-compat alias (used by older callers)
