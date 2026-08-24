@@ -5,6 +5,8 @@ import type { GraphPayload, IngestResponse, NodeOut } from "./types";
 import KnowledgeSphere from "./components/KnowledgeSphere";
 import NodeDetail from "./components/NodeDetail";
 import AddNodeModal from "./components/AddNodeModal";
+import ImportModal from "./components/ImportModal";
+import ExportModal from "./components/ExportModal";
 import AssistantPanel from "./components/AssistantPanel";
 import LanguageToggle from "./components/LanguageToggle";
 import { I18nProvider } from "./i18n";
@@ -15,6 +17,8 @@ function AppInner() {
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [selected, setSelected] = useState<NodeOut | null>(null);
     const [showAdd, setShowAdd] = useState(false);
+    const [showImport, setShowImport] = useState(false);
+    const [showExport, setShowExport] = useState(false);
     const [hover, setHover] = useState<{ id: string; title: string; x: number; y: number } | null>(null);
     const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
     const [autoSpin, setAutoSpin] = useState(true);
@@ -183,10 +187,28 @@ function AppInner() {
 
             <AssistantPanel onJump={(id) => selectNode(id)} />
 
-            <button className="fab" onClick={() => setShowAdd(true)} title={t("fab.add")}>＋</button>
+            <div className="fab-cluster">
+                <button
+                    className="fab fab-action"
+                    title={t("fab.import")}
+                    onClick={() => setShowImport(true)}
+                >⬆</button>
+                <button
+                    className="fab fab-action"
+                    title={t("fab.export")}
+                    onClick={() => setShowExport(true)}
+                >⬇</button>
+                <button className="fab" onClick={() => setShowAdd(true)} title={t("fab.add")}>＋</button>
+            </div>
 
             {showAdd && (
                 <AddNodeModal onClose={() => setShowAdd(false)} onCreated={handleCreated} />
+            )}
+            {showImport && (
+                <ImportModal onClose={() => setShowImport(false)} onCreated={handleCreated} />
+            )}
+            {showExport && (
+                <ExportModal onClose={() => setShowExport(false)} />
             )}
         </div>
     );

@@ -17,7 +17,9 @@
     "subtitle": "点击右下角 + 按钮，新增第一个知识气泡"
   },
   "fab": {
-    "add": "新增知识"
+    "add": "新增节点",
+    "import": "上传 .md",
+    "export": "下载 .md"
   },
   "addModal": {
     "title": "➕ 新增知识气泡",
@@ -151,5 +153,30 @@
   },
   "search": {
     "placeholder": "搜索节点 (按标题 / 内容 / 关键词)"
+  },
+  "import": {
+    "title": "上传 .md 文件",
+    "hint": "选择本地 .md 文件批量导入为知识节点。重要性默认为 5。",
+    "pickFiles": "选择文件",
+    "noFiles": "尚未选择文件",
+    "selectedCount": "已选 {count} 个",
+    "empty": "点 \"选择文件\" 开始。",
+    "removeRow": "从列表移除",
+    "importing": "导入中…",
+    "importButton": "导入 {count} 个文件",
+    "cancel": "取消",
+    "close": "关闭",
+    "done": "已创建 {created}, 失败 {failed}"
+  },
+  "export": {
+    "title": "下载节点为 .md",
+    "hint": "选择要导出的节点,点击下载会生成一个 .zip 文件,内含每个节点的 .md 文件。",
+    "search": "搜索节点",
+    "toggleAll": "全选 / 全不选",
+    "loading": "加载中…",
+    "noMatches": "无匹配节点",
+    "cancel": "取消",
+    "downloading": "下载中…",
+    "download": "下载 {count} 个"
   }
 }

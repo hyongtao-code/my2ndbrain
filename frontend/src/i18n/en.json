@@ -17,7 +17,9 @@
     "subtitle": "Click the + button at the bottom-right to add your first knowledge bubble"
   },
   "fab": {
-    "add": "Add knowledge"
+    "add": "New node",
+    "import": "Import .md",
+    "export": "Export .md"
   },
   "addModal": {
     "title": "➕ Add knowledge bubble",
@@ -151,5 +153,30 @@
   },
   "search": {
     "placeholder": "Search nodes (title / content / keywords)"
+  },
+  "import": {
+    "title": "Import .md files",
+    "hint": "Pick one or more .md files from your local system. Each becomes a new node. importance defaults to 5.",
+    "pickFiles": "Pick files",
+    "noFiles": "no files selected",
+    "selectedCount": "{count} file(s) selected",
+    "empty": "Click \"Pick files\" to start.",
+    "removeRow": "Remove from list",
+    "importing": "Importing…",
+    "importButton": "Import {count} file(s)",
+    "cancel": "Cancel",
+    "close": "Close",
+    "done": "{created} created, {failed} failed"
+  },
+  "export": {
+    "title": "Export nodes as .md",
+    "hint": "Select nodes, then click Download. A .zip is produced with one .md per node.",
+    "search": "Search nodes",
+    "toggleAll": "Toggle all",
+    "loading": "Loading…",
+    "noMatches": "No matches",
+    "cancel": "Cancel",
+    "downloading": "Downloading…",
+    "download": "Download {count}"
   }
 }

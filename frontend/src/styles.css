@@ -394,11 +394,9 @@ button { cursor: pointer; }
 /* ============================================================
    Add bubble floating button — Apple FAB
    ============================================================ */
+/* Old single-FAB rule removed: cluster handles positioning now.
+   Kept as a base style (no positioning) so the round shape still works. */
 .fab {
-  position: absolute;
-  bottom: 24px;
-  right: 24px;
-  z-index: 6;
   width: 56px; height: 56px;
   border-radius: 50%;
   background: var(--accent);
@@ -1217,4 +1215,149 @@ button { cursor: pointer; }
   word-break: break-all;
   line-height: 1.5;
   margin-top: 4px;
+}
+
+/* ============================================================
+   FAB cluster — three buttons (import / export / add) that stack
+   vertically and slide out to the left on hover.
+   ============================================================ */
+.fab-cluster {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  display: flex;
+  flex-direction: row-reverse;   /* buttons grow to the left of the main + */
+  align-items: center;
+  gap: 10px;
+  z-index: 30;
+  pointer-events: auto;          /* opt back in, parent topbar is pointer-events: none */
+}
+.fab-cluster .fab {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: white;
+  font-size: 22px;
+  border: none;
+  box-shadow: 0 6px 20px rgba(10, 132, 255, 0.4);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  pointer-events: auto;
+}
+.fab-cluster .fab-action {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-0);
+  border: 1px solid var(--line);
+  font-size: 18px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  /* Default: hidden — slide in from the right on hover. */
+  opacity: 0;
+  transform: translateX(40px) scale(0.85);
+  pointer-events: none;
+}
+.fab-cluster:hover .fab-action,
+.fab-cluster:focus-within .fab-action,
+.fab-cluster .fab-action:focus-visible {
+  opacity: 1;
+  transform: translateX(0) scale(1);
+  pointer-events: auto;
+}
+.fab-cluster .fab-action:hover {
+  background: rgba(10, 132, 255, 0.2);
+  border-color: var(--accent);
+}
+.fab-cluster:hover .fab {
+  box-shadow: 0 8px 28px rgba(10, 132, 255, 0.5);
+}
+
+/* Stagger the action buttons so they appear one-by-one */
+.fab-cluster .fab-action:nth-of-type(1) { transition-delay: 0ms; }
+.fab-cluster .fab-action:nth-of-type(2) { transition-delay: 40ms; }
+
+/* ============================================================
+   Import / Export modal (shared styling)
+   ============================================================ */
+.import-export-modal {
+  width: 600px;
+  max-width: calc(100vw - 40px);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.import-list, .export-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 0;
+  min-height: 120px;
+  max-height: 50vh;
+}
+.empty-hint {
+  font-size: 12px;
+  color: var(--text-2);
+  padding: 12px;
+  text-align: center;
+}
+.import-row, .export-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  font-size: 12px;
+}
+.import-row.status-ok {
+  background: rgba(0, 217, 126, 0.08);
+  border-color: rgba(0, 217, 126, 0.30);
+}
+.import-row.status-error {
+  background: rgba(255, 69, 58, 0.08);
+  border-color: rgba(255, 69, 58, 0.30);
+}
+.import-row-main, .export-row-main {
+  flex: 1;
+  min-width: 0;
+}
+.import-row-title, .export-row-title {
+  font-weight: 500;
+  color: var(--text-0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.import-row-file {
+  font-size: 10px;
+  color: var(--text-2);
+  margin-top: 2px;
+  font-family: ui-monospace, monospace;
+}
+.import-row-err {
+  font-size: 10px;
+  color: var(--danger);
+  margin-top: 2px;
+}
+.import-done {
+  font-size: 12px;
+  color: var(--good, #00d97e);
+  background: rgba(0, 217, 126, 0.08);
+  border-radius: var(--r-sm);
+  padding: 6px 10px;
+}
+.export-row {
+  cursor: pointer;
+}
+.export-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.export-row-meta {
+  display: flex;
+  gap: 4px;
 }
