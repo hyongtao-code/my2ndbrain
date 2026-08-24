@@ -33,6 +33,7 @@ export default function NodeDetail({ node, onJump, onClose, onMutated }: Props) 
     const [editing, setEditing] = useState(false);
     const [draft, setDraft] = useState<EditState>(EMPTY_EDIT);
     const [confirmDelete, setConfirmDelete] = useState(false);
+    const [fullscreen, setFullscreen] = useState(false);
     const [showLinkPicker, setShowLinkPicker] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [banner, setBanner] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -104,10 +105,17 @@ export default function NodeDetail({ node, onJump, onClose, onMutated }: Props) 
     };
 
     return (
-        <div className="panel panel-right-full detail">
+        <div className={"panel panel-right-full detail" + (fullscreen ? " is-fullscreen" : "")}>
             <div className="panel-title">
                 <span>{editing ? t("detail.editTitle") : t("detail.title")}</span>
                 <div style={{ display: "flex", gap: 6 }}>
+                    <button
+                        className="panel-full-toggle"
+                        title={fullscreen ? t("panel.restore") : t("panel.fullscreen")}
+                        onClick={() => setFullscreen((f) => !f)}
+                    >
+                        {fullscreen ? "⤡" : "⤢"}
+                    </button>
                     {!editing && !confirmDelete && (
                         <>
                             <button className="btn-icon" onClick={startEdit} title={t("detail.edit")}>

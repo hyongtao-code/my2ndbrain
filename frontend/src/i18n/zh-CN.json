@@ -128,5 +128,9 @@
     "tabPreview": "预览",
     "placeholder": "支持 Markdown：**粗体** *斜体* `行内代码` [链接](url) 列表 等",
     "emptyPreview": "（预览为空 — 先在编辑模式写点东西）"
+  },
+  "panel": {
+    "fullscreen": "全屏",
+    "restore": "恢复"
   }
 }

@@ -1068,3 +1068,38 @@ button { cursor: pointer; }
 
 /* NodeDetail still uses .panel.panel-right but with full width via .panel-right-full */
 .detail.panel-right-full .add-form .actions { margin-top: auto; padding-top: 16px; }
+
+/* ============================================================
+   Fullscreen toggle — applied via .is-fullscreen modifier on
+   .panel-right-full. Both AddNodeModal and NodeDetail use it.
+   ============================================================ */
+.panel-right-full.is-fullscreen {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100vw;
+  min-width: 0;
+  border-left: none;
+  box-shadow: none;
+  z-index: 30;
+  transition: width 0.18s ease, top 0.18s ease, left 0.18s ease;
+}
+
+.panel-full-toggle {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--text-1);
+  border-radius: var(--r-pill);
+  width: 28px; height: 28px;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 13px;
+  margin-right: 4px;
+  font-family: inherit;
+}
+.panel-full-toggle:hover {
+  color: var(--text-0);
+  border-color: var(--accent);
+  background: rgba(10, 132, 255, 0.12);
+}
