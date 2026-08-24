@@ -132,5 +132,8 @@
   "panel": {
     "fullscreen": "Fullscreen",
     "restore": "Restore"
+  },
+  "search": {
+    "placeholder": "Search nodes (title / content / keywords)"
   }
 }

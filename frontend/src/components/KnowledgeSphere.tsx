@@ -10,7 +10,8 @@ type Props = {
   onSelectNode: (id: string) => void;
   onHoverNode: (n: { id: string; title: string; x: number; y: number } | null) => void;
   selectedId: string | null;
-  hoveredId: string | null;    // NEW: id of node being hovered (for neighbour halo)
+  hoveredId: string | null;    // id of node being hovered (for neighbour halo)
+  searchMatchIds: Set<string> | null;  // ids matching the current search query; null = no filter
   autoSpin: boolean;          // when false, the sphere stops auto-rotating
   resumeSpinAt?: number;      // bumping this counter forces autoSpin to resume
 };
@@ -165,6 +166,7 @@ function KnowledgeNodes({
   edges,
   selectedId,
   hoveredId,
+  searchMatchIds,
   onSelectNode,
   onHoverNode,
 }: {
@@ -172,6 +174,7 @@ function KnowledgeNodes({
   edges: GraphEdge[];
   selectedId: string | null;
   hoveredId: string | null;
+  searchMatchIds: Set<string> | null;
   onSelectNode: (id: string) => void;
   onHoverNode: Props["onHoverNode"];
 }) {
@@ -213,13 +216,27 @@ function KnowledgeNodes({
         const isSel = n.id === selectedId;
         const isHover = n.id === hoveredId;
         const isNeighbor = neighborIds.has(n.id);
+        // Search-filter highlighting takes precedence so a focused query
+        // beats the hover "show neighbourhood" effect.
+        const isSearchMatch = !!searchMatchIds && searchMatchIds.has(n.id);
+        const isSearchActive = !!searchMatchIds && searchMatchIds.size > 0;
+        const isSearchFaded = isSearchActive && !isSearchMatch && !isSel;
         // When something is hovered, fade everything else so the focus
         // group (hovered + neighbours) pops out.
         const isFaded = !!hoveredId && !isHover && !isNeighbor && !isSel;
+        // Search fade takes priority over hover fade (search is a stronger
+        // signal of user intent).
+        const finalFaded = isSearchFaded || (isFaded && !isSearchActive);
         const color = new THREE.Color(n.cluster_color);
-        const shellScale = isSel ? 1.55 : isHover || isNeighbor ? 1.25 : 1.0;
-        const emissiveBoost = isSel ? 1.6 : isHover || isNeighbor ? 1.2 : 0.9;
-        const baseOpacity = isFaded ? 0.22 : 0.92;
+        const shellScale = isSel ? 1.55
+            : isSearchMatch ? 1.30
+            : isHover || isNeighbor ? 1.25
+            : 1.0;
+        const emissiveBoost = isSel ? 1.6
+            : isSearchMatch ? 1.3
+            : isHover || isNeighbor ? 1.2
+            : 0.9;
+        const baseOpacity = finalFaded ? 0.22 : 0.92;
         return (
           <group
             key={n.id}
@@ -266,13 +283,13 @@ function KnowledgeNodes({
             {/* hover halo ring: a slightly larger transparent emissive sphere
                 that only shows up when this node is hovered, selected, or
                 a direct neighbour of the hovered node. */}
-            {(isHover || isNeighbor) && (
+            {(isHover || isNeighbor || isSearchMatch) && (
               <mesh>
                 <sphereGeometry args={[r * (shellScale + 0.45), 24, 24]} />
                 <meshBasicMaterial
                   color={color}
                   transparent
-                  opacity={isHover ? 0.32 : 0.20}
+                  opacity={isHover ? 0.32 : isSearchMatch ? 0.30 : 0.20}
                   depthWrite={false}
                 />
               </mesh>
@@ -289,6 +306,7 @@ function SphereScene({
   edges,
   selectedId,
   hoveredId,
+  searchMatchIds,
   autoSpin,
   onSelectNode,
   onHoverNode,
@@ -327,6 +345,7 @@ function SphereScene({
         edges={edges}
         selectedId={selectedId}
         hoveredId={hoveredId}
+        searchMatchIds={searchMatchIds}
         onSelectNode={onSelectNode}
         onHoverNode={onHoverNode}
       />
@@ -367,6 +386,7 @@ export default function KnowledgeSphere(props: Props) {
         edges={props.edges}
         selectedId={props.selectedId}
         hoveredId={props.hoveredId}
+        searchMatchIds={props.searchMatchIds}
         autoSpin={props.autoSpin}
         onSelectNode={props.onSelectNode}
         onHoverNode={props.onHoverNode}

@@ -1103,3 +1103,40 @@ button { cursor: pointer; }
   border-color: var(--accent);
   background: rgba(10, 132, 255, 0.12);
 }
+
+/* ============================================================
+   Search input (topbar)
+   ============================================================ */
+.search-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  padding: 4px 12px;
+  min-width: 280px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.search-input:focus-within {
+  border-color: var(--accent);
+  background: rgba(10, 132, 255, 0.08);
+}
+.search-icon {
+  font-size: 11px;
+  opacity: 0.6;
+}
+.search-field {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-0);
+  font-family: inherit;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  padding: 4px 0;
+  flex: 1;
+}
+.search-field::placeholder {
+  color: var(--text-2);
+}

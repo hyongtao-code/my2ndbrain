@@ -132,5 +132,8 @@
   "panel": {
     "fullscreen": "全屏",
     "restore": "恢复"
+  },
+  "search": {
+    "placeholder": "搜索节点 (按标题 / 内容 / 关键词)"
   }
 }
