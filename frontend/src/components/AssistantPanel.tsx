@@ -310,8 +310,20 @@ function SettingsTab() {
     const runTest = async () => {
         setTesting(true);
         setTestResult(null);
+        // Always send the current form values, even if apiKey is empty.
+        // This way the user gets feedback about the values they just
+        // typed in, not whatever is in the backend runtime override.
+        const body = {
+            provider,
+            api_key: apiKey,
+            model,
+        };
         try {
-            const r = await fetch("http://127.0.0.1:8000/api/llm/test", { method: "POST" });
+            const r = await fetch("http://127.0.0.1:8000/api/llm/test", {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify(body),
+            });
             const d: LLMTestResult = await r.json();
             setTestResult(d);
         } catch (e: any) {

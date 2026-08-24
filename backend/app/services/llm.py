@@ -391,16 +391,40 @@ def complete(prompt: str, json_schema: dict | None = None) -> dict:
     return heuristic_complete(prompt, json_schema)
 
 
-def test_connection() -> dict:
+def test_connection(override: dict[str, str] | None = None) -> dict:
     """Probe the configured provider with a tiny call and report whether
     the key + endpoint actually work. Used by the Settings tab to drive
     the connection status light. Returns {ok, status, model, detail}.
+
+    If `override` is given, the named keys (llm_provider / openai_api_key /
+    llm_model) are used INSTEAD of the runtime + env overrides. This
+    lets the Settings tab probe a not-yet-saved form value.
     """
     import httpx
-    cfg = resolve_provider()
-    name = cfg["provider"]
+    s = get_settings()
+    if override:
+        provider = override.get("llm_provider", s.llm_provider)
+        api_key  = override.get("openai_api_key", s.openai_api_key)
+        model    = override.get("llm_model", s.llm_model)
+    else:
+        provider = get_runtime_override("llm_provider") or s.llm_provider
+        api_key  = get_runtime_override("openai_api_key") or s.openai_api_key
+        model    = get_runtime_override("llm_model") or s.llm_model
+    name = provider
     kind = provider_kind(name)
-    api_key = get_runtime_override("openai_api_key") or get_settings().openai_api_key
+    base_url = provider_base_url(name)
+    cfg = {
+        "provider": provider,
+        "provider_label": provider_label(provider),
+        "provider_kind": kind,
+        "base_url": base_url,
+        "model": model,
+        "has_api_key": bool(api_key),
+        "api_key_source": "override" if override and "openai_api_key" in override else
+                          ("runtime" if get_runtime_override("openai_api_key") else
+                           "env"     if s.openai_api_key else
+                           "none"),
+    }
 
     # Local heuristic — we don't actually talk to the network; mark it
     # "ok" so the light turns green and the user knows the brain is

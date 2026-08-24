@@ -77,12 +77,33 @@ def clear_config():
     return status()
 
 
+class LLMSuggestIn(BaseModel):
+    """Optional override so the Settings tab can probe the values the
+    user has typed in the form (provider/api_key/model) before they
+    have clicked Save. The backend runtime override is not consulted
+    when this payload is sent."""
+    provider: str | None = None
+    api_key: str | None = None
+    model: str | None = None
+
+
 @router.post("/test")
-def test():
+def test(payload: LLMSuggestIn | None = None):
     """Probe the configured provider with a tiny request and report
     whether the endpoint + key actually work. The frontend uses the
-    returned ok + detail to drive the connection status light."""
-    return test_connection()
+    returned ok + detail to drive the connection status light.
+
+    If the body carries provider/api_key/model fields, those values are
+    used instead of the backend runtime override. This lets the user
+    click Test before clicking Save and still see a real probe of
+    what they just typed in.
+    """
+    override: dict[str, str] = {}
+    if payload:
+        if payload.provider: override["llm_provider"] = payload.provider
+        if payload.api_key:  override["openai_api_key"] = payload.api_key
+        if payload.model:     override["llm_model"]    = payload.model
+    return test_connection(override=override or None)
 
 
 # ---------- suggest improvements ----------
