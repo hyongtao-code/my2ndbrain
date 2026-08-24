@@ -92,6 +92,7 @@ function AppInner() {
                         nodes={graph.nodes}
                         edges={graph.edges}
                         selectedId={selectedId}
+                        hoveredId={hover?.id ?? null}
                         onSelectNode={selectNode}
                         onHoverNode={setHover}
                         autoSpin={autoSpin}
