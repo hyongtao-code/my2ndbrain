@@ -128,5 +128,9 @@
     "tabPreview": "Preview",
     "placeholder": "Markdown supported: **bold**, *italic*, `inline code`, [link](url), lists, ...",
     "emptyPreview": "(preview is empty — type something in Edit mode)"
+  },
+  "panel": {
+    "fullscreen": "Fullscreen",
+    "restore": "Restore"
   }
 }

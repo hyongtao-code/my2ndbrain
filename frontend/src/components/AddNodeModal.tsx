@@ -8,6 +8,7 @@ type Props = { onClose: () => void; onCreated: (r: IngestResponse) => void; };
 
 export default function AddNodeModal({ onClose, onCreated }: Props) {
     const t = useTranslations();
+    const [fullscreen, setFullscreen] = useState(false);
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
     const [category, setCategory] = useState("");
@@ -40,10 +41,19 @@ export default function AddNodeModal({ onClose, onCreated }: Props) {
     };
 
     return (
-        <div className="panel-right-full add-modal" role="dialog" aria-modal="true">
+        <div className={"panel-right-full add-modal" + (fullscreen ? " is-fullscreen" : "")} role="dialog" aria-modal="true">
             <div className="panel-title">
                 <span>{preview ? t("addModal.titleDone") : t("addModal.title")}</span>
-                <button className="btn-icon" onClick={onClose}>✕</button>
+                <div style={{ display: "flex", gap: 4 }}>
+                    <button
+                        className="panel-full-toggle"
+                        title={fullscreen ? t("panel.restore") : t("panel.fullscreen")}
+                        onClick={() => setFullscreen((f) => !f)}
+                    >
+                        {fullscreen ? "⤡" : "⤢"}
+                    </button>
+                    <button className="btn-icon" onClick={onClose}>✕</button>
+                </div>
             </div>
 
             {!preview && (
