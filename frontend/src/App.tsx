@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "./lib/api";
 import type { GraphPayload, IngestResponse, NodeOut } from "./types";
@@ -19,6 +19,7 @@ function AppInner() {
     const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
     const [autoSpin, setAutoSpin] = useState(true);
     const [filterCategory, setFilterCategory] = useState<string>("");
+    const [searchQuery, setSearchQuery] = useState<string>("");
     const stageRef = useRef<HTMLDivElement>(null);
 
     const refresh = useCallback(async () => {
@@ -40,6 +41,24 @@ function AppInner() {
             setFilterCategory("");
         }
     }, [graph, filterCategory]);
+
+    // Compute ids of nodes that match the current search query. Case
+    // insensitive substring against title / content / keywords. Empty
+    // query => null set (= no filtering, normal hover behaviour).
+    const searchMatchIds = useMemo<Set<string> | null>(() => {
+        const q = searchQuery.trim().toLowerCase();
+        if (!q || !graph) return null;
+        const out = new Set<string>();
+        for (const n of graph.nodes) {
+            const title = (n.title || "").toLowerCase();
+            const cat = (n.category || "").toLowerCase();
+            const kw = (n.keywords || []).join(" ").toLowerCase();
+            if (title.includes(q) || cat.includes(q) || kw.includes(q)) {
+                out.add(n.id);
+            }
+        }
+        return out;
+    }, [searchQuery, graph]);
 
     // Pause auto-spin while a node is open for inspection, resume on close.
     useEffect(() => {
@@ -93,6 +112,7 @@ function AppInner() {
                         edges={graph.edges}
                         selectedId={selectedId}
                         hoveredId={hover?.id ?? null}
+                        searchMatchIds={searchMatchIds}
                         onSelectNode={selectNode}
                         onHoverNode={setHover}
                         autoSpin={autoSpin}
@@ -114,6 +134,16 @@ function AppInner() {
                     <span className="brand-sep">·</span>
                     <span className="brand-sub">{t("brand.subtitle")}</span>
                     <LanguageToggle />
+                </div>
+                <div className="search-input">
+                    <span className="search-icon">🔍</span>
+                    <input
+                        type="search"
+                        className="search-field"
+                        placeholder={t("search.placeholder")}
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
                 </div>
                 <div className="category-filter">
                     <label className="category-filter-label" htmlFor="category-filter-select">

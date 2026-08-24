@@ -8,8 +8,8 @@ from app.db.session import get_db
 from app.models.knowledge import KnowledgeNode, KnowledgeEdge
 from app.services.embedding import embed_texts
 from app.services.llm import (
-    resolve_provider, set_runtime_override, clear_runtime_overrides,
-    complete, _runtime_overrides,
+    PROVIDERS, resolve_provider, set_runtime_override, clear_runtime_overrides,
+    complete, test_connection, _runtime_overrides,
 )
 from app.services.knowledge import _node_to_dict
 
@@ -20,7 +20,10 @@ router = APIRouter(prefix="/api/llm", tags=["llm"])
 # ---------- schema ----------
 
 class LLMConfigIn(BaseModel):
-    provider: str = Field(default="heuristic", pattern="^(heuristic|openai|ollama)$")
+    provider: str = Field(
+        default="heuristic",
+        pattern="^(heuristic|openai|ollama|deepseek|kimi|qwen|minimax|gemini)$",
+    )
     api_key: str = Field(default="")
     model: str = Field(default="gpt-4o-mini")
 
@@ -29,14 +32,31 @@ class LLMConfigIn(BaseModel):
 
 @router.get("/status")
 def status():
-    """Return the active LLM configuration (no key echoed)."""
+    """Return the active LLM configuration (no key echoed).
+
+    Also surfaces the full provider registry so the frontend can build
+    the provider dropdown without hard-coding it.
+    """
     cfg = resolve_provider()
     return {
         "provider": cfg["provider"],
+        "provider_label": cfg["provider_label"],
+        "provider_kind": cfg["provider_kind"],
+        "base_url": cfg["base_url"],
         "model": cfg["model"],
         "has_api_key": cfg["has_api_key"],
         "api_key_source": cfg["api_key_source"],
-        "available_providers": ["heuristic", "openai", "ollama"],
+        "providers": [
+            {
+                "name": name,
+                "label": meta["label"],
+                "default_model": meta["default_model"],
+                "needs_api_key": meta["needs_api_key"],
+                "api_key_label": meta["api_key_label"],
+                "kind": meta["kind"],
+            }
+            for name, meta in PROVIDERS.items()
+        ],
     }
 
 
@@ -55,6 +75,35 @@ def set_config(payload: LLMConfigIn):
 def clear_config():
     clear_runtime_overrides()
     return status()
+
+
+class LLMSuggestIn(BaseModel):
+    """Optional override so the Settings tab can probe the values the
+    user has typed in the form (provider/api_key/model) before they
+    have clicked Save. The backend runtime override is not consulted
+    when this payload is sent."""
+    provider: str | None = None
+    api_key: str | None = None
+    model: str | None = None
+
+
+@router.post("/test")
+def test(payload: LLMSuggestIn | None = None):
+    """Probe the configured provider with a tiny request and report
+    whether the endpoint + key actually work. The frontend uses the
+    returned ok + detail to drive the connection status light.
+
+    If the body carries provider/api_key/model fields, those values are
+    used instead of the backend runtime override. This lets the user
+    click Test before clicking Save and still see a real probe of
+    what they just typed in.
+    """
+    override: dict[str, str] = {}
+    if payload:
+        if payload.provider: override["llm_provider"] = payload.provider
+        if payload.api_key:  override["openai_api_key"] = payload.api_key
+        if payload.model:     override["llm_model"]    = payload.model
+    return test_connection(override=override or None)
 
 
 # ---------- suggest improvements ----------
