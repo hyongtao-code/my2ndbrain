@@ -1116,6 +1116,12 @@ button { cursor: pointer; }
   border-radius: var(--r-pill);
   padding: 4px 12px;
   min-width: 280px;
+  /* The topbar sets pointer-events: none on the whole bar so the sphere
+     can receive clicks underneath it. Each interactive child
+     (.brand, .category-filter, .stats) opts back in with auto. We need
+     the same here, otherwise the search input is read-only. */
+   
+  pointer-events: auto;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
 .search-input:focus-within {
