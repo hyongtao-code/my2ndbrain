@@ -10,6 +10,7 @@ type Props = {
   onSelectNode: (id: string) => void;
   onHoverNode: (n: { id: string; title: string; x: number; y: number } | null) => void;
   selectedId: string | null;
+  hoveredId: string | null;    // NEW: id of node being hovered (for neighbour halo)
   autoSpin: boolean;          // when false, the sphere stops auto-rotating
   resumeSpinAt?: number;      // bumping this counter forces autoSpin to resume
 };
@@ -56,10 +57,12 @@ function KnowledgeEdges({
   nodes,
   edges,
   selectedId,
+  hoveredId,
 }: {
   nodes: GraphNode[];
   edges: GraphEdge[];
   selectedId: string | null;
+  hoveredId: string | null;
 }) {
   // Pre-compute arc geometry per edge so we can render each as a tube.
   const arcData = useMemo(() => {
@@ -74,11 +77,13 @@ function KnowledgeEdges({
         const vb = new THREE.Vector3(b.x, b.y, b.z);
         const arc = greatCircleArc(va, vb, RADIUS, 48, 0.25);
         const isSel = e.source === selectedId || e.target === selectedId;
+        const isHover = !!hoveredId && (e.source === hoveredId || e.target === hoveredId);
         return {
           id: e.id,
           arc,
           sim: Number(e.similarity_score || 0),
           isSel,
+          isHover,
         };
       })
       .filter(Boolean) as Array<{
@@ -86,8 +91,9 @@ function KnowledgeEdges({
         arc: THREE.Vector3[];
         sim: number;
         isSel: boolean;
+        isHover: boolean;
       }>;
-  }, [nodes, edges, selectedId]);
+  }, [nodes, edges, selectedId, hoveredId]);
 
   // One merged buffer-geometry line for the faint "all-edges" backdrop.
   const backdropGeom = useMemo(() => {
@@ -132,12 +138,20 @@ function KnowledgeEdges({
         }
         const geom = new THREE.BufferGeometry();
         geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+        const isFaded = !!hoveredId && !e.isSel && !e.isHover;
+        const color = (e.isSel || e.isHover)
+          ? new THREE.Color("#ffd166")
+          : new THREE.Color("#9d7bff");
+        const opacity = e.isSel ? 0.95
+          : e.isHover ? 0.85
+          : isFaded   ? 0.10
+          : 0.55;
         return (
           <lineSegments key={e.id} geometry={geom}>
             <lineBasicMaterial
-              color={e.isSel ? new THREE.Color("#ffd166") : new THREE.Color("#9d7bff")}
+              color={color}
               transparent
-              opacity={e.isSel ? 0.95 : 0.55}
+              opacity={opacity}
             />
           </lineSegments>
         );
@@ -148,12 +162,16 @@ function KnowledgeEdges({
 
 function KnowledgeNodes({
   nodes,
+  edges,
   selectedId,
+  hoveredId,
   onSelectNode,
   onHoverNode,
 }: {
   nodes: GraphNode[];
+  edges: GraphEdge[];
   selectedId: string | null;
+  hoveredId: string | null;
   onSelectNode: (id: string) => void;
   onHoverNode: Props["onHoverNode"];
 }) {
@@ -176,12 +194,32 @@ function KnowledgeNodes({
   );
   const { gl } = useThree();
 
+  // Build the set of node ids that are directly connected to the hovered
+  // node (the "neighbourhood" we want to highlight together).
+  const neighborIds = useMemo(() => {
+    if (!hoveredId) return new Set<string>();
+    const s = new Set<string>();
+    for (const e of edges) {
+      if (e.source === hoveredId) s.add(e.target);
+      if (e.target === hoveredId) s.add(e.source);
+    }
+    return s;
+  }, [hoveredId, edges]);
+
   return (
     <group>
       {nodes.map((n, i) => {
         const r = 0.12 + Math.min(0.55, (n.importance || 1) * 0.07);
         const isSel = n.id === selectedId;
+        const isHover = n.id === hoveredId;
+        const isNeighbor = neighborIds.has(n.id);
+        // When something is hovered, fade everything else so the focus
+        // group (hovered + neighbours) pops out.
+        const isFaded = !!hoveredId && !isHover && !isNeighbor && !isSel;
         const color = new THREE.Color(n.cluster_color);
+        const shellScale = isSel ? 1.55 : isHover || isNeighbor ? 1.25 : 1.0;
+        const emissiveBoost = isSel ? 1.6 : isHover || isNeighbor ? 1.2 : 0.9;
+        const baseOpacity = isFaded ? 0.22 : 0.92;
         return (
           <group
             key={n.id}
@@ -207,24 +245,38 @@ function KnowledgeNodes({
           >
             {/* glass shell: translucent outer sphere gives a soft halo */}
             <mesh>
-              <sphereGeometry args={[isSel ? r * 1.55 : r, 24, 24]} />
+              <sphereGeometry args={[r * shellScale, 24, 24]} />
               <meshPhysicalMaterial
                 color={color}
                 emissive={color}
-                emissiveIntensity={isSel ? 1.6 : 0.9}
+                emissiveIntensity={emissiveBoost}
                 roughness={0.15}
                 metalness={0.4}
                 clearcoat={0.6}
                 clearcoatRoughness={0.1}
                 transparent
-                opacity={0.92}
+                opacity={baseOpacity}
               />
             </mesh>
             {/* inner core: small bright sphere sells the "3D bubble" feel */}
             <mesh>
-              <sphereGeometry args={[(isSel ? r * 1.55 : r) * 0.55, 16, 16]} />
+              <sphereGeometry args={[r * shellScale * 0.55, 16, 16]} />
               <meshBasicMaterial color={new THREE.Color("#ffffff")} />
             </mesh>
+            {/* hover halo ring: a slightly larger transparent emissive sphere
+                that only shows up when this node is hovered, selected, or
+                a direct neighbour of the hovered node. */}
+            {(isHover || isNeighbor) && (
+              <mesh>
+                <sphereGeometry args={[r * (shellScale + 0.45), 24, 24]} />
+                <meshBasicMaterial
+                  color={color}
+                  transparent
+                  opacity={isHover ? 0.32 : 0.20}
+                  depthWrite={false}
+                />
+              </mesh>
+            )}
           </group>
         );
       })}
@@ -236,6 +288,7 @@ function SphereScene({
   nodes,
   edges,
   selectedId,
+  hoveredId,
   autoSpin,
   onSelectNode,
   onHoverNode,
@@ -267,11 +320,13 @@ function SphereScene({
         <meshBasicMaterial color={new THREE.Color("#0b0b0e")} transparent opacity={0.92} />
       </mesh>
 
-      <KnowledgeEdges nodes={nodes} edges={edges} selectedId={selectedId} />
+      <KnowledgeEdges nodes={nodes} edges={edges} selectedId={selectedId} hoveredId={hoveredId} />
 
       <KnowledgeNodes
         nodes={nodes}
+        edges={edges}
         selectedId={selectedId}
+        hoveredId={hoveredId}
         onSelectNode={onSelectNode}
         onHoverNode={onHoverNode}
       />
@@ -311,6 +366,7 @@ export default function KnowledgeSphere(props: Props) {
         nodes={props.nodes}
         edges={props.edges}
         selectedId={props.selectedId}
+        hoveredId={props.hoveredId}
         autoSpin={props.autoSpin}
         onSelectNode={props.onSelectNode}
         onHoverNode={props.onHoverNode}
