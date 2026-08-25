@@ -394,9 +394,16 @@ button { cursor: pointer; }
 /* ============================================================
    Add bubble floating button — Apple FAB
    ============================================================ */
-/* Old single-FAB rule removed: cluster handles positioning now.
-   Kept as a base style (no positioning) so the round shape still works. */
+/* The main + button is now position: absolute; right: 0 so it
+   sits at the right edge of the cluster (the cluster is 248px
+   wide, + is 56px wide, so + is at x=1010..1066 in the cluster
+   frame, on the right side). The action buttons ⬆ ⬇ use
+   right: 66/132px relative to the cluster. Putting + at right: 0
+   aligns all three buttons on the same right-anchored axis. */
 .fab {
+  position: absolute;
+  right: 0;
+  bottom: 0;
   width: 56px; height: 56px;
   border-radius: 50%;
   background: var(--accent);
@@ -1225,13 +1232,20 @@ button { cursor: pointer; }
   position: fixed;
   right: 22px;
   bottom: 22px;
-  /* The cluster's *visible* size is just the + button (56x56), but
-     its *hover* area needs to extend to cover the action buttons
-     when they slide in. We do that with an invisible ::before that
-     grows the hit area horizontally when hovered (no padding tricks
-     — the buttons stay absolutely positioned at fixed offsets and
-     the cluster stays anchored at the right edge). */
-  width: 56px;
+  /* Cluster width must cover the action buttons at their DEFAULT
+     transform (translateX(-60px)) — that's where the buttons
+     sit before the hover slide-in. Rightmost extents:
+       +:    right: 0  →  cluster.right edge
+       ⬆:   right: 66 + 60 (translateX) = 126 from cluster.right
+       ⬇:   right: 132 + 60 (translateX) = 192 from cluster.right
+     So cluster needs to be at least 192 + 56 (button width) = 248px
+     wide. This means the cluster's hover area covers all three
+     buttons at their pre-hover positions, so when the user
+     sweeps the cursor leftward the cursor stays inside the
+     cluster element the whole way — :hover doesn't drop out,
+     and the action buttons don't disappear mid-sweep. */
+  width: 248px;
+  min-width: 248px;
   height: 56px;
   z-index: 30;
   pointer-events: auto;          /* opt back in, parent topbar is pointer-events: none */
@@ -1245,10 +1259,13 @@ button { cursor: pointer; }
 .fab-cluster::before {
   content: "";
   position: absolute;
-  /* Default: zero-size bridge — only the + button area is hoverable. */
+  /* Match the cluster width (248px). See the comment in
+     .fab-cluster for the math. We use this ::before as a
+     pointer-events:none hit-area for hover; the cluster
+     itself is what actually catches mouse events. */
   right: 0;
   bottom: 0;
-  width: 56px;
+  width: 248px;
   height: 56px;
   /* IMPORTANT: pointer-events: none. The ::before is a transparent
      hit-area extension to keep :hover active when the cursor
@@ -1258,11 +1275,6 @@ button { cursor: pointer; }
      bubble to the <div> parent (which has no onClick handler)
      instead of firing React's onClick. */
   pointer-events: none;
-}
-.fab-cluster:hover::before {
-  /* Hover: expand left to cover both action buttons + their gaps. */
-  width: 148px;   /* 56 (+) + 10 gap + 56 (⬆) + 10 gap + 56 (⬇) */
-  transition: width 0.18s ease;
 }
 .fab-cluster .fab {
   width: 56px; height: 56px;
@@ -1355,6 +1367,21 @@ button { cursor: pointer; }
   opacity: 0;
   transform: scale(0.85);
   pointer-events: none;
+}
+/* When the cluster is hidden (e.g. a right-side panel is open) we
+   must also force the action buttons into the same hidden /
+   non-interactive state, even if the cursor is still over the
+   cluster area. Without this, the .fab-cluster:hover .fab-action
+   rule can override .fab-action's default pointer-events: none
+   and the action buttons remain clickable on the hidden cluster,
+   so the user can't see them but a click still lands on them. */
+.fab-cluster.is-hidden .fab-action,
+.fab-cluster.is-hidden:hover .fab-action,
+.fab-cluster.is-hidden:focus-within .fab-action {
+  opacity: 0 !important;
+  transform: translateX(-60px) scale(0.85) !important;
+  pointer-events: none !important;
+  transition: none !important;
 }
 .fab-cluster {
   /* Smooth fade-out when .is-hidden is added/removed. */
