@@ -360,12 +360,26 @@ function SuggestTab({ onJump, drafts, refreshDrafts }: {
     };
 
     const doClean = async () => {
+        // Always refresh drafts first so the click is never racy
+        // with the App.tsx initial fetch on mount, and so we
+        // always see the latest list (e.g. after the user just
+        // saved a new draft in the Draft tab). This is what was
+        // causing the "❌ 没有可用的草稿 (草稿箱是空的)" error:
+        // the user clicked before refreshDrafts() had finished
+        // and the AssistantPanel's drafts prop was still [].
+        setBusy("clean");
+        try {
+            await refreshDrafts();
+        } catch {
+            // refresh failure is non-fatal; we'll fall through and
+            // let pickDraftId decide based on whatever we already had.
+        }
         const did = pickDraftId();
         if (!did) {
-            setApplyMsg("❌ 没有可用的草稿 (草稿箱是空的)");
+            setApplyMsg("❌ 没有可用的草稿 (草稿箱是空的) — 试着切到 Draft 标签先建一条吧");
+            setBusy(null);
             return;
         }
-        setBusy("clean");
         setApplyMsg(null);
         setCleanResult(null);
         setCleanDraftId(did);
@@ -415,6 +429,10 @@ function SuggestTab({ onJump, drafts, refreshDrafts }: {
         setBusy("merge");
         setApplyMsg(null);
         setMergeResult(null);
+        // Refresh drafts too so SuggestTab sees the latest state.
+        // No-op for merge itself; only doClean needs drafts, but
+        // we keep the suggestion set fresh across all three actions.
+        try { await refreshDrafts(); } catch {}
         try {
             const r = await api.findMerges(10, "random");
             setMergeResult(r);
@@ -429,6 +447,7 @@ function SuggestTab({ onJump, drafts, refreshDrafts }: {
         setBusy("edge");
         setApplyMsg(null);
         setEdgeResult(null);
+        try { await refreshDrafts(); } catch {}
         try {
             const r = await api.findEdges(10, "random");
             setEdgeResult(r);
