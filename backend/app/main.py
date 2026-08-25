@@ -14,6 +14,7 @@ from app.api.assistant import (
 from app.api.drafts import router as drafts_router
 from app.api.import_export import router as import_export_router
 from app.api.llm import router as llm_router
+from app.api.curate import router as curate_router
 from app.services.embedding import report_backend
 
 setup_logging()
@@ -47,6 +48,7 @@ app.include_router(clusters_router)
 app.include_router(assistant_router)
 app.include_router(skills_router)
 app.include_router(llm_router)
+app.include_router(curate_router)
 app.include_router(drafts_router)
 app.include_router(import_export_router)
 

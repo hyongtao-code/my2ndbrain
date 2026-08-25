@@ -27,7 +27,7 @@ from app.core.config import get_settings
 #   - api_key_label: placeholder hint shown next to the key input
 #
 # "openai-compat" providers reuse the OpenAI Chat Completions shape
-# (DeepSeek, Moonshot Kimi, Qwen DashScope, MiniMax M2 all conform).
+# (DeepSeek, Moonshot Kimi, Qwen DashScope, MiniMax M3 all conform).
 # "gemini" uses the Google Generative Language REST API.
 # We keep "ollama" registered too so users can target a local llama.cpp
 # server via the same UI.
@@ -75,9 +75,16 @@ PROVIDERS = {
     "minimax": {
         "kind": "openai-compat",
         "label": "MiniMax",
-        # MiniMax M2 exposes an OpenAI-compatible endpoint.
+        # MiniMax exposes an OpenAI-compatible /chat/completions
+        # endpoint at api.minimax.chat/v1. Default to M3 (verified
+        # live). M3 supports a non-standard "thinking" parameter
+        # that lets us disable its reasoning block:
+        #   {"thinking": {"type": "disabled"}}
+        # We send that whenever the provider is "minimax" so the
+        # response content is the bare answer, not a "<think>..."
+        # reasoning block that breaks JSON parsing.
         "base_url": "https://api.minimax.chat/v1",
-        "default_model": "abab6.5s-chat",
+        "default_model": "MiniMax-M3",
         "needs_api_key": True,
         "api_key_label": "sk-...",
     },
@@ -335,6 +342,13 @@ def _openai_compat_suggest(prompt: str, json_schema: dict | None) -> dict:
     # other providers may ignore it but the prompt asks for JSON anyway.
     if cfg["provider"] == "openai":
         payload["response_format"] = {"type": "json_object"}
+    # MiniMax M3 emits a "<think>...</think>" reasoning block before
+    # the actual answer, which breaks json.loads. The provider accepts
+    # a non-standard {"thinking": {"type": "disabled"}} parameter to
+    # suppress that block at the source. Send it whenever the user is
+    # on minimax so we get clean JSON back.
+    if cfg["provider"] == "minimax":
+        payload["thinking"] = {"type": "disabled"}
     headers = {"authorization": f"Bearer {api_key}", "content-type": "application/json"} if api_key else {"content-type": "application/json"}
     url = base_url.rstrip("/") + "/chat/completions"
     try:
@@ -343,9 +357,103 @@ def _openai_compat_suggest(prompt: str, json_schema: dict | None) -> dict:
             r.raise_for_status()
             data = r.json()
         content = data["choices"][0]["message"]["content"]
+        # Defensive: strip any <think>...</think> block a model might
+        # still emit (different providers may have different flags).
+        content = re.sub(r"<think>.*?</think>\s*", "", content, flags=re.DOTALL)
+        # Also strip ```json ... ``` fences some providers add.
+        content = re.sub(r"^\s*```(?:json)?\s*", "", content)
+        content = re.sub(r"\s*```\s*\Z", "", content)
         return json.loads(content)
     except Exception as e:
         return {"action": "noop", "rationale": f"{cfg['provider']} call failed: {e}", "nodes": []}
+
+
+# --------- free-form chat (used by AssistantPanel Ask-Tab) ---------
+
+def _openai_compat_chat(prompt: str, *, system: str | None = None) -> str:
+    """Same transport as _openai_compat_suggest but returns the raw
+    string content (no JSON parsing). Used for the retrieval-augmented
+    Q&A in Step 3 where we want a natural-language answer.
+    """
+    import httpx
+    cfg = resolve_provider()
+    api_key = get_runtime_override("openai_api_key") or get_settings().openai_api_key
+    base_url = cfg["base_url"]
+    if not base_url:
+        return f"({cfg['provider']}: no base_url configured)"
+    if not api_key and provider_needs_api_key(cfg["provider"]):
+        return f"({cfg['provider']}: api key not configured)"
+    msgs = []
+    if system:
+        msgs.append({"role": "system", "content": system})
+    msgs.append({"role": "user", "content": prompt})
+    payload = {
+        "model": cfg["model"],
+        "messages": msgs,
+        "temperature": 0.3,
+    }
+    if cfg["provider"] == "minimax":
+        payload["thinking"] = {"type": "disabled"}
+    headers = {"authorization": f"Bearer {api_key}", "content-type": "application/json"} if api_key else {"content-type": "application/json"}
+    url = base_url.rstrip("/") + "/chat/completions"
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            r = client.post(url, json=payload, headers=headers)
+            r.raise_for_status()
+            data = r.json()
+        content = data["choices"][0]["message"]["content"]
+        # Strip any reasoning block the model might still emit.
+        content = re.sub(r"<think>.*?</think>\s*", "", content, flags=re.DOTALL)
+        return content.strip()
+    except Exception as e:
+        return f"({cfg['provider']} call failed: {e})"
+
+
+def _gemini_chat(prompt: str, *, system: str | None = None) -> str:
+    import httpx
+    cfg = resolve_provider()
+    api_key = get_runtime_override("openai_api_key") or get_settings().openai_api_key
+    if not api_key:
+        return "(gemini: api key not configured)"
+    url = f"{cfg['base_url'].rstrip('/')}/v1beta/models/{cfg['model']}:generateContent"
+    parts = []
+    if system:
+        parts.append({"text": system})
+    parts.append({"text": prompt})
+    payload = {"contents": [{"role": "user", "parts": parts}], "generationConfig": {"temperature": 0.3}}
+    try:
+        with httpx.Client(timeout=30.0) as client:
+            r = client.post(url, params={"key": api_key}, json=payload,
+                             headers={"content-type": "application/json"})
+            r.raise_for_status()
+            data = r.json()
+        return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+    except Exception as e:
+        return f"(gemini call failed: {e})"
+
+
+def complete_chat(prompt: str, *, system: str | None = None) -> str:
+    """Free-form chat completion. Returns the raw string answer
+    (or a heuristic-friendly fallback). Picks provider based on
+    current config."""
+    cfg = resolve_provider()
+    kind = provider_kind(cfg["provider"])
+    if kind == "openai-compat":
+        return _openai_compat_chat(prompt, system=system)
+    if kind == "gemini":
+        return _gemini_chat(prompt, system=system)
+    # local / unknown — heuristic
+    return _heuristic_chat(prompt)
+
+
+def _heuristic_chat(prompt: str) -> str:
+    """Best-effort answer when no LLM is configured. We just acknowledge
+    the question and tell the user to set up a provider."""
+    return (
+        "(未配置大模型：请到 Settings 里选个 provider 并填 API key。\n"
+        f"当前 provider = heuristic。\n"
+        f"你的问题：{prompt[:200]})"
+    )
 
 
 # --------- Gemini (Google Generative Language API) ---------

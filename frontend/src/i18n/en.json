@@ -108,7 +108,16 @@
     "lightConnected": "✅ connected to {name}",
     "lightFailed": "❌ {name} unreachable",
     "showKey": "Show key",
-    "hideKey": "Hide key"
+    "hideKey": "Hide key",
+    "suggestCleanDraft": "Polish draft → node",
+    "suggestMerge": "Suggest merge of similar nodes",
+    "suggestEdge": "Suggest new edges (same category)",
+    "acceptAndIngest": "✅ Accept and ingest",
+    "tryAgain": "🔄 Try again",
+    "applyEdge": "Apply",
+    "providerLabel": "provider",
+    "relatedNodes": "related notes",
+    "relatedSources": "Cited sources"
   },
   "lang": {
     "switch": "Switch language",

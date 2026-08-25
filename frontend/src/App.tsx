@@ -23,6 +23,16 @@ function AppInner() {
     const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
     const [autoSpin, setAutoSpin] = useState(true);
     const [filterCategory, setFilterCategory] = useState<string>("");
+    const [drafts, setDrafts] = useState<import("./types").DraftOut[]>([]);
+    const refreshDrafts = useCallback(async () => {
+        try {
+            const list = await api.listDrafts(false);
+            setDrafts(list);
+        } catch {
+            setDrafts([]);
+        }
+    }, []);
+    useEffect(() => { refreshDrafts(); }, [refreshDrafts]);
     const [searchQuery, setSearchQuery] = useState<string>("");
     const [searchOpen, setSearchOpen] = useState(false);
     const [searchActiveIdx, setSearchActiveIdx] = useState(0);
@@ -281,7 +291,7 @@ function AppInner() {
                 />
             )}
 
-            <AssistantPanel onJump={(id) => selectNode(id)} />
+            <AssistantPanel onJump={(id) => selectNode(id)} drafts={drafts} refreshDrafts={refreshDrafts} />
 
             <div
                 className={
