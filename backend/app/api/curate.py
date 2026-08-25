@@ -505,18 +505,38 @@ def _retrieve_relevant_nodes(db: Session, question: str, top_k: int) -> list[dic
         .limit(top_k)
     )
     rows = db.execute(stmt).all()
-    return [
-        {
+    # Skip rows whose embedding is degenerate (zero-norm). These
+    # are old test-residue nodes whose embedding never got
+    # populated and produce NaN distances. They never help with
+    # RAG anyway.
+    import math
+    def _is_finite(x: float) -> bool:
+        return x is not None and not (isinstance(x, float) and (math.isnan(x) or math.isinf(x)))
+    rows = [(n, d) for (n, d) in rows if _is_finite(d)]
+    out = []
+    for n, dist in rows:
+        # Sanitize NaN/inf to 0.0 (happens when a node's embedding
+        # is the zero vector, which makes cosine distance
+        # undefined). Without this the response crashes FastAPI's
+        # json.dumps with "Out of range float values are not JSON
+        # compliant: nan".
+        try:
+            sim = 1.0 - float(dist)
+        except (TypeError, ValueError):
+            sim = 0.0
+        import math
+        if not math.isfinite(sim):
+            sim = 0.0
+        out.append({
             "id": str(n.id),
             "title": n.title,
-            "summary": n.summary or (n.content[:160] + "…") if n.content else "",
+            "summary": n.summary or ((n.content[:160] + "…") if n.content else ""),
             "content": (n.content or "")[:800],
             "category": n.category or "",
             "keywords": n.keywords or [],
-            "similarity": round(1.0 - float(dist or 0.0), 4),
-        }
-        for n, dist in rows
-    ]
+            "similarity": round(sim, 4),
+        })
+    return out
 
 
 @router.post("/ask")
