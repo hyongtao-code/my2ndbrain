@@ -300,7 +300,7 @@ function LinkPicker({
         setBusy(true);
         setErr(null);
         try {
-            const url = `http://127.0.0.1:8000/api/llm/link?source_id=${sourceId}&target_id=${targetId}&relation=related`;
+            const url = `/api/llm/link?source_id=${sourceId}&target_id=${targetId}&relation=related`;
             const r = await fetch(url, { method: "POST" });
             const data = await r.json();
             if (data.detail) {

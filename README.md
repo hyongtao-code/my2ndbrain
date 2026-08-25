@@ -83,6 +83,25 @@ AI 驱动的个人知识图谱 + 长期记忆系统。
 
 启动成功后浏览器打开 **<http://127.0.0.1:5173/>**。
 
+### 🐳 Docker 部署（一条命令起整套服务）
+
+**推荐生产 / 远程 / 物理机访问场景。** 仓库里 `Dockerfile` + `docker-compose.yml` + `docker-entrypoint.sh` 把 **PostgreSQL 16 + pgvector + FastAPI 后端 + React 前端** 全打到一个镜像里：
+
+```bash
+docker build -t my2ndbrain:latest .
+docker run -d -p 8000:8000 \
+    --name my2ndbrain \
+    -v my2ndbrain-data:/var/lib/postgresql/data \
+    -e DB_PASSWORD=*** \
+    my2ndbrain:latest
+```
+
+打开 **<http://<host>:8000/>** 即可。物理机浏览器可以直接访问（前端用相对 URL，不受 host 限制）。
+
+数据用 Docker named volume 持久化，**`docker stop` + `docker rm` 不丢数据**，要彻底重置再 `docker volume rm my2ndbrain-data`。
+
+详细配置 / 故障排查 / 数据迁移 / 跨机部署看 **[DOCKER.md](DOCKER.md)**。
+
 ### 高级：手工启动（想自己控每个进程的话）
 
 #### 1. 后端

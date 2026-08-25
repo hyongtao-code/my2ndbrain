@@ -1,0 +1,68 @@
+# docker-compose.yml — convenience wrapper around the all-in-one
+# MySecondBrain image. The image bundles PostgreSQL + pgvector +
+# FastAPI + the React build into one process, so this is just one
+# service. Use it for `docker compose up` workflows; for `docker
+# run` you don't even need this file (see the README).
+#
+# What it does:
+#   - exposes 8000 (the FastAPI+frontend port)
+#   - persists PostgreSQL data to the named volume `my2ndbrain-data`
+#   - lets you override the LLM provider, key, model via env
+#
+# Quick start:
+#   docker compose up -d
+#   open http://localhost:8000/
+
+services:
+  my2ndbrain:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # Set HF_HUB_OFFLINE=1 if you want to skip the embedding-model
+        # download at build time (the image will fall back to TF-IDF
+        # embeddings on first run).
+        HF_HUB_OFFLINE: "0"
+    image: my2ndbrain:latest
+    container_name: my2ndbrain
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      # The only persistent state: PostgreSQL data directory.
+      # Everything else (Python venv, React build, embedding model)
+      # is baked into the image.
+      - my2ndbrain-data:/var/lib/postgresql/data
+      # Optional: tail logs to host (in addition to docker logs).
+      # - ./logs:/app/logs
+    environment:
+      # --- Database ---
+      DB_HOST: "127.0.0.1"
+      DB_PORT: "5432"
+      DB_USER: "my2ndbrain"
+      DB_PASSWORD: "${DB_PASSWORD:-my2ndbrain}"
+      DB_NAME: "my2ndbrain"
+      # --- Embedding model ---
+      EMBED_MODEL: "sentence-transformers/all-MiniLM-L6-v2"
+      EMBED_DEVICE: "cpu"
+      # --- LLM provider (override here or in the Settings tab) ---
+      # Defaults to "heuristic" so the app works fully offline with
+      # no API key. To wire a real LLM, change to "openai" / "minimax"
+      # / "kimi" / "qwen" / "gemini" / "deepseek" / "ollama" and set
+      # the corresponding OPENAI_API_KEY (or vendor-specific env).
+      LLM_PROVIDER: "${LLM_PROVIDER:-heuristic}"
+      LLM_MODEL: "${LLM_MODEL:-}"
+      # OPENAI_API_KEY: "sk-..."
+      # --- Server bind ---
+      BACKEND_HOST: "0.0.0.0"
+      BACKEND_PORT: "8000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  my2ndbrain-data:
+    name: my2ndbrain-data

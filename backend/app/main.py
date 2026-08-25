@@ -54,7 +54,14 @@ app.include_router(import_export_router)
 
 
 # ----- static frontend (Vite build output) -----
-FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+# In dev: the repo layout (backend/app/main.py → ../../frontend/dist).
+# In Docker: we set FRONTEND_DIST=/app/frontend-dist at build time
+# (the Dockerfile copies the Vite build there). FRONTEND_DIST env
+# wins so the bundled binary doesn't depend on the source layout.
+import os as _os_main
+_DEFAULT_FD = str(Path(__file__).resolve().parents[2] / "frontend" / "dist")
+FRONTEND_DIST = Path(_os_main.environ.get("FRONTEND_DIST", _DEFAULT_FD))
+del _os_main, _DEFAULT_FD
 if FRONTEND_DIST.exists():
     app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")
 else:
