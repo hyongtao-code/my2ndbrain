@@ -145,7 +145,15 @@ cmd_start() {
         info "starting backend on http://$BACKEND_HOST:$BACKEND_PORT"
         (
             cd "$BACKEND_DIR"
-            PYTHONPATH=. nohup python3 -m uvicorn app.main:app \
+            # Strip SOCKS proxies that nohup mangles (socks5 gets rewritten
+                # to socks in the spawned process, which httpx 0.28
+                # rejects with: ValueError: Unknown scheme for proxy
+                # URL). Backend only needs HTTP/HTTPS for LLM API
+                # calls, which come from HTTPS_PROXY (kept). The
+                # frontend Vite process still has ALL_PROXY intact
+                # (browser-side fetches don't go through httpx).
+                unset ALL_PROXY all_proxy
+                PYTHONPATH=. nohup python3 -m uvicorn app.main:app \
                 --host "$BACKEND_HOST" --port "$BACKEND_PORT" \
                 --log-level info \
                 > "$BACKEND_LOG" 2>&1 &
