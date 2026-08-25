@@ -108,7 +108,16 @@
     "lightConnected": "✅ 已连接 {name}",
     "lightFailed": "❌ {name} 连接失败",
     "showKey": "显示 key",
-    "hideKey": "隐藏 key"
+    "hideKey": "隐藏 key",
+    "suggestCleanDraft": "整理草稿 → 节点",
+    "suggestMerge": "推荐合并相似节点",
+    "suggestEdge": "推荐新边（同分类）",
+    "acceptAndIngest": "✅ 接受并生成节点",
+    "tryAgain": "🔄 再来一次",
+    "applyEdge": "应用",
+    "providerLabel": "provider",
+    "relatedNodes": "条相关笔记",
+    "relatedSources": "引用来源"
   },
   "lang": {
     "switch": "切换语言",

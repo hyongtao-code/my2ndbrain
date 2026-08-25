@@ -58,13 +58,73 @@ export const api = {
     }),
   ingest: (payload: {
     title: string; content: string;
-    category?: string; importance?: number; auto_link?: boolean;
+    category?: string; keywords?: string[]; importance?: number;
+    auto_link?: boolean; source?: string;
   }) => http<IngestResponse>("/api/nodes", {
     method: "POST",
     body: JSON.stringify(payload),
   }),
   clusters: () => http<any[]>("/api/clusters"),
   recomputeClusters: () => http<{ recomputed: number }>("/api/clusters/recompute", { method: "POST" }),
+  // --- curate (LLM-powered suggestions) ---
+  cleanDraft: (draft_id: string) =>
+    http<{
+      provider: string;
+      title: string;
+      content: string;
+      category: string;
+      keywords: string[];
+      rationale: string;
+    }>("/api/llm/curate/clean-draft", {
+      method: "POST",
+      body: JSON.stringify({ draft_id }),
+    }),
+  findMerges: (limit = 10, sample_strategy = "random") =>
+    http<{
+      provider: string;
+      action: "merge" | "noop";
+      rationale: string;
+      nodes: string[];
+      similarity?: number;
+    }>("/api/llm/curate/find-merges", {
+      method: "POST",
+      body: JSON.stringify({ limit, sample_strategy }),
+    }),
+  findEdges: (limit = 10, sample_strategy = "random") =>
+    http<{
+      provider: string;
+      category: string | null;
+      suggestions: Array<{
+        source: string;
+        target: string;
+        relation: string;
+        rationale: string;
+        similarity?: number;
+      }>;
+      rationale?: string;
+    }>("/api/llm/curate/find-edges", {
+      method: "POST",
+      body: JSON.stringify({ limit, sample_strategy }),
+    }),
+  // LLM-backed retrieval-augmented Q&A (Step 3 of the chat-LLM roadmap)
+  askLLM: (question: string, top_k = 8) =>
+    http<{
+      provider: string;
+      answer: string;
+      related_nodes: Array<{
+        id: string;
+        title: string;
+        summary: string;
+        content: string;
+        category: string;
+        keywords: string[];
+        similarity: number;
+      }>;
+      used_nodes: string[];
+    }>("/api/llm/curate/ask", {
+      method: "POST",
+      body: JSON.stringify({ question, top_k }),
+    }),
   assistantAsk: (question: string) => http<AssistantResponse>("/api/assistant", {
     method: "POST", body: JSON.stringify({ question }),
   }),

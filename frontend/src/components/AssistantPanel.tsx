@@ -6,7 +6,11 @@ import { useI18n } from "../i18n";
 
 type Mode = "ask" | "suggest" | "settings" | "draft";
 
-type Props = { onJump: (id: string) => void; };
+type Props = {
+    onJump: (id: string) => void;
+    drafts: import("../types").DraftOut[];
+    refreshDrafts: () => void;
+};
 
 type ProviderInfo = {
     name: string;
@@ -44,7 +48,7 @@ type Suggestion = {
     provider?: string;
 };
 
-export default function AssistantPanel({ onJump }: Props) {
+export default function AssistantPanel({ onJump, drafts, refreshDrafts }: Props) {
     const t = useTranslations();
     const { locale } = useI18n();
     const [mode, setMode] = useState<Mode>("draft");
@@ -83,7 +87,7 @@ export default function AssistantPanel({ onJump }: Props) {
             </div>
 
             {mode === "ask" && <AskTab onJump={onJump} locale={locale} />}
-            {mode === "suggest" && <SuggestTab onJump={onJump} />}
+            {mode === "suggest" && <SuggestTab onJump={onJump} drafts={drafts} refreshDrafts={refreshDrafts} />}
             {mode === "settings" && <SettingsTab />}
             {mode === "draft" && <DraftTab onJump={onJump} />}
         </div>
@@ -97,42 +101,28 @@ function AskTab({ onJump, locale }: { onJump: (id: string) => void; locale: stri
     const t = useTranslations();
     const [q, setQ] = useState("");
     const [loading, setLoading] = useState(false);
-    const [res, setRes] = useState<AssistantResponse | null>(null);
+    const [res, setRes] = useState<{
+        provider: string;
+        answer: string;
+        related_nodes: Array<{ id: string; title: string; category: string; summary: string; similarity: number }>;
+        used_nodes: string[];
+    } | null>(null);
     const [skills, setSkills] = useState<any[]>([]);
 
     const ask = async () => {
         if (!q.trim()) return;
         setLoading(true);
+        setRes(null);
         try {
-            const r = await api.assistantAsk(q.trim());
+            // Use the LLM-backed retrieval-augmented Q&A. This endpoint
+            // embeds the question, pulls the top-k nearest nodes, and asks
+            // the active LLM to write a natural-language answer grounded in
+            // those nodes. Falls back to a structured listing if the LLM is
+            // not configured.
+            const r = await api.askLLM(q.trim(), 8);
             setRes(r);
         } finally {
             setLoading(false);
-        }
-    };
-
-    const render = (r: AssistantResponse): string => {
-        // Localised chrome; backend answer stays in raw text (domain content).
-        if (locale.startsWith("zh")) {
-            const parts: string[] = [];
-            parts.push(`主题：${r.topic || "(全部)"}  共 ${r.total} 条`);
-            for (const [cat, items] of Object.entries(r.tree || {})) {
-                parts.push(`\n【${cat}】(${items.length})`);
-                for (const it of items) {
-                    parts.push(`  • ${it.title}${it.summary ? " — " + it.summary.slice(0, 60) : ""}`);
-                }
-            }
-            return parts.join("\n");
-        } else {
-            const parts: string[] = [];
-            parts.push(`Topic: ${r.topic || "(all)"}  ·  ${r.total} nodes`);
-            for (const [cat, items] of Object.entries(r.tree || {})) {
-                parts.push(`\n[${cat}] (${items.length})`);
-                for (const it of items) {
-                    parts.push(`  • ${it.title}${it.summary ? " — " + it.summary.slice(0, 60) : ""}`);
-                }
-            }
-            return parts.join("\n");
         }
     };
 
@@ -147,12 +137,35 @@ return (
             />
             <div className="assistant-actions">
                 <button className="btn-primary" onClick={ask} disabled={loading || !q.trim()}>
-                    {t("assistant.ask")}
+                    {loading ? t("assistant.working") : t("assistant.ask")}
                 </button>
             </div>
             {res && (
                 <div className="answer">
-                    <pre>{render(res)}</pre>
+                    <div className="answer-meta">
+                        {t("assistant.providerLabel")}: {res.provider}
+                        {" · "}
+                        {res.related_nodes.length} {t("assistant.relatedNodes")}
+                    </div>
+                    <div className="answer-text" style={{ whiteSpace: "pre-wrap" }}>
+                        {res.answer}
+                    </div>
+                    {res.related_nodes.length > 0 && (
+                        <div className="related-list">
+                            <div className="related-list-title">{t("assistant.relatedSources")}</div>
+                            {res.related_nodes.map((n) => (
+                                <button
+                                    key={n.id}
+                                    className="related-list-item"
+                                    onClick={() => onJump(n.id)}
+                                >
+                                    <span className="related-title">{n.title}</span>
+                                    {n.category && <span className="related-cat">{n.category}</span>}
+                                    <span className="related-sim">{Math.round(n.similarity * 100)}%</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
         </div>
@@ -160,82 +173,294 @@ return (
 }
 
 // ============================================================
-// Suggest tab — calls LLM (or heuristic fallback) for ONE suggestion
+// Suggest tab — three LLM-powered curation actions:
+//   (1) clean-draft: take one of the user's drafts and produce a
+//       polished KnowledgeNode (title/content/category/keywords)
+//   (2) find-merges: sample 10 random/popular/oldest, ask LLM which
+//       pair is a duplicate
+//   (3) find-edges:  sample 10 from the most-popular node and ask
+//       LLM which pairs should be linked
+// Each action has a confirm step before any write (POST /api/nodes
+// for ingest, POST /api/llm/link for edge).
 // ============================================================
-function SuggestTab({ onJump }: { onJump: (id: string) => void }) {
+type CleanDraftResult = {
+    provider: string;
+    title: string;
+    content: string;
+    category: string;
+    keywords: string[];
+    rationale: string;
+};
+
+type FindMergesResult = {
+    provider: string;
+    action: "merge" | "noop";
+    rationale: string;
+    nodes: string[];
+    similarity?: number;
+};
+
+type FindEdgesResult = {
+    provider: string;
+    category: string | null;
+    suggestions: Array<{
+        source: string;
+        target: string;
+        relation: string;
+        rationale: string;
+        similarity?: number;
+    }>;
+    rationale?: string;
+};
+
+function SuggestTab({ onJump, drafts, refreshDrafts }: {
+    onJump: (id: string) => void;
+    drafts: import("../types").DraftOut[];
+    refreshDrafts: () => void;
+}) {
     const t = useTranslations();
-    const [loading, setLoading] = useState(false);
-    const [sug, setSug] = useState<Suggestion | null>(null);
+    const [busy, setBusy] = useState<null | "clean" | "merge" | "edge">(null);
+    const [cleanResult, setCleanResult] = useState<CleanDraftResult | null>(null);
+    const [cleanDraftId, setCleanDraftId] = useState<string | null>(null);
+    const [mergeResult, setMergeResult] = useState<FindMergesResult | null>(null);
+    const [edgeResult, setEdgeResult] = useState<FindEdgesResult | null>(null);
     const [applyMsg, setApplyMsg] = useState<string | null>(null);
 
-    const ask = async () => {
-        setLoading(true);
-        setSug(null);
+    // Pick the latest non-promoted draft by default.
+    const pickDraftId = (): string | null => {
+        const candidates = drafts.filter((d) => !d.promoted_to_node_id);
+        return candidates.length ? candidates[0].id : null;
+    };
+
+    const doClean = async () => {
+        const did = pickDraftId();
+        if (!did) {
+            setApplyMsg("❌ 没有可用的草稿 (草稿箱是空的)");
+            return;
+        }
+        setBusy("clean");
         setApplyMsg(null);
+        setCleanResult(null);
+        setCleanDraftId(did);
         try {
-            const r = await fetch("http://127.0.0.1:8000/api/llm/suggest-improvements", { method: "POST" });
-            const data = await r.json();
-            setSug(data);
+            const r = await api.cleanDraft(did);
+            setCleanResult(r);
+        } catch (e: any) {
+            setApplyMsg(`❌ ${e?.message || String(e)}`);
         } finally {
-            setLoading(false);
+            setBusy(null);
         }
     };
 
-    const apply = async () => {
-        if (!sug || sug.action !== "link" || sug.nodes.length < 2) return;
-        setLoading(true);
+    const acceptClean = async () => {
+        if (!cleanResult || !cleanDraftId) return;
+        setBusy("clean");
         setApplyMsg(null);
         try {
-            const url = `http://127.0.0.1:8000/api/llm/link?source_id=${sug.nodes[0]}&target_id=${sug.nodes[1]}&relation=related`;
+            const res = await api.ingest({
+                title: cleanResult.title,
+                content: cleanResult.content,
+                category: cleanResult.category || undefined,
+                keywords: cleanResult.keywords,
+                importance: 5.0,
+                source: "llm-clean",
+                auto_link: true,
+            });
+            // Mark draft as promoted
+            await api.promoteDrafts([cleanDraftId]);
+            refreshDrafts();
+            if (res?.node?.id) {
+                onJump(res.node.id);
+                setApplyMsg(`✅ 已生成节点：${cleanResult.title}`);
+            } else {
+                setApplyMsg("✅ 已生成节点");
+            }
+            setCleanResult(null);
+            setCleanDraftId(null);
+        } catch (e: any) {
+            setApplyMsg(`❌ ${e?.message || String(e)}`);
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    const doMerge = async () => {
+        setBusy("merge");
+        setApplyMsg(null);
+        setMergeResult(null);
+        try {
+            const r = await api.findMerges(10, "random");
+            setMergeResult(r);
+        } catch (e: any) {
+            setApplyMsg(`❌ ${e?.message || String(e)}`);
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    const doEdge = async () => {
+        setBusy("edge");
+        setApplyMsg(null);
+        setEdgeResult(null);
+        try {
+            const r = await api.findEdges(10, "random");
+            setEdgeResult(r);
+        } catch (e: any) {
+            setApplyMsg(`❌ ${e?.message || String(e)}`);
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    const applyEdge = async (src: string, tgt: string, relation: string) => {
+        setApplyMsg(null);
+        try {
+            const url = `/api/llm/link?source_id=${src}&target_id=${tgt}&relation=${encodeURIComponent(relation)}`;
             const r = await fetch(url, { method: "POST" });
             const data = await r.json();
             if (data.detail) {
                 setApplyMsg(`❌ ${data.detail}`);
             } else {
-                setApplyMsg(`✅ Link created (id=${data.id.slice(0, 8)}, already_existed=${data.already_existed})`);
-                // jump to the first node
-                onJump(sug.nodes[0]);
+                setApplyMsg(`✅ Edge created (id=${data.id.slice(0, 8)}, existed=${data.already_existed})`);
             }
-        } finally {
-            setLoading(false);
+        } catch (e: any) {
+            setApplyMsg(`❌ ${e?.message || String(e)}`);
         }
     };
 
     return (
         <div className="assistant-tab-body">
-            <p className="assistant-hint">
-                {t("assistant.suggestHint")}
-            </p>
-            <button className="btn-primary" onClick={ask} disabled={loading}>
-                💡 {loading ? t("assistant.working") : t("assistant.suggestOne")}
-            </button>
-            {sug && (
+            <p className="assistant-hint">{t("assistant.suggestHint")}</p>
+            <div className="assistant-actions" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <button className="btn-primary" onClick={doClean} disabled={busy !== null}>
+                    🧹 {busy === "clean" ? t("assistant.working") : t("assistant.suggestCleanDraft")}
+                </button>
+                <button className="btn-primary" onClick={doMerge} disabled={busy !== null}>
+                    🔀 {busy === "merge" ? t("assistant.working") : t("assistant.suggestMerge")}
+                </button>
+                <button className="btn-primary" onClick={doEdge} disabled={busy !== null}>
+                    🔗 {busy === "edge" ? t("assistant.working") : t("assistant.suggestEdge")}
+                </button>
+            </div>
+
+            {/* 1. Clean-draft result */}
+            {cleanResult && (
                 <div className="suggestion-card">
                     <div className="suggestion-action">
-                        action: <b>{sug.action}</b>
-                        {sug.provider && <span className="provider-tag">via {sug.provider}</span>}
+                        🧹 cleaned-draft <span className="provider-tag">via {cleanResult.provider}</span>
                     </div>
-                    <div className="suggestion-rationale">{sug.rationale}</div>
-                    {sug.similarity !== undefined && (
-                        <div className="suggestion-similarity">similarity: {sug.similarity.toFixed(3)}</div>
+                    <div className="suggestion-rationale">{cleanResult.rationale}</div>
+                    <div style={{ marginTop: 8 }}>
+                        <div style={{ fontSize: 12, color: "var(--text-2)" }}>title</div>
+                        <input
+                            className="textarea"
+                            value={cleanResult.title}
+                            onChange={(e) => setCleanResult({ ...cleanResult, title: e.target.value })}
+                            style={{ height: 32, padding: 6 }}
+                        />
+                    </div>
+                    <div style={{ marginTop: 6 }}>
+                        <div style={{ fontSize: 12, color: "var(--text-2)" }}>content</div>
+                        <textarea
+                            className="textarea"
+                            value={cleanResult.content}
+                            onChange={(e) => setCleanResult({ ...cleanResult, content: e.target.value })}
+                            rows={6}
+                        />
+                    </div>
+                    <div style={{ marginTop: 6, display: "flex", gap: 6 }}>
+                        <input
+                            className="textarea"
+                            value={cleanResult.category}
+                            onChange={(e) => setCleanResult({ ...cleanResult, category: e.target.value })}
+                            placeholder="category"
+                            style={{ height: 32, padding: 6, flex: 1 }}
+                        />
+                        <input
+                            className="textarea"
+                            value={(cleanResult.keywords || []).join(", ")}
+                            onChange={(e) =>
+                                setCleanResult({
+                                    ...cleanResult,
+                                    keywords: e.target.value.split(",").map((x) => x.trim()).filter(Boolean),
+                                })
+                            }
+                            placeholder="keywords (comma-separated)"
+                            style={{ height: 32, padding: 6, flex: 2 }}
+                        />
+                    </div>
+                    <button className="btn-primary" onClick={acceptClean} disabled={busy !== null} style={{ marginTop: 8 }}>
+                        ✅ {t("assistant.acceptAndIngest")}
+                    </button>
+                </div>
+            )}
+
+            {/* 2. Find-merges result */}
+            {mergeResult && (
+                <div className="suggestion-card">
+                    <div className="suggestion-action">
+                        🔀 merge <b>{mergeResult.action}</b>{" "}
+                        <span className="provider-tag">via {mergeResult.provider}</span>
+                    </div>
+                    <div className="suggestion-rationale">{mergeResult.rationale}</div>
+                    {mergeResult.similarity !== undefined && (
+                        <div className="suggestion-similarity">similarity: {mergeResult.similarity.toFixed(3)}</div>
                     )}
-                    {sug.nodes.length > 0 && (
+                    {mergeResult.nodes.length > 0 && (
                         <div className="suggestion-nodes">
-                            {sug.nodes.map((id, i) => (
+                            {mergeResult.nodes.map((id) => (
                                 <button key={id} className="node-link" onClick={() => onJump(id)}>
                                     {id.slice(0, 8)}
                                 </button>
                             ))}
                         </div>
                     )}
-                    {sug.action === "link" && sug.nodes.length >= 2 && (
-                        <button className="btn-primary" onClick={apply} disabled={loading}>
-                            🔗 {loading ? t("assistant.working") : t("assistant.applyLink")}
+                    {mergeResult.action === "noop" && (
+                        <button className="btn-primary" onClick={doMerge} disabled={busy !== null}>
+                            🔄 {t("assistant.tryAgain")}
                         </button>
                     )}
-                    {applyMsg && <div className="apply-status">{applyMsg}</div>}
                 </div>
             )}
+
+            {/* 3. Find-edges result */}
+            {edgeResult && (
+                <div className="suggestion-card">
+                    <div className="suggestion-action">
+                        🔗 edges <span className="provider-tag">via {edgeResult.provider}</span>
+                        {edgeResult.category && <span className="provider-tag">category: {edgeResult.category}</span>}
+                    </div>
+                    {edgeResult.rationale && <div className="suggestion-rationale">{edgeResult.rationale}</div>}
+                    {edgeResult.suggestions.length === 0 ? (
+                        <div style={{ fontSize: 12, color: "var(--text-2)", marginTop: 6 }}>
+                            没有推荐的新边（节点太少或相似度不够）
+                        </div>
+                    ) : (
+                        edgeResult.suggestions.map((s, i) => (
+                            <div key={i} style={{ marginTop: 8, borderTop: "1px solid var(--line)", paddingTop: 6 }}>
+                                <div style={{ fontSize: 12, color: "var(--text-2)" }}>
+                                    {s.relation}: {s.source.slice(0, 8)} → {s.target.slice(0, 8)}
+                                </div>
+                                <div style={{ fontSize: 12 }}>{s.rationale}</div>
+                                <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                                    <button className="node-link" onClick={() => onJump(s.source)}>view A</button>
+                                    <button className="node-link" onClick={() => onJump(s.target)}>view B</button>
+                                    <button className="btn-primary" onClick={() => applyEdge(s.source, s.target, s.relation)}>
+                                        🔗 {t("assistant.applyEdge")}
+                                    </button>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                    {edgeResult.suggestions.length === 0 && (
+                        <button className="btn-primary" onClick={doEdge} disabled={busy !== null}>
+                            🔄 {t("assistant.tryAgain")}
+                        </button>
+                    )}
+                </div>
+            )}
+
+            {applyMsg && <div className="apply-status">{applyMsg}</div>}
         </div>
     );
 }
