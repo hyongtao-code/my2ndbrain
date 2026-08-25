@@ -1356,6 +1356,21 @@ button { cursor: pointer; }
   transform: scale(0.85);
   pointer-events: none;
 }
+/* When the cluster is hidden (e.g. a right-side panel is open) we
+   must also force the action buttons into the same hidden /
+   non-interactive state, even if the cursor is still over the
+   cluster area. Without this, the .fab-cluster:hover .fab-action
+   rule can override .fab-action's default pointer-events: none
+   and the action buttons remain clickable on the hidden cluster,
+   so the user can't see them but a click still lands on them. */
+.fab-cluster.is-hidden .fab-action,
+.fab-cluster.is-hidden:hover .fab-action,
+.fab-cluster.is-hidden:focus-within .fab-action {
+  opacity: 0 !important;
+  transform: translateX(-60px) scale(0.85) !important;
+  pointer-events: none !important;
+  transition: none !important;
+}
 .fab-cluster {
   /* Smooth fade-out when .is-hidden is added/removed. */
   transition: opacity 0.18s ease, transform 0.18s ease;
