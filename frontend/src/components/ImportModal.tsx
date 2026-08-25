@@ -25,13 +25,9 @@ type PendingFile = {
     newNodeId?: string;
 };
 
-function guessTitle(content: string, fallback: string): string {
-    const text = content.replace(/^\uFEFF/, "").replace(/^---\s*\n[\s\S]*?\n---\s*\n/, "").trimStart();
-    const first = text.split("\n").find((l) => l.trim().length > 0) ?? "";
-    const m = /^\s*#+\s+(.+?)\s*$/.exec(first);
-    if (m) return m[1].trim();
-    if (first.trim()) return first.trim();
-    return fallback;
+function guessTitleFromFilename(filename: string): string {
+    // Mirrors backend's _parse_md: title = filename without .md / .markdown
+    return filename.replace(/\.(md|markdown)$/i, "").trim() || filename;
 }
 
 export default function ImportModal({ onClose, onCreated }: Props) {
@@ -47,7 +43,7 @@ export default function ImportModal({ onClose, onCreated }: Props) {
         for (const f of Array.from(files)) {
             if (!/\.(md|markdown)$/i.test(f.name)) continue;
             const text = await f.text();
-            const title = guessTitle(text, f.name.replace(/\.(md|markdown)$/i, ""));
+            const title = guessTitleFromFilename(f.name);
             next.push({ file: f, title, body: text, status: "ready" });
         }
         setItems((prev) => [...prev, ...next]);

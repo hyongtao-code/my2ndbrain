@@ -1235,6 +1235,8 @@ button { cursor: pointer; }
   height: 56px;
   z-index: 30;
   pointer-events: auto;          /* opt back in, parent topbar is pointer-events: none */
+  /* Smooth fade-out when .is-hidden is toggled by App.tsx. */
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 /* Invisible hover-extension bridge. Default: only the + button area
    is "hover-active". On .fab-cluster:hover it expands to cover the
@@ -1248,7 +1250,14 @@ button { cursor: pointer; }
   bottom: 0;
   width: 56px;
   height: 56px;
-  pointer-events: auto;
+  /* IMPORTANT: pointer-events: none. The ::before is a transparent
+     hit-area extension to keep :hover active when the cursor
+     sweeps left over the action buttons. If we left this as
+     `auto`, it would *catch* clicks before they reach the
+     underlying <button>, and clicks on + would silently
+     bubble to the <div> parent (which has no onClick handler)
+     instead of firing React's onClick. */
+  pointer-events: none;
 }
 .fab-cluster:hover::before {
   /* Hover: expand left to cover both action buttons + their gaps. */
@@ -1281,12 +1290,39 @@ button { cursor: pointer; }
      slack so the user can drift slightly off the visible circle
      without losing pointer-events. */
   padding: 6px;
-  /* Default: hidden — slide out to the right (toward +) by 40px and fade out. */
+  /* Default: hidden - slide in FROM the left, ending at the
+     natural position to the LEFT of +. We translate -60px in
+     the default state so the button starts ENTIRELY to the
+     left of + (off-screen left edge). On hover, it slides
+     rightward 60px to its natural position (66px from cluster
+     right). The rightward slide never crosses +'s clickable
+     rect because + sits at right: 0 (right edge of cluster)
+     and the button never goes there.
+
+     pointer-events has a 0.18s transition-delay so the button
+     stays click-through during the slide animation and only
+     becomes clickable once it has reached its final position.
+     This is defense-in-depth: even if the trajectory ever
+     crossed +, a click during transition would land on +.
+
+     Note on visual direction: this is a rightward slide-in.
+     The user described it as "leftward slide-out" (从 + 向左
+     滑出), which we interpret as "the buttons appear to the
+     left of +", i.e. emerge from the LEFT side. A button
+     that starts off-screen left and slides rightward to land
+     next to + does exactly that visually. */
   opacity: 0;
-  transform: translateX(40px) scale(0.85);
+  transform: translateX(-60px) scale(0.85);
   pointer-events: none;
-  transition: transform 0.18s ease, opacity 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+  transition: transform 0.18s ease 0s, opacity 0.18s ease 0s, background 0.18s ease 0s, border-color 0.18s ease 0s, pointer-events 0s 0.18s;
 }
+/* The action buttons sit to the LEFT of +. We position them with
+   `right:` so they don't depend on the cluster width, and we slide
+   them in from the LEFT (i.e. further left than their final position)
+   so the slide-in animation never overlaps with +'s clickable
+   target. The default transform translateX(-60px) moves them
+   60px further left (off-screen); hover transitions them to
+   translateX(0) at their natural position. */
 .fab-cluster .fab-action:nth-of-type(1) {
   right: 66px; /* 56 (main +) + 10 gap */
   transition-delay: 0ms;
@@ -1308,6 +1344,21 @@ button { cursor: pointer; }
 }
 .fab-cluster:hover > .fab:not(.fab-action) {
   box-shadow: 0 8px 28px rgba(10, 132, 255, 0.5);
+}
+
+/* When any right-side panel is open (NodeDetail or AddNodeModal) or
+   an Import/Export modal is up, fade the FAB out so it doesn't sit
+   on top of the modal's "Submit" / "Import" / "Download" buttons.
+   pointer-events: none ensures clicks pass through. We scale to 0.85
+   so it visibly recedes, not just disappears. */
+.fab-cluster.is-hidden {
+  opacity: 0;
+  transform: scale(0.85);
+  pointer-events: none;
+}
+.fab-cluster {
+  /* Smooth fade-out when .is-hidden is added/removed. */
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
 /* ============================================================
@@ -1395,4 +1446,189 @@ button { cursor: pointer; }
 .export-row-meta {
   display: flex;
   gap: 4px;
+}
+
+
+/* ============================================================
+   Search dropdown (top 5 matches under the topbar search input)
+   - .search-wrap wraps both the input and the dropdown so they
+     share a containing block for absolute positioning
+   - Dropdown is positioned absolute below the input, no layout shift
+   ============================================================ */
+.search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.search-input {
+  /* keep the input at its current 280px+ width */
+}
+.search-clear {
+  background: transparent;
+  border: none;
+  color: var(--text-2);
+  font-size: 12px;
+  padding: 0 6px;
+  cursor: pointer;
+  border-radius: var(--r-pill);
+  line-height: 1;
+}
+.search-clear:hover { color: var(--text-0); background: rgba(255,255,255,0.06); }
+
+.search-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  min-width: 320px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: rgba(20, 20, 22, 0.95);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  z-index: 50;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.search-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: var(--r-sm);
+  color: var(--text-0);
+  font-family: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.search-row:hover, .search-row.is-active {
+  background: rgba(10, 132, 255, 0.18);
+}
+.search-row-title {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.search-row-cat {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-2);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--line);
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+.search-row-score {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  background: rgba(10, 132, 255, 0.10);
+  border: 1px solid rgba(10, 132, 255, 0.30);
+  padding: 1px 6px;
+  border-radius: var(--r-pill);
+}
+.search-empty {
+  font-size: 12px;
+  color: var(--text-2);
+  padding: 12px;
+  text-align: center;
+}
+
+
+/* ============================================================
+   CategoryCombobox (NodeDetail edit form)
+   - input + ▾ toggle button side by side
+   - dropdown menu uses the same dark-glass style as the topbar search
+   ============================================================ */
+.cat-combo {
+  position: relative;
+}
+.cat-combo-row {
+  display: flex;
+  align-items: stretch;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.cat-combo-row:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.20);
+}
+.cat-combo-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-0);
+  font: inherit;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  padding: 10px 12px;
+  min-width: 0;
+}
+.cat-combo-input::placeholder { color: var(--text-2); }
+.cat-combo-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--line);
+  color: var(--text-1);
+  font-size: 11px;
+  width: 32px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.12s ease, background 0.12s ease, transform 0.18s ease;
+  flex-shrink: 0;
+}
+.cat-combo-toggle:hover { color: var(--text-0); background: rgba(255,255,255,0.05); }
+.cat-combo-toggle.is-open { transform: rotate(180deg); color: var(--accent); }
+.cat-combo-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  background: rgba(20, 20, 22, 0.95);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  z-index: 50;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cat-combo-item {
+  background: transparent;
+  border: none;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-0);
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.cat-combo-item:hover, .cat-combo-item.is-active {
+  background: rgba(10, 132, 255, 0.18);
 }

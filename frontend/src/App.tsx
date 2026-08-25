@@ -24,6 +24,8 @@ function AppInner() {
     const [autoSpin, setAutoSpin] = useState(true);
     const [filterCategory, setFilterCategory] = useState<string>("");
     const [searchQuery, setSearchQuery] = useState<string>("");
+    const [searchOpen, setSearchOpen] = useState(false);
+    const [searchActiveIdx, setSearchActiveIdx] = useState(0);
     const stageRef = useRef<HTMLDivElement>(null);
 
     const refresh = useCallback(async () => {
@@ -62,6 +64,36 @@ function AppInner() {
             }
         }
         return out;
+    }, [searchQuery, graph]);
+
+    // Top-N matches for the search dropdown. Same data as the
+    // highlight set, but ranked by a simple score so the user sees
+    // the best matches first instead of arbitrary graph order.
+    // Score: title-hit=3, category-hit=2, keyword-hit=1. Title prefix
+    // matches get a +1 bonus to mimic "starts with" feel.
+    const searchMatches = useMemo<Array<{ id: string; title: string; category: string; score: number }>>(() => {
+        const q = searchQuery.trim().toLowerCase();
+        if (!q || !graph) return [];
+        const scored: Array<{ id: string; title: string; category: string; score: number; _t: number; _c: number; _k: number }> = [];
+        for (const n of graph.nodes) {
+            const title = (n.title || "");
+            const cat = (n.category || "");
+            const kw = (n.keywords || []).join(" ");
+            const lt = title.toLowerCase();
+            const lc = cat.toLowerCase();
+            const lk = kw.toLowerCase();
+            const t = lt.includes(q) ? 3 : 0;
+            const c = lc.includes(q) ? 2 : 0;
+            const k = lk.includes(q) ? 1 : 0;
+            const score = t + c + k + (t && lt.startsWith(q) ? 1 : 0);
+            if (score > 0) scored.push({ id: n.id, title, category: cat, score, _t: t, _c: c, _k: k });
+        }
+        scored.sort((a, b) =>
+            b.score - a.score
+            || (b._t - a._t)         // title-hit wins ties
+            || a.title.length - b.title.length  // shorter title wins (more specific)
+        );
+        return scored.slice(0, 5).map(({ _t, _c, _k, ...rest }) => rest);
     }, [searchQuery, graph]);
 
     // Pause auto-spin while a node is open for inspection, resume on close.
@@ -139,15 +171,79 @@ function AppInner() {
                     <span className="brand-sub">{t("brand.subtitle")}</span>
                     <LanguageToggle />
                 </div>
-                <div className="search-input">
-                    <span className="search-icon">🔍</span>
-                    <input
-                        type="search"
-                        className="search-field"
-                        placeholder={t("search.placeholder")}
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                    />
+                <div className="search-wrap">
+                    <div className="search-input">
+                        <span className="search-icon">🔍</span>
+                        <input
+                            type="search"
+                            className="search-field"
+                            placeholder={t("search.placeholder")}
+                            value={searchQuery}
+                            onChange={(e) => {
+                                setSearchQuery(e.target.value);
+                                setSearchOpen(true);
+                                setSearchActiveIdx(0);
+                            }}
+                            onFocus={() => searchQuery && setSearchOpen(true)}
+                            onKeyDown={(e) => {
+                                if (!searchOpen || searchMatches.length === 0) return;
+                                if (e.key === "ArrowDown") {
+                                    e.preventDefault();
+                                    setSearchActiveIdx((i) => Math.min(i + 1, searchMatches.length - 1));
+                                } else if (e.key === "ArrowUp") {
+                                    e.preventDefault();
+                                    setSearchActiveIdx((i) => Math.max(i - 1, 0));
+                                } else if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    const m = searchMatches[searchActiveIdx];
+                                    if (m) {
+                                        selectNode(m.id);
+                                        setSearchQuery("");
+                                        setSearchOpen(false);
+                                    }
+                                } else if (e.key === "Escape") {
+                                    setSearchOpen(false);
+                                }
+                            }}
+                            onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
+                        />
+                        {searchQuery && (
+                            <button
+                                className="search-clear"
+                                title="Clear"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => { setSearchQuery(""); setSearchOpen(false); }}
+                            >✕</button>
+                        )}
+                    </div>
+                    {searchOpen && searchMatches.length > 0 && (
+                        <div className="search-dropdown" role="listbox">
+                            {searchMatches.map((m, i) => (
+                                <button
+                                    key={m.id}
+                                    className={"search-row" + (i === searchActiveIdx ? " is-active" : "")}
+                                    role="option"
+                                    aria-selected={i === searchActiveIdx}
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    onMouseEnter={() => setSearchActiveIdx(i)}
+                                    onClick={() => {
+                                        selectNode(m.id);
+                                        setSearchQuery("");
+                                        setSearchOpen(false);
+                                    }}
+                                >
+                                    <span className="search-row-title">{m.title}</span>
+                                    {m.category && <span className="search-row-cat">{m.category}</span>}
+                                    <span className="search-row-score">{m.score}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    {searchOpen && searchQuery.trim() && searchMatches.length === 0 && (
+                        <div className="search-dropdown">
+                            <div className="search-empty">{t("search.empty")}</div>
+                        </div>
+                    )}
                 </div>
                 <div className="category-filter">
                     <label className="category-filter-label" htmlFor="category-filter-select">
@@ -187,7 +283,12 @@ function AppInner() {
 
             <AssistantPanel onJump={(id) => selectNode(id)} />
 
-            <div className="fab-cluster">
+            <div
+                className={
+                    "fab-cluster"
+                    + (selected || showAdd || showImport || showExport ? " is-hidden" : "")
+                }
+            >
                 <button
                     className="fab fab-action"
                     title={t("fab.import")}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import type { NodeOut } from "../types";
 import { useI18n } from "../i18n";
@@ -37,6 +37,7 @@ export default function NodeDetail({ node, onJump, onClose, onMutated }: Props) 
     const [showLinkPicker, setShowLinkPicker] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [banner, setBanner] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+    const [knownCategories, setKnownCategories] = useState<string[]>([]);
 
     useEffect(() => {
         setFull(null);
@@ -48,6 +49,21 @@ export default function NodeDetail({ node, onJump, onClose, onMutated }: Props) 
             .then((r) => r.json())
             .then(setFull)
             .catch(() => setFull(node));
+        // Pull the existing-category list once per node so the
+        // <datalist> can autocomplete. Cached in component state.
+        api.listNodes()
+            .then((rows) => {
+                // Defensive: some rows might be missing category (e.g.
+                // old data created before the field existed). Filter
+                // out empty / whitespace-only values explicitly.
+                const cats = new Set<string>();
+                for (const r of (rows as Array<{ category?: string }>)) {
+                    const c = (r.category || "").trim();
+                    if (c) cats.add(c);
+                }
+                setKnownCategories(Array.from(cats).sort((a, b) => a.localeCompare(b, "zh-Hans")));
+            })
+            .catch(() => { /* non-fatal; the user can still type freely */ });
     }, [node.id]);
 
     const n = full || node;
@@ -192,9 +208,11 @@ export default function NodeDetail({ node, onJump, onClose, onMutated }: Props) 
                         minHeight={260}
                     />
                     <label>Category</label>
-                    <input value={draft.category}
-                           onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value }))}
-                           placeholder="(blank = auto-classify next time)" />
+                    <CategoryCombobox
+                        value={draft.category}
+                        onChange={(v) => setDraft((d) => ({ ...d, category: v }))}
+                        options={knownCategories}
+                    />
                     <label>Importance (0–10)</label>
                     <input type="number" min={0} max={10} step={0.5}
                            value={draft.importance}
@@ -334,6 +352,108 @@ function LinkPicker({
                     <button className="btn-secondary" onClick={onClose}>{t("detail.close").replace("✕", "Cancel")}</button>
                 </div>
             </div>
+        </div>
+    );
+}
+
+
+// -------------------------------------------------------------
+// CategoryCombobox — a small dark-theme-styled input with a built-in
+// dropdown of existing categories. The user can also type any
+// custom value (it's a real <input>, not a <select>).
+// -------------------------------------------------------------
+type ComboboxProps = {
+    value: string;
+    onChange: (v: string) => void;
+    options: string[];
+    placeholder?: string;
+};
+
+function CategoryCombobox({ value, onChange, options, placeholder = "(empty = auto-classify next time)" }: ComboboxProps) {
+    const [open, setOpen] = useState(false);
+    const [hover, setHover] = useState<number>(-1);
+    // When the input is empty, show every known category. When
+    // the input has a value, still show every category — the user
+    // can pick an existing one to replace what they typed, or
+    // ignore the dropdown and keep typing a brand-new value. The
+    // dropdown is not a search-as-you-type, it's a list of
+    // suggestions. We only hide the exact-match row when the value
+    // IS a known category, so the dropdown doesn't show a "you
+    // picked this already" duplicate.
+    const filtered = useMemo(() => {
+        const v = (value || "").trim();
+        if (!v) return options;
+        return options.filter((o) => o !== v);
+    }, [options, value]);
+    const ref = useRef<HTMLDivElement>(null);
+    // Close on outside click.
+    useEffect(() => {
+        if (!open) return;
+        const onDown = (e: MouseEvent) => {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        };
+        document.addEventListener("mousedown", onDown);
+        return () => document.removeEventListener("mousedown", onDown);
+    }, [open]);
+    return (
+        <div className="cat-combo" ref={ref}>
+            <div className="cat-combo-row">
+                <input
+                    type="text"
+                    className="cat-combo-input"
+                    value={value}
+                    placeholder={placeholder}
+                    onChange={(e) => {
+                        onChange(e.target.value);
+                        setOpen(true);
+                        setHover(-1);
+                    }}
+                    onFocus={() => options.length > 0 && setOpen(true)}
+                    onKeyDown={(e) => {
+                        if (!open && (e.key === "ArrowDown" || e.key === "Enter")) {
+                            setOpen(true);
+                            return;
+                        }
+                        if (e.key === "ArrowDown") {
+                            e.preventDefault();
+                            setOpen(true);
+                            setHover((h) => Math.min(h + 1, filtered.length - 1));
+                        } else if (e.key === "ArrowUp") {
+                            e.preventDefault();
+                            setHover((h) => Math.max(h - 1, 0));
+                        } else if (e.key === "Enter" && open && hover >= 0) {
+                            e.preventDefault();
+                            onChange(filtered[hover]);
+                            setOpen(false);
+                        } else if (e.key === "Escape") {
+                            setOpen(false);
+                        }
+                    }}
+                />
+                <button
+                    type="button"
+                    className={"cat-combo-toggle" + (open ? " is-open" : "")}
+                    aria-label="Toggle category suggestions"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => setOpen((o) => !o)}
+                >▾</button>
+            </div>
+            {open && filtered.length > 0 && (
+                <div className="cat-combo-menu" role="listbox">
+                    {filtered.map((opt, i) => (
+                        <button
+                            key={opt}
+                            type="button"
+                            role="option"
+                            aria-selected={i === hover}
+                            className={"cat-combo-item" + (i === hover ? " is-active" : "")}
+                            onMouseDown={(e) => e.preventDefault()}
+                            onMouseEnter={() => setHover(i)}
+                            onClick={() => { onChange(opt); setOpen(false); }}
+                        >{opt}</button>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }
