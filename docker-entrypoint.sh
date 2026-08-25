@@ -38,6 +38,12 @@ log() { echo "[entrypoint] $*" >&2; }
 if [ ! -s "${PGDATA}/PG_VERSION" ]; then
     log "PGDATA empty at ${PGDATA} — running initdb as postgres user"
     # initdb must run as the postgres OS user, not root.
+    # Ensure the log file directory exists (/var/log may not be
+    # present in the slim base image) and capture initdb output for
+    # debugging. We also stream a tiny marker to the foreground so
+    # the user sees something happen during first-run init.
+    mkdir -p /var/log
+    log "first-run initdb — this takes 5-10 seconds"
     gosu postgres "${PG_BIN}/initdb" \
         --pgdata="${PGDATA}" \
         --username=postgres \
@@ -140,6 +146,18 @@ mkdir -p /app/data /app/logs
 chown -R nobody:nogroup /app/data /app/logs 2>/dev/null || \
     chown -R root:root /app/data /app/logs
 chmod 0755 /app/data /app/logs
+
+# The backend-builder stage creates a venv with python linked
+# to /usr/local/bin/python (the path inside python:3.12-bookworm).
+# The runtime stage is debian:bookworm where python lives at
+# /usr/bin/python3. If the venv can't find /usr/local/bin/python,
+# uvicorn fails with "required file not found". Detect that and
+# create a compat symlink.
+if [ ! -x /usr/local/bin/python ] && [ -x /usr/bin/python3 ]; then
+    log "linking /usr/local/bin/python -> /usr/bin/python3 (venv compat)"
+    mkdir -p /usr/local/bin
+    ln -sf /usr/bin/python3 /usr/local/bin/python
+fi
 
 # Ensure venv tools are on PATH for the exec
 export PATH="/app/venv/bin:${PATH}"

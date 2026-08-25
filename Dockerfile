@@ -76,6 +76,13 @@ RUN python -m venv /app/venv \
 ARG HF_HUB_OFFLINE=0
 ENV HF_HUB_OFFLINE=${HF_HUB_OFFLINE} \
     HF_HOME=/app/models
+# Always create /app/models (with a sentinel file) so the COPY
+# in the runtime stage can find the directory even when we
+# skipped the model download. The actual model gets written here
+# by sentence-transformers on first call if the file isn't already
+# cached.
+RUN mkdir -p /app/models && touch /app/models/.keep
+
 RUN if [ "$HF_HUB_OFFLINE" != "1" ]; then \
        /app/venv/bin/pip install --no-cache-dir sentence-transformers && \
        /app/venv/bin/python -c "from sentence_transformers import SentenceTransformer; \
@@ -90,6 +97,11 @@ FROM debian:bookworm AS runtime
 ENV DEBIAN_FRONTEND=noninteractive \
     LANG=C.UTF-8 \
     LC_ALL=C.UTF-8
+
+# PGDG signing key for postgresql-16-pgvector. We bundle it in
+# the build context so the build doesn't depend on a working
+# egress to www.postgresql.org.
+COPY pgdg-key.asc /pgdg-key.asc
 
 # Runtime system deps:
 #   - postgresql-16 + postgresql-contrib-16 + postgresql-16-pgvector
@@ -106,24 +118,37 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && . /etc/os-release \
     && echo "deb https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" \
             > /etc/apt/sources.list.d/pgdg.list \
-    && curl -fsS https://www.postgresql.org/media/keys/ACCC4CF8.asc \
-            | gpg --dearmor -o /etc/apt/trusted.gpg.d/pgdg.gpg \
+    # Use the local PGDG key (copied in below) so the build doesn't
+    # need to download it at build time.
+    && gpg --dearmor < /pgdg-key.asc > /etc/apt/trusted.gpg.d/pgdg.gpg \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         postgresql-16 \
         postgresql-contrib-16 \
         postgresql-16-pgvector \
+        python3 \
+        python3-venv \
     && rm -rf /var/lib/apt/lists/*
 
 # Where everything lives in the image
+# PGDG signing key for postgresql-16-pgvector. We bundle it in
+# the build context so the build doesn't depend on a working
 ENV APP_HOME=/app \
     PGDATA=/var/lib/postgresql/data \
     PGBIN=/usr/lib/postgresql/16/bin \
     FRONTEND_DIST=/app/frontend-dist \
     HF_HOME=/app/models
 
-# Python venv (from stage 2)
+# Python venv (from stage 2). The venv's bin/python is
+# symlinked to /usr/local/bin/python (the path inside the
+# python:3.12-bookworm base image). The runtime image is
+# debian:bookworm, which installs python3 at /usr/bin/python3 —
+# so we create a compat symlink.
 COPY --from=backend-builder /app/venv ${APP_HOME}/venv
+RUN if [ -x /usr/bin/python3 ] && [ ! -e /usr/local/bin/python ]; then \
+       mkdir -p /usr/local/bin && \
+       ln -s /usr/bin/python3 /usr/local/bin/python; \
+    fi
 
 # Backend code
 COPY backend/app ${APP_HOME}/app
