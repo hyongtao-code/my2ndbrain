@@ -30,30 +30,21 @@ router = APIRouter(prefix="/api/nodes", tags=["nodes"])
 _FRONTMATTER_RE = re.compile(r"\A---\s*\n.*?\n---\s*\n", re.DOTALL)
 
 
-def _parse_md(content: str, fallback_title: str) -> tuple[str, str]:
-    """Return (title, body) from a .md file's text content."""
-    text = content.lstrip()
-    # Strip YAML frontmatter if present
-    text = _FRONTMATTER_RE.sub("", text, count=1).lstrip()
-    lines = text.splitlines()
-    # Drop leading blank lines, then look for the first heading.
-    title = ""
-    for line in lines:
-        if not line.strip():
-            continue
-        m = re.match(r"^\s*#+\s+(.+?)\s*$", line)
-        if m:
-            title = m.group(1).strip()
-            break
-        # Or any non-blank line that looks like a title
-        title = line.strip()
-        break
-    if not title:
-        title = fallback_title
-    # Body is the full original (we want the user to keep their
-    # markdown as-is, including any leading # they had; the title
-    # is the same line as the first heading, with the leading "# "
-    # removed).
+def _parse_md(content: str, filename: str) -> tuple[str, str]:
+    """Return (title, body) from a .md file's text content.
+
+    Title is the filename without its .md / .markdown extension. We
+    keep the body as the full file content (including any leading
+    ``#`` heading, frontmatter, etc.) so the round-trip back to
+    markdown loses nothing.
+
+    Note: we used to derive the title from the first ``# heading``
+    inside the file, but the user explicitly wants the FILENAME to
+    drive the title (so the .md file on disk and the node in the
+    graph share the same name).
+    """
+    title = re.sub(r"\.(md|markdown)$", "", filename, flags=re.IGNORECASE).strip()
+    title = title or filename or "(untitled)"
     return title, content
 
 
@@ -115,9 +106,7 @@ async def import_md(
                 failed += 1
                 continue
             # Filename as fallback title
-            stem = re.sub(r"\.(md|markdown)$", "", filename, flags=re.IGNORECASE)
-            stem = stem.strip() or filename
-            title, body = _parse_md(content, stem)
+            title, body = _parse_md(content, filename)
             res = ingest_node(
                 db,
                 title=title,

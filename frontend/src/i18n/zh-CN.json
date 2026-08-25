@@ -152,7 +152,8 @@
     "restore": "恢复"
   },
   "search": {
-    "placeholder": "搜索节点 (按标题 / 内容 / 关键词)"
+    "placeholder": "搜索节点 (按标题 / 内容 / 关键词)",
+    "empty": "没有匹配节点"
   },
   "import": {
     "title": "上传 .md 文件",

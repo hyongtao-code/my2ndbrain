@@ -37,6 +37,8 @@ export default function NodeDetail({ node, onJump, onClose, onMutated }: Props) 
     const [showLinkPicker, setShowLinkPicker] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [banner, setBanner] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
+    const [knownCategories, setKnownCategories] = useState<string[]>([]);
+    const categoryListId = "category-suggestions";
 
     useEffect(() => {
         setFull(null);
@@ -48,6 +50,17 @@ export default function NodeDetail({ node, onJump, onClose, onMutated }: Props) 
             .then((r) => r.json())
             .then(setFull)
             .catch(() => setFull(node));
+        // Pull the existing-category list once per node so the
+        // <datalist> can autocomplete. Cached in component state.
+        api.listNodes()
+            .then((rows) => {
+                const cats = new Set<string>();
+                for (const r of rows) {
+                    if (r.category && r.category.trim()) cats.add(r.category.trim());
+                }
+                setKnownCategories(Array.from(cats).sort((a, b) => a.localeCompare(b, "zh-Hans")));
+            })
+            .catch(() => { /* non-fatal; the user can still type freely */ });
     }, [node.id]);
 
     const n = full || node;
@@ -191,10 +204,19 @@ export default function NodeDetail({ node, onJump, onClose, onMutated }: Props) 
                         placeholder="Markdown supported: **bold**, *italic*, `code`, [link](url), lists..."
                         minHeight={260}
                     />
-                    <label>Category</label>
+                    <label>
+                        Category
+                        {knownCategories.length > 0 && (
+                            <span className="category-hint">— pick existing or type your own</span>
+                        )}
+                    </label>
                     <input value={draft.category}
+                           list={categoryListId}
                            onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value }))}
                            placeholder="(blank = auto-classify next time)" />
+                    <datalist id={categoryListId}>
+                        {knownCategories.map((c) => <option key={c} value={c} />)}
+                    </datalist>
                     <label>Importance (0–10)</label>
                     <input type="number" min={0} max={10} step={0.5}
                            value={draft.importance}

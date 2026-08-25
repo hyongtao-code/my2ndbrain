@@ -152,7 +152,8 @@
     "restore": "Restore"
   },
   "search": {
-    "placeholder": "Search nodes (title / content / keywords)"
+    "placeholder": "Search nodes (title / content / keywords)",
+    "empty": "No matching nodes"
   },
   "import": {
     "title": "Import .md files",
