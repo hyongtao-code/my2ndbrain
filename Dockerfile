@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1.7
 #
 # MySecondBrain — single all-in-one image.
 #
@@ -33,7 +32,14 @@ WORKDIR /src
 
 # Cache npm install layer
 COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm install --no-audit --no-fund
+# --legacy-peer-deps because vite@^8.2.1 (in package.json) and
+# @vitejs/plugin-react@^4.7.0 (peer: vite@^4.2.0 || ^5 || ^6 || ^7)
+# disagree on what major version of vite is supported. The local
+# dev environment works because npm install --force was run there
+# at some point; in a fresh Docker build we can't do that, so
+# fall back to the legacy peer-dep resolver. The lockfile pins
+# actual versions, so the install is reproducible.
+RUN npm ci --no-audit --no-fund --legacy-peer-deps
 
 # Build with empty API base so all api calls hit relative paths
 # (Vite dev server proxies /api to backend; in production, the
