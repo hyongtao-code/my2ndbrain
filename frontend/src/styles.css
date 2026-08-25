@@ -1225,10 +1225,11 @@ button { cursor: pointer; }
   position: fixed;
   right: 22px;
   bottom: 22px;
-  display: flex;
-  flex-direction: row-reverse;   /* buttons grow to the left of the main + */
-  align-items: center;
-  gap: 10px;
+  /* + is always at the right edge; action buttons (⬆ ⬇) are absolutely
+     positioned to the left of it. We size the container as just the +
+     button so hover only triggers when the cursor is over the cluster. */
+  width: 56px;
+  height: 56px;
   z-index: 30;
   pointer-events: auto;          /* opt back in, parent topbar is pointer-events: none */
 }
@@ -1246,15 +1247,27 @@ button { cursor: pointer; }
   pointer-events: auto;
 }
 .fab-cluster .fab-action {
+  position: absolute;
+  bottom: 0;
+  /* default stack to the LEFT of +, each one 10px further left */
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-0);
   border: 1px solid var(--line);
   font-size: 18px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-  /* Default: hidden — slide in from the right on hover. */
+  /* Default: hidden — slide out to the right (toward +) by 40px and fade out. */
   opacity: 0;
   transform: translateX(40px) scale(0.85);
   pointer-events: none;
+  transition: transform 0.18s ease, opacity 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
+.fab-cluster .fab-action:nth-of-type(1) {
+  right: 66px; /* 56 (main +) + 10 gap */
+  transition-delay: 0ms;
+}
+.fab-cluster .fab-action:nth-of-type(2) {
+  right: 132px; /* 56 + 10 + 56 + 10 */
+  transition-delay: 40ms;
 }
 .fab-cluster:hover .fab-action,
 .fab-cluster:focus-within .fab-action,
@@ -1267,13 +1280,9 @@ button { cursor: pointer; }
   background: rgba(10, 132, 255, 0.2);
   border-color: var(--accent);
 }
-.fab-cluster:hover .fab {
+.fab-cluster:hover > .fab:not(.fab-action) {
   box-shadow: 0 8px 28px rgba(10, 132, 255, 0.5);
 }
-
-/* Stagger the action buttons so they appear one-by-one */
-.fab-cluster .fab-action:nth-of-type(1) { transition-delay: 0ms; }
-.fab-cluster .fab-action:nth-of-type(2) { transition-delay: 40ms; }
 
 /* ============================================================
    Import / Export modal (shared styling)
