@@ -1513,12 +1513,88 @@ button { cursor: pointer; }
   text-align: center;
 }
 
-/* Hint next to the Category label in the edit form. */
-.category-hint {
-  font-weight: 400;
-  text-transform: none;
-  letter-spacing: 0;
-  color: var(--text-2);
-  font-size: 10px;
-  margin-left: 6px;
+
+/* ============================================================
+   CategoryCombobox (NodeDetail edit form)
+   - input + ▾ toggle button side by side
+   - dropdown menu uses the same dark-glass style as the topbar search
+   ============================================================ */
+.cat-combo {
+  position: relative;
+}
+.cat-combo-row {
+  display: flex;
+  align-items: stretch;
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.cat-combo-row:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.20);
+}
+.cat-combo-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-0);
+  font: inherit;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  padding: 10px 12px;
+  min-width: 0;
+}
+.cat-combo-input::placeholder { color: var(--text-2); }
+.cat-combo-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--line);
+  color: var(--text-1);
+  font-size: 11px;
+  width: 32px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: color 0.12s ease, background 0.12s ease, transform 0.18s ease;
+  flex-shrink: 0;
+}
+.cat-combo-toggle:hover { color: var(--text-0); background: rgba(255,255,255,0.05); }
+.cat-combo-toggle.is-open { transform: rotate(180deg); color: var(--accent); }
+.cat-combo-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  background: rgba(20, 20, 22, 0.95);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  z-index: 50;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.cat-combo-item {
+  background: transparent;
+  border: none;
+  text-align: left;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-0);
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.cat-combo-item:hover, .cat-combo-item.is-active {
+  background: rgba(10, 132, 255, 0.18);
 }
