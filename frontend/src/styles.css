@@ -1225,13 +1225,35 @@ button { cursor: pointer; }
   position: fixed;
   right: 22px;
   bottom: 22px;
-  /* + is always at the right edge; action buttons (⬆ ⬇) are absolutely
-     positioned to the left of it. We size the container as just the +
-     button so hover only triggers when the cursor is over the cluster. */
+  /* The cluster's *visible* size is just the + button (56x56), but
+     its *hover* area needs to extend to cover the action buttons
+     when they slide in. We do that with an invisible ::before that
+     grows the hit area horizontally when hovered (no padding tricks
+     — the buttons stay absolutely positioned at fixed offsets and
+     the cluster stays anchored at the right edge). */
   width: 56px;
   height: 56px;
   z-index: 30;
   pointer-events: auto;          /* opt back in, parent topbar is pointer-events: none */
+}
+/* Invisible hover-extension bridge. Default: only the + button area
+   is "hover-active". On .fab-cluster:hover it expands to cover the
+   action buttons too, so the cursor can sweep left over ⬆ / ⬇
+   without losing :hover and triggering their hidden state. */
+.fab-cluster::before {
+  content: "";
+  position: absolute;
+  /* Default: zero-size bridge — only the + button area is hoverable. */
+  right: 0;
+  bottom: 0;
+  width: 56px;
+  height: 56px;
+  pointer-events: auto;
+}
+.fab-cluster:hover::before {
+  /* Hover: expand left to cover both action buttons + their gaps. */
+  width: 148px;   /* 56 (+) + 10 gap + 56 (⬆) + 10 gap + 56 (⬇) */
+  transition: width 0.18s ease;
 }
 .fab-cluster .fab {
   width: 56px; height: 56px;
@@ -1255,6 +1277,10 @@ button { cursor: pointer; }
   border: 1px solid var(--line);
   font-size: 18px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  /* Invisible padding around the button gives the cursor a few px of
+     slack so the user can drift slightly off the visible circle
+     without losing pointer-events. */
+  padding: 6px;
   /* Default: hidden — slide out to the right (toward +) by 40px and fade out. */
   opacity: 0;
   transform: translateX(40px) scale(0.85);

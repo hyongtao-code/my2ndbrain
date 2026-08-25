@@ -10,6 +10,7 @@ import io
 import re
 import zipfile
 from typing import Any
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
@@ -177,9 +178,15 @@ def export_md(node_id: str, db: Session = Depends(get_db)) -> StreamingResponse:
         md_lines += [f"_category: {category}_", ""]
     md_lines += [body]
     md = "\n".join(md_lines)
-    safe_title = re.sub(r"[^A-Za-z0-9_.-]+", "_", title)[:80] or node_id[:8]
+    # Strip filesystem-unsafe chars but keep CJK / unicode.
+    safe_title = re.sub(r'[\x00-\x1f<>:"/\\|?*]+', "_", title).strip()[:80] or node_id[:8]
+    filename_ascii = safe_title.encode("ascii", "replace").decode("ascii").replace("?", "_") or node_id[:8]
+    filename_utf8 = quote(safe_title, safe="")
     headers = {
-        "Content-Disposition": f'attachment; filename="{safe_title}.md"',
+        "Content-Disposition": (
+            f'attachment; filename="{filename_ascii}.md"; '
+            f"filename*=UTF-8''{filename_utf8}.md"
+        ),
         "Content-Type": "text/markdown; charset=utf-8",
     }
     return StreamingResponse(
@@ -230,7 +237,8 @@ def export_md_batch(
                 md_lines += [f"_category: {category}_", ""]
             md_lines += [node.content or ""]
             md = "\n".join(md_lines)
-            safe = re.sub(r"[^A-Za-z0-9_.-]+", "_", title)[:80] or uid.hex[:8]
+            # Strip filesystem-unsafe chars but keep CJK / unicode.
+            safe = re.sub(r'[\x00-\x1f<>:"/\\|?*]+', "_", title).strip()[:80] or uid.hex[:8]
             # Ensure unique filename inside the zip
             arcname = f"{safe}.md"
             if arcname in seen_names:
