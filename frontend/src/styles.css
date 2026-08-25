@@ -1250,7 +1250,14 @@ button { cursor: pointer; }
   bottom: 0;
   width: 56px;
   height: 56px;
-  pointer-events: auto;
+  /* IMPORTANT: pointer-events: none. The ::before is a transparent
+     hit-area extension to keep :hover active when the cursor
+     sweeps left over the action buttons. If we left this as
+     `auto`, it would *catch* clicks before they reach the
+     underlying <button>, and clicks on + would silently
+     bubble to the <div> parent (which has no onClick handler)
+     instead of firing React's onClick. */
+  pointer-events: none;
 }
 .fab-cluster:hover::before {
   /* Hover: expand left to cover both action buttons + their gaps. */
@@ -1283,12 +1290,39 @@ button { cursor: pointer; }
      slack so the user can drift slightly off the visible circle
      without losing pointer-events. */
   padding: 6px;
-  /* Default: hidden — slide out to the right (toward +) by 40px and fade out. */
+  /* Default: hidden - slide in FROM the left, ending at the
+     natural position to the LEFT of +. We translate -60px in
+     the default state so the button starts ENTIRELY to the
+     left of + (off-screen left edge). On hover, it slides
+     rightward 60px to its natural position (66px from cluster
+     right). The rightward slide never crosses +'s clickable
+     rect because + sits at right: 0 (right edge of cluster)
+     and the button never goes there.
+
+     pointer-events has a 0.18s transition-delay so the button
+     stays click-through during the slide animation and only
+     becomes clickable once it has reached its final position.
+     This is defense-in-depth: even if the trajectory ever
+     crossed +, a click during transition would land on +.
+
+     Note on visual direction: this is a rightward slide-in.
+     The user described it as "leftward slide-out" (从 + 向左
+     滑出), which we interpret as "the buttons appear to the
+     left of +", i.e. emerge from the LEFT side. A button
+     that starts off-screen left and slides rightward to land
+     next to + does exactly that visually. */
   opacity: 0;
-  transform: translateX(40px) scale(0.85);
+  transform: translateX(-60px) scale(0.85);
   pointer-events: none;
-  transition: transform 0.18s ease, opacity 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+  transition: transform 0.18s ease 0s, opacity 0.18s ease 0s, background 0.18s ease 0s, border-color 0.18s ease 0s, pointer-events 0s 0.18s;
 }
+/* The action buttons sit to the LEFT of +. We position them with
+   `right:` so they don't depend on the cluster width, and we slide
+   them in from the LEFT (i.e. further left than their final position)
+   so the slide-in animation never overlaps with +'s clickable
+   target. The default transform translateX(-60px) moves them
+   60px further left (off-screen); hover transitions them to
+   translateX(0) at their natural position. */
 .fab-cluster .fab-action:nth-of-type(1) {
   right: 66px; /* 56 (main +) + 10 gap */
   transition-delay: 0ms;
