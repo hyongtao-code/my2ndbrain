@@ -24,6 +24,16 @@ function AppInner() {
     const [autoSpin, setAutoSpin] = useState(true);
     const [filterCategory, setFilterCategory] = useState<string>("");
     const [drafts, setDrafts] = useState<import("./types").DraftOut[]>([]);
+    // AI Assistant panel can be a small floating tab in the bottom-left
+    // OR expanded to occupy the left 50vw of the screen. We lift this
+    // state up here so the FAB cluster can react (e.g. when the
+    // assistant panel is expanded over the canvas, the FAB still
+    // works because the panel sits on top of the sphere with its
+    // own z-index).
+    const [assistantExpanded, setAssistantExpanded] = useState(false);
+    const toggleAssistantExpand = useCallback(() => {
+        setAssistantExpanded((v) => !v);
+    }, []);
     const refreshDrafts = useCallback(async () => {
         try {
             const list = await api.listDrafts(false);
@@ -291,7 +301,7 @@ function AppInner() {
                 />
             )}
 
-            <AssistantPanel onJump={(id) => selectNode(id)} drafts={drafts} refreshDrafts={refreshDrafts} />
+            <AssistantPanel onJump={(id) => selectNode(id)} drafts={drafts} refreshDrafts={refreshDrafts} expanded={assistantExpanded} onToggleExpand={toggleAssistantExpand} />
 
             <div
                 className={

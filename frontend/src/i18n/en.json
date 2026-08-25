@@ -117,7 +117,10 @@
     "applyEdge": "Apply",
     "providerLabel": "provider",
     "relatedNodes": "related notes",
-    "relatedSources": "Cited sources"
+    "relatedSources": "Cited sources",
+    "expand": "Expand (left half)",
+    "collapse": "Collapse (back to corner)",
+    "askWelcome": "👋 Hi! Ask me anything about your notes.\n(e.g. \"What is harness?\" or \"How does harness connect to 张雪峰?\")"
   },
   "lang": {
     "switch": "Switch language",

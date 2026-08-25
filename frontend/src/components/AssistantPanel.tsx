@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "../lib/api";
 import type { AssistantResponse, DraftOut } from "../types";
@@ -10,6 +10,8 @@ type Props = {
     onJump: (id: string) => void;
     drafts: import("../types").DraftOut[];
     refreshDrafts: () => void;
+    expanded: boolean;
+    onToggleExpand: () => void;
 };
 
 type ProviderInfo = {
@@ -48,15 +50,23 @@ type Suggestion = {
     provider?: string;
 };
 
-export default function AssistantPanel({ onJump, drafts, refreshDrafts }: Props) {
+export default function AssistantPanel({ onJump, drafts, refreshDrafts, expanded, onToggleExpand }: Props) {
     const t = useTranslations();
     const { locale } = useI18n();
     const [mode, setMode] = useState<Mode>("draft");
 
     return (
-        <div className="panel panel-assistant">
-            <div className="panel-title">
+        <div className={"panel panel-assistant" + (expanded ? " is-expanded" : "")}>
+            <div className="panel-title assistant-title">
                 <span>🧠 {t("assistant.title")}</span>
+                <button
+                    className="assistant-expand-btn"
+                    onClick={onToggleExpand}
+                    title={expanded ? t("assistant.collapse") : t("assistant.expand")}
+                    aria-label={expanded ? t("assistant.collapse") : t("assistant.expand")}
+                >
+                    {expanded ? "⤡" : "⤢"}
+                </button>
             </div>
 
             <div className="assistant-tabs">
@@ -86,7 +96,7 @@ export default function AssistantPanel({ onJump, drafts, refreshDrafts }: Props)
                 </button>
             </div>
 
-            {mode === "ask" && <AskTab onJump={onJump} locale={locale} />}
+            {mode === "ask" && <AskTab onJump={onJump} locale={locale} expanded={expanded} />}
             {mode === "suggest" && <SuggestTab onJump={onJump} drafts={drafts} refreshDrafts={refreshDrafts} />}
             {mode === "settings" && <SettingsTab />}
             {mode === "draft" && <DraftTab onJump={onJump} />}
@@ -97,77 +107,194 @@ export default function AssistantPanel({ onJump, drafts, refreshDrafts }: Props)
 // ============================================================
 // Ask tab — plain local recall (no LLM call)
 // ============================================================
-function AskTab({ onJump, locale }: { onJump: (id: string) => void; locale: string }) {
+// Chat message type — kept local to AskTab so the conversation
+// state is preserved across tab switches inside the same panel.
+type ChatMessage = {
+    id: string;            // uuid-like timestamp
+    role: "user" | "assistant" | "system";
+    text: string;          // for assistant: the LLM's answer; for user: the question
+    provider?: string;     // for assistant: which LLM answered
+    related_nodes?: Array<{ id: string; title: string; category: string; summary: string; similarity: number }>;
+    used_nodes?: string[]; // ids of notes the LLM cited
+    loading?: boolean;     // true for the "assistant typing..." placeholder
+    error?: boolean;       // true if the call failed
+};
+
+function AskTab({ onJump, locale, expanded }: {
+    onJump: (id: string) => void;
+    locale: string;
+    expanded: boolean;
+}) {
     const t = useTranslations();
     const [q, setQ] = useState("");
     const [loading, setLoading] = useState(false);
-    const [res, setRes] = useState<{
-        provider: string;
-        answer: string;
-        related_nodes: Array<{ id: string; title: string; category: string; summary: string; similarity: number }>;
-        used_nodes: string[];
-    } | null>(null);
+    // Chat history: an array of messages. Persists in component state
+    // so switching between ask / suggest / settings tabs does NOT
+    // clear the conversation. Persists across re-renders via
+    // useState; survives panel collapse/expand because the
+    // component itself doesn't unmount.
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [skills, setSkills] = useState<any[]>([]);
+    // Auto-scroll to bottom when new messages arrive or the
+    // panel toggles expanded/collapsed (the scrollHeight can
+    // change when the height does).
+    const scrollRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const el = scrollRef.current;
+        if (!el) return;
+        el.scrollTop = el.scrollHeight;
+    }, [messages, expanded]);
 
     const ask = async () => {
-        if (!q.trim()) return;
+        if (!q.trim() || loading) return;
+        const userText = q.trim();
+        setQ("");
         setLoading(true);
-        setRes(null);
+        // Push the user message + a placeholder assistant message.
+        const userId = `u-${Date.now()}`;
+        const asstId = `a-${Date.now()}`;
+        setMessages((m) => [
+            ...m,
+            { id: userId, role: "user", text: userText },
+            { id: asstId, role: "assistant", text: "", loading: true },
+        ]);
         try {
-            // Use the LLM-backed retrieval-augmented Q&A. This endpoint
-            // embeds the question, pulls the top-k nearest nodes, and asks
-            // the active LLM to write a natural-language answer grounded in
-            // those nodes. Falls back to a structured listing if the LLM is
-            // not configured.
-            const r = await api.askLLM(q.trim(), 8);
-            setRes(r);
+            const r = await api.askLLM(userText, 8);
+            setMessages((m) =>
+                m.map((x) =>
+                    x.id === asstId
+                        ? {
+                              id: asstId,
+                              role: "assistant",
+                              text: r.answer,
+                              provider: r.provider,
+                              related_nodes: r.related_nodes,
+                              used_nodes: r.used_nodes,
+                          }
+                        : x
+                )
+            );
+        } catch (e: any) {
+            setMessages((m) =>
+                m.map((x) =>
+                    x.id === asstId
+                        ? { id: asstId, role: "assistant", text: `❌ ${e?.message || String(e)}`, error: true }
+                        : x
+                )
+            );
         } finally {
             setLoading(false);
         }
     };
 
-return (
-        <div className="assistant-tab-body">
-            <textarea
-                className="textarea"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                placeholder={t("assistant.askPlaceholder")}
-                rows={2}
-            />
-            <div className="assistant-actions">
-                <button className="btn-primary" onClick={ask} disabled={loading || !q.trim()}>
-                    {loading ? t("assistant.working") : t("assistant.ask")}
-                </button>
-            </div>
-            {res && (
-                <div className="answer">
-                    <div className="answer-meta">
-                        {t("assistant.providerLabel")}: {res.provider}
-                        {" · "}
-                        {res.related_nodes.length} {t("assistant.relatedNodes")}
+    const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        // Ctrl+Enter / Cmd+Enter — send.
+        if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+            e.preventDefault();
+            ask();
+        }
+    };
+
+    const clearHistory = () => {
+        if (loading) return;
+        setMessages([]);
+    };
+
+    const renderMessage = (m: ChatMessage, i: number) => {
+        if (m.role === "user") {
+            return (
+                <div key={m.id} className="chat-msg chat-msg-user">
+                    <div className="chat-msg-bubble">{m.text}</div>
+                </div>
+            );
+        }
+        // assistant
+        if (m.loading) {
+            return (
+                <div key={m.id} className="chat-msg chat-msg-assistant">
+                    <div className="chat-msg-bubble">
+                        <span className="chat-typing">●●●</span> {t("assistant.working")}
                     </div>
-                    <div className="answer-text" style={{ whiteSpace: "pre-wrap" }}>
-                        {res.answer}
-                    </div>
-                    {res.related_nodes.length > 0 && (
-                        <div className="related-list">
-                            <div className="related-list-title">{t("assistant.relatedSources")}</div>
-                            {res.related_nodes.map((n) => (
-                                <button
-                                    key={n.id}
-                                    className="related-list-item"
-                                    onClick={() => onJump(n.id)}
-                                >
-                                    <span className="related-title">{n.title}</span>
-                                    {n.category && <span className="related-cat">{n.category}</span>}
-                                    <span className="related-sim">{Math.round(n.similarity * 100)}%</span>
-                                </button>
-                            ))}
+                </div>
+            );
+        }
+        if (m.error) {
+            return (
+                <div key={m.id} className="chat-msg chat-msg-assistant">
+                    <div className="chat-msg-bubble chat-msg-error">{m.text}</div>
+                </div>
+            );
+        }
+        const related = m.related_nodes || [];
+        return (
+            <div key={m.id} className="chat-msg chat-msg-assistant">
+                <div className="chat-msg-bubble chat-msg-bubble-text">
+                    <div style={{ whiteSpace: "pre-wrap" }}>{m.text}</div>
+                    {m.provider && (
+                        <div className="chat-msg-meta">
+                            {t("assistant.providerLabel")}: {m.provider}
+                            {related.length > 0 && ` · ${related.length} ${t("assistant.relatedNodes")}`}
                         </div>
                     )}
                 </div>
-            )}
+                {related.length > 0 && (
+                    <div className="chat-related">
+                        <div className="related-list-title">{t("assistant.relatedSources")}</div>
+                        {related.map((n) => (
+                            <button
+                                key={n.id}
+                                className="related-list-item"
+                                onClick={() => onJump(n.id)}
+                            >
+                                <span className="related-title">{n.title}</span>
+                                {n.category && <span className="related-cat">{n.category}</span>}
+                                <span className="related-sim">{Math.round(n.similarity * 100)}%</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    return (
+        <div className={"assistant-tab-body" + (expanded ? " is-expanded" : "")}>
+            <div className="chat-scroll" ref={scrollRef}>
+                {messages.length === 0 && (
+                    <div className="chat-empty">
+                        <p>{t("assistant.askWelcome")}</p>
+                    </div>
+                )}
+                {messages.map((m, i) => renderMessage(m, i))}
+            </div>
+            <div className="chat-input-row">
+                <textarea
+                    className="textarea chat-input"
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    onKeyDown={onKeyDown}
+                    placeholder={t("assistant.askPlaceholder") + " (Ctrl/Cmd+Enter)"}
+                    rows={2}
+                    disabled={loading}
+                />
+                <div className="chat-actions">
+                    <button
+                        className="btn-primary"
+                        onClick={ask}
+                        disabled={loading || !q.trim()}
+                    >
+                        {loading ? t("assistant.working") : t("assistant.ask")}
+                    </button>
+                    <button
+                        className="btn-secondary chat-clear"
+                        onClick={clearHistory}
+                        disabled={loading || messages.length === 0}
+                        title="清空对话"
+                    >
+                        🗑
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }

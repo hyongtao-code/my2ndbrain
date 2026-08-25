@@ -1632,3 +1632,201 @@ button { cursor: pointer; }
 .cat-combo-item:hover, .cat-combo-item.is-active {
   background: rgba(10, 132, 255, 0.18);
 }
+
+
+/* ============================================================
+   AI Assistant — chat history + expanded (left-half) mode
+   ============================================================ */
+.panel-assistant.is-expanded {
+  /* Expanded: take the left 50vw, full height (below topbar). */
+  left: 0;
+  bottom: 0;
+  top: 60px;
+  width: 50vw;
+  max-width: 50vw;
+  max-height: calc(100vh - 60px);
+  border-radius: 0;
+  border-right: 1px solid var(--line);
+  border-top: 0;
+  border-bottom: 0;
+  border-left: 0;
+  padding: 20px 28px;
+}
+
+/* When the AI panel is expanded, dim the canvas / sphere slightly
+   so the chat feels like a focused workspace. Pure visual polish;
+   no functional change. */
+.app:has(.panel-assistant.is-expanded) .stage {
+  filter: brightness(0.9);
+  transition: filter 0.3s ease;
+}
+.stage {
+  transition: filter 0.3s ease;
+}
+
+/* Title row in the assistant panel — flex the title left and the
+   expand toggle to the right. */
+.assistant-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -2px 0 14px 0;
+}
+.assistant-expand-btn {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--text-1);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  line-height: 1;
+  font-family: inherit;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.assistant-expand-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-0);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+/* Chat scroll area + input row. The body is a vertical flex
+   container; the .chat-scroll grows to fill, the .chat-input-row
+   sits at the bottom. */
+.assistant-tab-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  /* Override default padding inherited from .panel-body. */
+  margin: 0 -4px;
+  padding: 0 4px;
+}
+.assistant-tab-body.is-expanded {
+  /* When expanded, the panel is much taller — give the chat more
+     visual breathing room. */
+  margin: 0;
+  padding: 0;
+}
+.chat-scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 8px 4px 8px 4px;
+  /* Subtle bottom fade so long conversations hint at more. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 16px), transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 0, #000 calc(100% - 16px), transparent 100%);
+}
+.chat-empty {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-2);
+  font-size: 13px;
+  text-align: center;
+  padding: 24px 12px;
+}
+.chat-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 100%;
+}
+.chat-msg-user {
+  align-items: flex-end;
+}
+.chat-msg-assistant {
+  align-items: flex-start;
+}
+.chat-msg-bubble {
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 14px;
+  font-size: 13px;
+  line-height: 1.55;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+.chat-msg-user .chat-msg-bubble {
+  background: var(--accent);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.chat-msg-assistant .chat-msg-bubble {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-0);
+  border-bottom-left-radius: 4px;
+  border: 1px solid var(--line);
+}
+.chat-msg-bubble-text {
+  /* Slightly wider so the LLM answer can breathe. */
+  max-width: 100%;
+}
+.chat-msg-meta {
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--text-2);
+  letter-spacing: 0.02em;
+}
+.chat-msg-error {
+  border-color: rgba(220, 80, 80, 0.4);
+  background: rgba(220, 80, 80, 0.08);
+  color: #ff9c9c;
+}
+.chat-typing {
+  display: inline-block;
+  font-size: 14px;
+  letter-spacing: 0.15em;
+  color: var(--accent);
+  animation: chat-typing-blink 1.1s ease-in-out infinite;
+}
+@keyframes chat-typing-blink {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+.chat-related {
+  margin-top: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 85%;
+}
+.chat-input-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 4px;
+  border-top: 1px solid var(--line);
+  /* Keep input pinned at the bottom even when chat-scroll is full. */
+  flex-shrink: 0;
+}
+.chat-input {
+  width: 100%;
+  resize: vertical;
+  min-height: 56px;
+  max-height: 220px;
+}
+.chat-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: flex-end;
+}
+.chat-clear {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
