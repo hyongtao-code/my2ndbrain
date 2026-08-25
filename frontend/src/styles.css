@@ -1235,6 +1235,8 @@ button { cursor: pointer; }
   height: 56px;
   z-index: 30;
   pointer-events: auto;          /* opt back in, parent topbar is pointer-events: none */
+  /* Smooth fade-out when .is-hidden is toggled by App.tsx. */
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 /* Invisible hover-extension bridge. Default: only the + button area
    is "hover-active". On .fab-cluster:hover it expands to cover the
@@ -1308,6 +1310,21 @@ button { cursor: pointer; }
 }
 .fab-cluster:hover > .fab:not(.fab-action) {
   box-shadow: 0 8px 28px rgba(10, 132, 255, 0.5);
+}
+
+/* When any right-side panel is open (NodeDetail or AddNodeModal) or
+   an Import/Export modal is up, fade the FAB out so it doesn't sit
+   on top of the modal's "Submit" / "Import" / "Download" buttons.
+   pointer-events: none ensures clicks pass through. We scale to 0.85
+   so it visibly recedes, not just disappears. */
+.fab-cluster.is-hidden {
+  opacity: 0;
+  transform: scale(0.85);
+  pointer-events: none;
+}
+.fab-cluster {
+  /* Smooth fade-out when .is-hidden is added/removed. */
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
 /* ============================================================

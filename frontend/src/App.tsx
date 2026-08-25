@@ -187,7 +187,12 @@ function AppInner() {
 
             <AssistantPanel onJump={(id) => selectNode(id)} />
 
-            <div className="fab-cluster">
+            <div
+                className={
+                    "fab-cluster"
+                    + (selected || showAdd || showImport || showExport ? " is-hidden" : "")
+                }
+            >
                 <button
                     className="fab fab-action"
                     title={t("fab.import")}
