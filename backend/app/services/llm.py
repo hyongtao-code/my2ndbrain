@@ -18,6 +18,25 @@ from typing import Any, Optional
 from app.core.config import get_settings
 
 
+# --------- defensive proxy env sanitisation ---------
+# Some shell environments (and some launch wrappers like nohup
+# when invoked from a particular shell) rewrite ALL_PROXY from
+# "socks5://..." to "socks://...". httpx 0.28 only accepts the
+# schemes http, https, socks5, socks5h for proxy URLs, so a
+# "socks://" entry raises "ValueError: Unknown scheme for proxy
+# URL" the moment any httpx call fires. The backend does not
+# need SOCKS proxying — it talks to LLM providers over HTTPS
+# (via HTTPS_PROXY) and downloads the sentence-transformers
+# model once at startup (cached after). We therefore drop the
+# SOCKS entries from the inherited env at import time so the
+# backend always works. Users who need SOCKS should set
+# HTTPS_PROXY=http://... to a local SOCKS-to-HTTP gateway.
+import os as _os_sanitise
+for _proxy_var in ("all_proxy", "ALL_PROXY"):
+    _proxy_val = _os_sanitise.environ.get(_proxy_var, "")
+    if _proxy_val.startswith("socks://"):
+        _os_sanitise.environ.pop(_proxy_var, None)
+del _os_sanitise, _proxy_var, _proxy_val
 # --------- provider registry ---------
 # Each provider has:
 #   - kind:        "openai-compat" or "gemini"
