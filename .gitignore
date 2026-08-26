@@ -72,5 +72,11 @@ data/
 # accidental empty config file
 .gitconfig
 
+# Sandbox-only helper scripts (e.g. query.sh / pre-push hooks) — these
+# were intentionally not committed when we cleaned up the repo. We
+# keep the rule in case someone re-adds a sandbox helper that should
+# not be pushed.
+scripts/  # see history before 2026-08-26 for the (removed) git-hooks
+
 # Local backup dumps (created by ./backup.sh)
 backups/

@@ -204,32 +204,13 @@ docker volume rm my2ndbrain-data   # 删**除** data volume
 ./dev.sh help       # **详**细**说**明**
 ```
 
-### 3.1 方式 A — Docker (推荐,5 分钟起)
+### 3.1 Docker 深入:启动顺序 (entrypoint 内部)
 
-**前置**: Docker 20+ 已装
+> 新手用户不用看这一节。 一键启动 `./start.sh` 会自动做完所有事。 这一节只记录 `docker-entrypoint.sh` 在容器里的 8 步执行序列,方便排查问题时对账。
 
-**步骤 1 — 启动**
+容器第一次启动时, `docker-entrypoint.sh` 顺序执行:
 
-```bash
-# 单 container 已包含 PostgreSQL 16 + pgvector + 后端 + 前端
-# 第一次跑会下载镜像 (~1GB,需要 5-10 分钟)
-docker build -t my2ndbrain:latest .
-
-# 后台启动
-#  -p 8000:8000    → 容器 8000 暴露到 host 8000
-#  -v my2ndbrain-data:... → 数据持久化(重建镜像不丢数据)
-#  -e DB_PASSWORD=...  → 数据库密码
-docker run -d -p 8000:8000 \
-    --name my2ndbrain \
-    -v my2ndbrain-data:/var/lib/postgresql/data \
-    -e DB_PASSWORD=*** my2ndbrain:latest
 ```
-
-**步骤 2 — 启动后内置的 PostgreSQL 数据库首次自检**(entrypoint 自动跑)
-
-容器第一次启动时,`docker-entrypoint.sh` 顺序执行:
-
-```bash
 1. 检查 /var/lib/postgresql/data 是否为空
    → 空 → 跑 initdb (创建 PostgreSQL cluster)
    → 已有 PG_VERSION → 跳过 (直接用历史数据)
@@ -253,55 +234,15 @@ docker run -d -p 8000:8000 \
 8. exec uvicorn 启动后端 on 0.0.0.0:8000
 ```
 
-整个流程 5-10 秒,看到 `Uvicorn running on http://0.0.0.0:8000` 就 OK 了。
+整个流程 5-10 秒, 看到 `Uvicorn running on http://0.0.0.0:8000` 就 OK 了。
 
-**步骤 3 — 浏览器访问**
+`./start.sh` 的 summary 会打印 healthcheck URL, 你也可以直接 `curl http://localhost:8000/api/health` 验证。
 
-打开 `http://localhost:8000/` (同机) 或 `http://<host-ip>:8000/` (局域网/物理机)。
+详细配置 / 故障排查 / 网络访问 / registry 推送 / registry 镜像优化 看 [DOCKER.md](DOCKER.md)。
 
-**步骤 4 — 验证**
+### 3.2 本地模式深入:跨平台 PostgreSQL 启动
 
-```bash
-# 看 logs
-docker logs -f my2ndbrain
-
-# 健康检查
-curl http://localhost:8000/api/health
-# → {"status":"ok","embedding_backend":"_SentenceTransformerEmbedder (dim=384)"}
-```
-
-**步骤 5 — 停止 / 重启 / 删除**
-
-```bash
-docker stop my2ndbrain            # 停止 (数据保留)
-docker start my2ndbrain           # 再次启动
-docker rm my2ndbrain              # 删除容器 (数据保留!)
-docker rmi my2ndbrain:latest      # 删除镜像 (数据保留!)
-docker volume rm my2ndbrain-data  # 真的删数据 (慎用!)
-```
-
-**数据备份与迁移** — 数据存在 `my2ndbrain-data` named volume 里(`/var/lib/docker/volumes/my2ndbrain-data/_data`)。备份用 `pg_dump`:
-
-```bash
-# 导出
-docker exec my2ndbrain-prod su - postgres -c "pg_dump my2ndbrain" > backup_$(date +%Y%m%d).sql
-
-# 恢复(到新容器)
-docker exec -i my2ndbrain-prod su - postgres -c "psql my2ndbrain" < backup_20260826.sql
-```
-
-**详细配置 / 故障排查 / 网络访问 / registry 推送看 [DOCKER.md](DOCKER.md)**。
-
----
-
-### 3.2 方式 B — 直接本地运行 (开发模式,代码 hot reload)
-
-**前置**:
-- Python 3.11+
-- Node 20+
-- PostgreSQL 16 + pgvector extension
-
-#### 步骤 1 — 启动 PostgreSQL + pgvector
+> 新手用户不用看这一节。 `./dev.sh` 会自动检测 host 上是否已经有 postgres 在 5432 跑。 这一节只是详细的手动 PostgreSQL 装置文档, 给你不想用 docker 但也不想让 `./dev.sh` 管 postgres 的情况用。
 
 **macOS (Homebrew)**:
 ```bash
@@ -333,63 +274,9 @@ sudo -u postgres psql -d my2ndbrain -c "\dx"
 # → 应看到 'vector' 扩展
 ```
 
-**其他系统**(CentOS / Arch / Windows) — 装 `postgresql-16` + `postgresql-16-pgvector` 包即可,后面的 SQL 完全一样。
+**其他系统** (CentOS / Arch / Windows) — 装 `postgresql-16` + `postgresql-16-pgvector` 包即可, 后面的 SQL 完全一样。
 
-#### 步骤 2 — 配置环境变量
-
-```bash
-cd my2ndbrain-repo
-cp .env.example .env
-# 编辑 .env,设 DB_PASSWORD=my2ndbrain(或上面你设的密码)
-```
-
-#### 步骤 3 — 启动后端 (开发模式)
-
-```bash
-# 装 Python deps
-cd backend
-python3.11 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-
-# 起 uvicorn (热重载)
-PYTHONPATH=. uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
-```
-
-看到 `Uvicorn running on http://127.0.0.1:8000` 就 OK。日志在 `.run/backend.log` (如果用 start.sh)。
-
-#### 步骤 4 — 启动前端 (开发模式)
-
-```bash
-cd frontend
-npm install
-npm run dev
-# → Vite dev server: http://127.0.0.1:5173/
-#    Vite 自动把 /api/* 代理到后端的 :8000
-```
-
-#### 步骤 5 — 一键起后端+前端 (推荐,生产前端)
-
-```bash
-# 用仓库根目录的 start.sh (把后端 + 前端 dev 一起管)
-cd my2ndbrain-repo
-./start.sh start    # 拉起后端 :8000 + 前端 :5173
-./start.sh status   # 看进程 + http 健康
-./start.sh logs     # tail 日志
-./start.sh stop     # 停
-```
-
-`start.sh` 是**幂等**的:重复跑 `start` 不会重复拉起进程。
-
-**生产模式**(让 FastAPI 服静态前端):
-```bash
-cd frontend && npm run build       # 输出到 frontend/dist/
-cd ..
-PYTHONPATH=. uvicorn app.main:app --host 0.0.0.0 --port 8000
-# → http://<host>:8000/   (FastAPI 自己 serve React build)
-```
-
----
+自动化版本的 ./dev.sh start 已经帮你跑完了上面所有事情 (创建 role + db + pgvector extension), 所以手动只在你要单独管 PostgreSQL 时用。
 
 ## 4. 视频教程(待上传)
 
