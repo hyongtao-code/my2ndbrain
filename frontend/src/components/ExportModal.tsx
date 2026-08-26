@@ -78,7 +78,7 @@ export default function ExportModal({ onClose }: Props) {
         setDownloading(true);
         setError(null);
         try {
-            const r = await fetch("http://127.0.0.1:8000/api/nodes/export-md-batch", {
+            const r = await fetch("/api/nodes/export-md-batch", {
                 method: "POST",
                 headers: { "content-type": "application/json" },
                 body: JSON.stringify({ node_ids: Array.from(selected) }),

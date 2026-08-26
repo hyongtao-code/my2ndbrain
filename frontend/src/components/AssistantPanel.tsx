@@ -627,7 +627,7 @@ function SettingsTab() {
 
     const refresh = async () => {
         try {
-            const r = await fetch("http://127.0.0.1:8000/api/llm/status");
+            const r = await fetch("/api/llm/status");
             const d: LLMStatus = await r.json();
             setStatus(d);
             setProvider(d.provider);
@@ -650,7 +650,7 @@ function SettingsTab() {
 
     const save = async () => {
         try {
-            await fetch("http://127.0.0.1:8000/api/llm/config", {
+            await fetch("/api/llm/config", {
                 method: "POST",
                 headers: { "content-type": "application/json" },
                 body: JSON.stringify({ provider, api_key: apiKey, model }),
@@ -668,7 +668,7 @@ function SettingsTab() {
 
     const clear = async () => {
         try {
-            await fetch("http://127.0.0.1:8000/api/llm/clear", { method: "POST" });
+            await fetch("/api/llm/clear", { method: "POST" });
             await refresh();
             setSaved(t("assistant.cleared"));
             setTestResult(null);
@@ -690,7 +690,7 @@ function SettingsTab() {
             model,
         };
         try {
-            const r = await fetch("http://127.0.0.1:8000/api/llm/test", {
+            const r = await fetch("/api/llm/test", {
                 method: "POST",
                 headers: { "content-type": "application/json" },
                 body: JSON.stringify(body),

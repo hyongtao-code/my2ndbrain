@@ -1,233 +1,306 @@
 # MySecondBrain · 我的第二大脑
 
-AI 驱动的个人知识图谱 + 长期记忆系统。
-
-把所有输入的知识、经验、学习记录自动整理成一个可探索、可生长、可理解的 3D 个人知识宇宙。
+> AI 驱动的个人知识图谱 + 长期记忆系统 —— 把零散的笔记、学习、经验、灵感,自动长成一个可探索、可生长、可理解的三维个人知识宇宙。
 
 ![screenshot](docs/screenshot.png)
 
-## ✨ 核心特性
+---
 
-- 🧠 **3D 知识球**：所有节点以气泡形式分布在球面上，自动旋转、鼠标拖动、点击聚焦
-- 🔗 **自动关联**：新建节点时，AI 自动计算与已有节点的向量相似度 + 关键词重合度，连成知识网络
-- 🏷️ **智能分类**：AI 抽取关键词、推断分类，自动聚类成领域（如「大模型」「编程开发」「投资财经」…）
-- ✏️ **标题校验**：检测标题与正文是否匹配，给出建议（如「标题 'DPO' 但内容在讲 PPO」）
-- 🤖 **AI 助手**：自然语言问答，从你大脑里 RAG 出答案，并标注知识盲区
-- ✨ **自动蒸馏 Skill**：从你最熟悉的领域自动提炼成结构化 Skill，可作为 Agent 记忆 / RAG 知识库
+## 1. 软件简介
 
-## 🌿 Git 工作流 (`dev` 分支)
+**MySecondBrain** 是一个 100% 本地运行、开箱即用的「**第二大脑**」应用 —— 你的所有零散知识(笔记、问题、灵感、读书摘录、聊天对话)在三维球面上以节点的形式**自动**组织起来,系统会:
 
-- **不要直接 push 到 `main`** — main 是稳定 release，development 在 `dev` 分支上做。
-- 第一次 clone 这台机器后：
-  ```bash
-  git checkout -b dev origin/dev   # 创建并跟踪远端 dev
-  ```
-- 日常 push / pull 都用 `dev`：
-  ```bash
-  git push origin dev
-  git pull origin dev
-  ```
-- 本机有一个 `pre-push` hook 拦截到 `main`/`master` 的 push（`GIT_ALLOW_MAIN_PUSH=1` 可临时放行）。它在 `.git/hooks/pre-push`，新 clone 的机器还得手动装：
-  ```bash
-  ln -s ../../scripts/git-hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
-  ```
-## 🧱 架构
+- 存你输入的任何东西
+- 自动识别关键词、推断分类
+- 自动建关联(谁和谁相关)
+- 自动归类聚类(像 "AI" / "日本战国" / "Python" 这种)
+- 用 RAG 检索问答(`"我之前讲过 LLM 微调的事,具体怎么操作?"`)
+- 把粗糙的草稿**清洗**成结构化的知识节点
+
+> 和 Notion / Obsidian / Logseq 相比,MySecondBrain 强调:
+>
+> - **AI 主动参与**(自动关联、自动归类、自动回答问题)
+> - **三维可视化**(球面 + 自动旋转 + 拖拽 + 关联线)
+> - **不联网也能用**(本地 LLM + 本地 embedding)
+
+---
+
+## 2. 功能架构
+
+### 2.1 顶层架构(单进程,3 层)
 
 ```
-┌────────────────────────────────────────────────────────────────┐
-│  Frontend (React 19 + TypeScript + Three.js / @react-three/fiber) │
-│  - 3D 球体 + 节点 + 连线 + 拖拽 + tooltip                         │
-│  - 详情面板 / 新增 Modal / AI 助手面板                            │
-└──────────────────────────┬─────────────────────────────────────┘
-                           │ REST
-┌──────────────────────────▼─────────────────────────────────────┐
-│  Backend  (FastAPI + SQLAlchemy 2 + Pydantic v2)                │
-│  - /api/nodes        节点 CRUD + AI 摄入流水线                  │
-│  - /api/graph        3D 球面布局 (Fibonacci 球 + 类心压缩)        │
-│  - /api/assistant    RAG 问答 / 整理 / Skill 生成                │
-│  - /api/clusters     领域聚合                                    │
-│  - /api/skills       蒸馏技能管理                                │
-└────────┬───────────────────────────────────┬────────────────────┘
-         │                                   │
-   ┌─────▼────────────┐             ┌────────▼─────────────┐
-   │  PostgreSQL 16   │             │  Embedding / LLM    │
-   │  + pgvector 0.6  │             │  - sentence-xform   │
-   │  knowledge_node  │             │    (all-MiniLM-L6)   │
-   │  knowledge_edge  │             │  - TF-IDF + SVD    │
-   │  category_cluster│             │    (offline fallback)│
-   │  ai_skill        │             │  - heuristic LLM    │
-   └──────────────────┘             │  - OpenAI / Ollama  │
-                                    │    (optional)       │
-                                    └─────────────────────┘
+┌──────────────────────────────────────────────────┐
+│  浏览器 (任何设备)                                │
+│  React SPA → 3D 球面 + 节点 + 关联线              │
+│  HTTPS/HTTP over port 8000                        │
+└────────────────────┬─────────────────────────────┘
+                     │
+                     ▼
+┌──────────────────────────────────────────────────┐
+│  FastAPI (Python 3.11)                           │
+│  - /api/nodes, /api/drafts, /api/graph          │
+│  - /api/llm/* (设置 / 草稿整理 / RAG 问答)     │
+│  - 静态 serve 前端 dist/                          │
+│  uvicorn 0.27  ·  port 0.0.0.0:8000              │
+└────┬───────────────────────────────────┬─────────┘
+     │                                   │
+     ▼                                   ▼
+┌────────────────────┐         ┌────────────────────┐
+│  PostgreSQL 16     │         │  Embedding model   │
+│  + pgvector ext    │         │  sentence-transform │
+│  - knowledge_node  │ ◄──────│  (or TF-IDF 离线) │
+│  - knowledge_edge  │         └────────────────────┘
+│  - knowledge_draft │
+│  - ai_skill        │
+│  - category_cluster│
+│  port 5432 (内部)  │
+└────────────────────┘
 ```
 
-## 🚀 启动
+### 2.2 前端核心模块
 
-### ⚡ 一键启动（推荐）
+| 模块 | 文件 | 职责 |
+|---|---|---|
+| 3D 球面 | `KnowledgeSphere.tsx` | three.js + R3F 渲染节点、关联线、自动旋转、鼠标拖拽 |
+| AI 助手面板 | `AssistantPanel.tsx` | Ask / Suggest / Settings / Draft 四 tab,可放大占左半屏 |
+| 节点详情 | `NodeDetail.tsx` | 查看 / 编辑标题、内容、分类、关联 |
+| 草稿 | `DraftPanel.tsx` | 快速记 → 调 AI 整理 → 入库 |
+| 导入 | `ImportModal.tsx` | .md 批量上传(可多选) |
+| 导出 | `ExportModal.tsx` | 多选节点 → 下载 zip / 单个 .md |
+| FAB | `App.tsx` 右下角 + | 浮动操作按钮(加节点 / 上下传) |
+| 搜索 | `App.tsx` 顶部 | 实时下拉(按标题 / 内容 / 关键词,top 5) |
+| i18n | `i18n/` | 中英双语切换 |
 
-仓库根目录有一个 `start.sh`，把启动 / 停止 / 查看状态 / 重置 / 看日志都包了。
+### 2.3 后端核心 API
+
+| 路径 | 用途 |
+|---|---|
+| `GET /api/health` | 健康检查(返回 embedding 后端) |
+| `GET /api/nodes` | 列出所有节点 |
+| `POST /api/nodes` | 创建新节点 |
+| `PATCH /api/nodes/{id}` | 编辑节点 |
+| `DELETE /api/nodes/{id}` | 删除节点 |
+| `GET /api/drafts` | 列出草稿 |
+| `POST /api/drafts` | 创建草稿(快速记) |
+| `POST /api/llm/curate/clean-draft` | **AI 整理草稿** → 标准节点 |
+| `POST /api/llm/curate/find-merges` | **AI 建议合并** (相似节点) |
+| `POST /api/llm/curate/find-edges` | **AI 建议新关联** (同类节点) |
+| `POST /api/llm/curate/ask` | **RAG 问答**(基于你的知识库) |
+| `POST /api/llm/config` | 配置 LLM provider / key / model |
+| `POST /api/llm/test` | 测试 LLM 连接 |
+| `GET /api/graph` | 返回节点 + 关联(给 3D 球面用) |
+| `POST /api/nodes/import-md` | 批量上传 .md |
+| `GET /api/nodes/{id}/export-md` | 单节点导出 .md |
+| `POST /api/nodes/export-md-batch` | 多节点打包导出 zip |
+
+### 2.4 数据模型
+
+```sql
+-- 节点 = 一条知识
+knowledge_node(id, title, content, source, category,
+               importance, keywords, embedding vector(384), created_at, updated_at)
+-- source: 'manual' | 'md-import' | 'llm-clean' | 'llm-merge'
+-- embedding: sentence-transformers/all-MiniLM-L6-v2 (or TF-IDF fallback)
+
+-- 关联 = 节点 A 跟 节点 B 有关系
+knowledge_edge(id, source_id, target_id, relation, weight, created_at)
+
+-- 草稿 = 粗糙的还没整理的笔记
+knowledge_draft(id, content, source, promoted_to_node_id, created_at)
+
+-- AI 提炼的技能
+ai_skill(id, name, description, steps, triggers, source_node_id, created_at)
+
+-- 分类
+category_cluster(id, name, description, centroid vector(384), node_count)
+```
+
+---
+
+## 3. 使用方法
+
+本仓库**同**时** **提**供**两**种**启**动**方**式**, **二**选**一**:
+
+| 方**式** | **脚**本** | **适**合**谁** | **数**据**存**哪** |
+|---|---|---|---|
+| **A. Docker compose (推荐,产**品**/服务器/给朋**友**用**)** | `./start.sh` | **普**通**用**户**; **不**想**装** PostgreSQL/Node/Python | host **上**的** named volume `my2ndbrain-data` |
+| **B. 本**地**直**接** (开**发**/调试/贡献代**码**)** | `./dev.sh` | **开**发**者**; **要**看** Vite HMR / 改** Python **源**码** | 你**装**的** postgres (host **或** docker) |
+
+**不**要**同**时**跑** `./start.sh` **和** `./dev.sh` — 它**们** **都**要**占** 8000 **端**口**, **会** **冲**突**!
+
+### 3.0 一键启动 (推荐,普通用户用这个就行)
 
 ```bash
-# 前置：PostgreSQL 16 + pgvector 已经装好（见下方"高级：手工安装"），
-#       .env 已经从 .env.example 复制并填了 DB_PASSWORD。
+# 1. 装好 Docker (https://docs.docker.com/engine/install/)
+# 2. 拉代码 (或解压缩源码包)
+git clone <你的 repo URL> my2ndbrain
+cd my2ndbrain
 
-./start.sh start    # 后端 :8000 + 前端 :5173
-./start.sh status   # 看进程 + http 健康
-./start.sh stop     # 停
-./start.sh reset    # 清空所有知识 + 重新灌种子 + 重启
-./start.sh logs     # tail 日志（也可 logs backend / logs frontend）
-./start.sh help     # 详细
+# 3. 一条命令起! (自动检测环境、自动 build image、自动等健康)
+./start.sh
 ```
 
-`start.sh` 是**幂等**的：再跑一次 `start` 会复用已经在跑的进程；只有真的 down 才会拉起新进程。第一次跑会先建 `.env`（从 `.env.example` 复制，密码置空让用户填）。
+`start.sh` **会**自**动**:
+- 检**查** Docker daemon、port 8000 **是**否**空**、**足**够**磁**盘**/RAM
+- 如**果**没**有** `.env` 就**从** `.env.example` **复**制** (默认 `DB_PASSWORD=*** ***)**
+- 如**果**没**有** `my2ndbrain:latest` image **就** build (~1GB, **首**次** 5-10 min, **后**续** 1-2 min)
+- `docker compose up -d`
+- **等** `/api/health` 返**回** 200 (最**多** 120s)
+- 打**印**访**问** URL **和**管**理**命令
 
-启动成功后浏览器打开 **<http://127.0.0.1:5173/>**。
+启**动**完**成**后**会**显**示**:
+```
+Web UI    : http://<host>:8000/
+Health    : http://<host>:8000/api/health
+Swagger   : http://<host>:8000/docs
+Data      : stored in named volume 'my2ndbrain-data'
+```
 
-### 高级：手工启动（想自己控每个进程的话）
+**日**常**管**理** (数**据** **全**部**保**留**):
+```bash
+./start.sh    # 启**动** (如**果**已**经**起**了**就**没**事)
+./stop.sh     # **停**止** (数**据** **保**留**)
+./status.sh   # **查**看**状**态** + last logs
+./backup.sh   # 备**份**到** ./backups/*.sql
+./restore.sh  # 从**备**份**恢**复** (**会** **清**空**当**前**数**据**)
+docker logs -f my2ndbrain    # 实时看**日**志
+```
 
-#### 1. 后端
+**彻**底**清**理** (会** **丢**数**据**):
+```bash
+./stop.sh --rm            # 删**除** container
+docker volume rm my2ndbrain-data   # 删**除** data volume
+```
+
+### 3.0b 本地直接启动 (开发模式,开发者用这个)
+
+> **如**果**你**要**改** Python **源**码**、**改**前**端** component、**看** Vite HMR **热**重**载**, **用** `./dev.sh` **代**替** `./start.sh`。 **它**启**动**的**是** host **上**的** `uvicorn` + `vite dev` (热**重**载), **不**是** Docker **容**器**。
+>
+> **前**置**:
+> - Python 3.11+ (`apt install python3.11-venv`)
+> - Node 20+ (`apt install nodejs npm`)
+> - PostgreSQL 16 + pgvector (见 § 3.2 手工安装) **或** 跑**完** `docker run -d postgres:16-pgvector` **后**让** host **上**的** backend **连**它
 
 ```bash
-cd backend
-pip install -r requirements.txt
+./dev.sh status    # 看**看** PostgreSQL / port 8000 / port 5173 **状**态**
+./dev.sh start     # **启**动**后**端** (uvicorn) + 前**端** (Vite dev)
+./dev.sh logs      # tail -20 **后**端**+前**端** log
+./dev.sh status    # 再**查**状**态** (start **后**)
+./dev.sh stop      # 停
 
-# PostgreSQL + pgvector 一次性启动
+# 浏**览**器**访**问**:
+#   http://localhost:8000/    (FastAPI + React dev build)
+#   http://localhost:5173/    (Vite dev server, HMR)
+```
+
+`dev.sh` **支**持**的**子**命**令**:
+```bash
+./dev.sh start      # **启**动**后**端** + 前**端** (idempotent: 已**经** **在**跑**就**不**会**重**启**)
+./dev.sh stop       # **停**两**个**
+./dev.sh status     # **查**看**状**态** + 端**口**占**用**
+./dev.sh logs       # tail -20 **后**端**+前**端** log
+./dev.sh reset      # stop + 清**数**据** (会** **丢** **所**有** nodes/drafts/edges, **不**要** **轻**易**跑**)
+./dev.sh help       # **详**细**说**明**
+```
+
+### 3.1 Docker 深入:启动顺序 (entrypoint 内部)
+
+> 新手用户不用看这一节。 一键启动 `./start.sh` 会自动做完所有事。 这一节只记录 `docker-entrypoint.sh` 在容器里的 8 步执行序列,方便排查问题时对账。
+
+容器第一次启动时, `docker-entrypoint.sh` 顺序执行:
+
+```
+1. 检查 /var/lib/postgresql/data 是否为空
+   → 空 → 跑 initdb (创建 PostgreSQL cluster)
+   → 已有 PG_VERSION → 跳过 (直接用历史数据)
+
+2. 配置 pg_hba.conf 为 trust (容器内本地访问无需密码)
+
+3. listen_addresses = '127.0.0.1'  (容器内本地端口)
+
+4. 启动 postgres:
+   gosu postgres pg_ctl -D /var/lib/postgresql/data start
+
+5. 等待 postgres ready (pg_isready -h 127.0.0.1)
+
+6. 创建 role + database (idempotent):
+   CREATE ROLE my2ndbrain LOGIN PASSWORD '$DB_PASSWORD';
+   CREATE DATABASE my2ndbrain OWNER my2ndbrain;
+
+7. 在 my2ndbrain 库里:
+   CREATE EXTENSION IF NOT EXISTS vector;  (pgvector)
+
+8. exec uvicorn 启动后端 on 0.0.0.0:8000
+```
+
+整个流程 5-10 秒, 看到 `Uvicorn running on http://0.0.0.0:8000` 就 OK 了。
+
+`./start.sh` 的 summary 会打印 healthcheck URL, 你也可以直接 `curl http://localhost:8000/api/health` 验证。
+
+详细配置 / 故障排查 / 网络访问 / registry 推送 / registry 镜像优化 看 [DOCKER.md](DOCKER.md)。
+
+### 3.2 本地模式深入:跨平台 PostgreSQL 启动
+
+> 新手用户不用看这一节。 `./dev.sh` 会自动检测 host 上是否已经有 postgres 在 5432 跑。 这一节只是详细的手动 PostgreSQL 装置文档, 给你不想用 docker 但也不想让 `./dev.sh` 管 postgres 的情况用。
+
+**macOS (Homebrew)**:
+```bash
+brew install postgresql@16
+brew services start postgresql@16
+
+# 创建库
+psql postgres -c "CREATE USER my2ndbrain WITH PASSWORD 'my2ndbrain' SUPERUSER;"
+psql postgres -c "CREATE DATABASE my2ndbrain OWNER my2ndbrain;"
+psql -d my2ndbrain -c "CREATE EXTENSION IF NOT EXISTS vector;"
+```
+
+**Ubuntu / Debian (官方 apt)**:
+```bash
+# 1. 装 postgresql 16 + pgvector
 sudo apt install -y postgresql-16 postgresql-16-pgvector
+
+# 2. 启动系统 postgres 服务
 sudo pg_ctlcluster 16 main start
+# 验证: ss -tlnp | grep 5432  →  0.0.0.0:5432 postgres 就有
+
+# 3. 创建库 + 装 pgvector
 sudo -u postgres psql -c "CREATE USER my2ndbrain WITH PASSWORD 'my2ndbrain' SUPERUSER;"
 sudo -u postgres psql -c "CREATE DATABASE my2ndbrain OWNER my2ndbrain;"
 sudo -u postgres psql -d my2ndbrain -c "CREATE EXTENSION IF NOT EXISTS vector;"
 
-# 初始化表 + 灌种子
-PYTHONPATH=. python3 scripts/init_db.py
-PYTHONPATH=. python3 scripts/seed.py     # 可选：放 7 条 demo 知识
-
-# 启动 API
-PYTHONPATH=. uvicorn app.main:app --host 127.0.0.1 --port 8000
+# 4. 验证
+sudo -u postgres psql -d my2ndbrain -c "\dx"
+# → 应看到 'vector' 扩展
 ```
 
-#### 2. 前端
+**其他系统** (CentOS / Arch / Windows) — 装 `postgresql-16` + `postgresql-16-pgvector` 包即可, 后面的 SQL 完全一样。
 
-```bash
-cd frontend
-npm install
-npm run dev               # 开发：Vite + HMR 在 :5173（带 /api 代理）
-# 或
-npm run build             # 生产构建，输出到 dist/，由 FastAPI 直接 serve
-```
+自动化版本的 ./dev.sh start 已经帮你跑完了上面所有事情 (创建 role + db + pgvector extension), 所以手动只在你要单独管 PostgreSQL 时用。
 
-访问 <http://127.0.0.1:8000/>（生产构建） / <http://127.0.0.1:5173/>（dev）
+## 4. 视频教程(待上传)
 
-### start.sh 在做什么
+> 📹 **视频教程位置** — 即将上传,届时将在此放置 YouTube / B 站嵌入链接
+>
+> **计划内容**:
+> - 第一集:5 分钟上手(用 Docker 一键起,创 3 个节点,跑一次 AI 整理)
+> - 第二集:3D 球面交互(旋转 / 拖拽 / 搜索 / 过滤 / 关联)
+> - 第三集:AI 助手 4 tab 详解(Ask 问答 / Suggest 整理 / Settings 配 LLM / Draft 草稿)
+> - 第四集:数据导入导出(批量 .md / 单节点 .md)
+> - 第五集:高级(自定义 LLM、重新计算 embedding、多设备同步)
+>
+> ⏳ 视频制作中,占位待上传
 
-| 步骤 | 行为 |
-|------|------|
-| 1 | 检查 `python3 / node / npm / ss / curl` 是否在 PATH |
-| 2 | `.env` 不存在就拷 `.env.example`，要求 DB_PASSWORD 非空 |
-| 3 | 检测后端是否已在 :8000（health check），是 → adopt pid，否则拉起 |
-| 4 | 检测前端是否已在 :5173，同上 |
-| 5 | 打印访问 URL、日志路径、停止命令 |
-| 6 | `start` 不存在的目录时自动 `npm install` |
+---
 
-### 🗃️ 数据库查询 (`query.sh`)
+## 附 — 故障速查
 
-仓库根的 `query.sh` 是一个轻量的 psql 封装，**第一次跑会自动把 `.env` 里的 DB 凭据写到 `~/.pgpass`**，之后 psql 不用输密码。
-
-```bash
-./query.sh                  # 默认：列出所有节点标题（按 importance 倒序）
-./query.sh --limit 10       # 只要前 10 个
-./query.sh --all            # 带 UUID / category / importance / created_at
-./query.sh --category 厨艺  # 按分类过滤
-./query.sh --ids            # 只打印 UUID（每行一个）
-./query.sh --json           # JSON 行输出（管道给 jq）
-./query.sh psql             # 进 psql 交互模式
-./query.sh --help           # 完整帮助
-```
-
-数据库共 4 张表：`knowledge_node`、`knowledge_edge`、`category_cluster`、`ai_skill`。直接在 `./query.sh psql` 里跑 `\d` / `\dt` 看 schema。
-
-## 🔌 API 一览
-
-| Method | Path | 说明 |
-|--------|------|------|
-| GET    | `/api/health`                 | 健康检查 + 当前 embedding 后端 |
-| GET    | `/api/nodes`                  | 列出节点（支持 `?category=`） |
-| POST   | `/api/nodes`                  | 新增节点（自动跑 AI 摄入管线） |
-| GET    | `/api/nodes/{id}`             | 节点详情（含邻居） |
-| PATCH  | `/api/nodes/{id}`             | 更新节点（自动重新 embedding） |
-| DELETE | `/api/nodes/{id}`             | 删除节点（级联清理边） |
-| GET    | `/api/graph`                  | 3D 球面布局（nodes + edges + clusters + stats） |
-| GET    | `/api/clusters`               | 列出领域 |
-| POST   | `/api/clusters/recompute`     | 重算领域大小 + 颜色 |
-| POST   | `/api/assistant`              | RAG 问答（同时返回知识盲区） |
-| POST   | `/api/assistant/organise`     | 按主题整理成知识树 |
-| GET    | `/api/skills`                 | 列出蒸馏的 Skill |
-| POST   | `/api/skills/generate`        | 从最强领域蒸馏 Skill |
-
-### 摄入管线 (`POST /api/nodes`)
-
-```
-title + content  →  ① title_check     (启发式 LLM)
-                  →  ② extract         (启发式 LLM: keywords + summary + category)
-                  →  ③ embed           (sentence-transformers / TF-IDF fallback)
-                  →  ④ persist         (PostgreSQL + pgvector)
-                  →  ⑤ auto_link       (KNN + 关键词 jaccard，加边)
-                  →  ⑥ upsert_cluster  (领域聚合)
-```
-
-响应示例：
-
-```json
-{
-  "node": { "id": "...", "title": "GRPO", "category": "AI人工智能", "...": "..." },
-  "title_check": { "ok": false, "confidence": 0.0, "suggestion": "Quantized", "reason": "..." },
-  "suggested_links": [
-    { "target_id": "...", "target_title": "LoRA", "similarity": 0.566, "applied": true }
-  ],
-  "cluster_suggestion": { "name": "AI人工智能", "size": 7 }
-}
-```
-
-## ⚙️ 配置 (`backend/app/core/config.py`)
-
-通过环境变量覆盖：
-
-```bash
-export DB_HOST=127.0.0.1
-export DB_PORT=5432
-export DB_USER=my2ndbrain
-export DB_PASSWORD=my2ndbrain
-export DB_NAME=my2ndbrain
-export EMBED_MODEL=sentence-transformers/all-MiniLM-L6-v2
-export EMBED_DEVICE=cpu                # 或 cuda
-export LLM_PROVIDER=heuristic           # heuristic / openai / ollama
-export OPENAI_API_KEY=sk-...            # LLM_PROVIDER=openai 时需要
-export OLLAMA_BASE_URL=http://127.0.0.1:11434
-export AUTO_EDGE_THRESHOLD=0.55
-```
-
-## 🧪 Embedding 后端选择
-
-`app/services/embedding.py` 自动选择：
-
-1. **sentence-transformers** (`all-MiniLM-L6-v2`, 384 维, ~90MB) — 装好即用
-2. **TF-IDF + TruncatedSVD** (384 维) — 纯 sklearn fallback，**离线**、无需下载
-
-切到真模型：
-
-```bash
-pip install -U sentence-transformers httpx[socks]
-# 重启后端，health 返回 "_SentenceTransformerEmbedder"
-```
-
-## 🛣️ 路线图
-
-| 阶段 | 状态 | 内容 |
-|------|------|------|
-| 一 | ✅ | DB / CRUD / pgvector / AI 摄入 / 3D 球 / 详情 |
-| 二 | ✅ | 自动聚类 / 关联发现 / AI 整理 / Skill 生成 |
-| 三 | ⏳ | Agent Memory 协议 / RAG 对接 / 多用户 / 鉴权 / 增量导入 / 移动端 |
-
-阶段三需要的：
-- 把 `AISkill` 的 `body` 字段导出为可挂载到 Claude / Hermes Agent 的 SKILL.md
-- 把 `assistant_answer()` 暴露成 OpenAI-compatible `/v1/chat/completions` 端点，让任何 Agent 把你的第二大脑当 RAG 用
+| 症状 | 原因 | 解 |
+|---|---|---|
+| `ModuleNotFoundError: No module named 'uvicorn'` | Dockerfile builder / runtime Python 版本不匹配 | `git pull` 重 build |
+| `Could not import module "app.main"` | entrypoint 没 `cd $APP_HOME` | `git pull` 拉 ffb78e4 |
+| `Connection refused` to 127.0.0.1:5432 | postgres 没起 / 5432 端口冲突 | `docker logs` 看 entrypoint 报错 |
+| `value too long for type character varying(50)` | node title 太长 | 后端 schema 已扩到 200,重 build |
+| 浏览器加载白屏 | 前端 dist 没 build | `cd frontend && npm run build` |
+| Docker Hub 拉镜像 429 Too Many Requests | 配置的 mirror 限速 | 改用 `mirror.gcr.io` |
+| `/api/health` 返回 500 | embedding 模型加载失败 | 用 `--build-arg HF_HUB_OFFLINE=1` 重 build (走 TF-IDF fallback) |

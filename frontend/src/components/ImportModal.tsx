@@ -59,7 +59,7 @@ export default function ImportModal({ onClose, onCreated }: Props) {
         const form = new FormData();
         for (const it of items) form.append("files", it.file, it.file.name);
         try {
-            const r = await fetch("http://127.0.0.1:8000/api/nodes/import-md", {
+            const r = await fetch("/api/nodes/import-md", {
                 method: "POST",
                 body: form,
             });
