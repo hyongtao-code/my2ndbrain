@@ -162,6 +162,12 @@ fi
 # Ensure venv tools are on PATH for the exec
 export PATH="/app/venv/bin:${PATH}"
 
+# Switch into the app directory so uvicorn can find the
+# "app.main" module. We didn't set WORKDIR in the runtime
+# stage (debian:bookworm image defaults to /), so we have
+# to cd here explicitly. APP_HOME is set in the Dockerfile.
+cd "${APP_HOME}"
+
 # Make venv work even if HOME is unset
 export HOME="${HOME:-/root}"
 

@@ -50,7 +50,14 @@ RUN npm run build
 # =============================================================================
 # Stage 2 — install Python deps + pre-cache the embedding model
 # =============================================================================
-FROM python:3.12-bookworm AS backend-builder
+# IMPORTANT: the runtime image (debian:bookworm) only has
+# python 3.11 available via apt (the bookworm default). The
+# builder and the runtime MUST be on the same python version,
+# because the venv created in the builder is copied verbatim
+# to the runtime and uses absolute paths to the python binary.
+# We use python:3.11-bookworm so the venv is built against
+# the same python 3.11 that the runtime apt installs.
+FROM python:3.11-bookworm AS backend-builder
 
 # System deps for psycopg2-binary (libpq5 only; psycopg2-binary
 # vendors its own libpq so we don't need build-essentials).
