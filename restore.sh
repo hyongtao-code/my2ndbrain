@@ -39,7 +39,7 @@ if [ ! -f "$in" ]; then
     exit 1
 fi
 
-if ! docker ps --format '{{.Names}}' | grep -q '^my2ndbrain$'; then
+if ! docker ps --format '{{.Names}}' | grep -q '^my2ndbrain'; then
     echo "✗ my2ndbrain container is not running" >&2
     echo "  start it with ./start.sh first" >&2
     exit 1
@@ -59,10 +59,10 @@ case "$ans" in
 esac
 
 echo "==> dropping and recreating public schema"
-docker exec my2ndbrain su - postgres -c "psql -d my2ndbrain -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO my2ndbrain; CREATE EXTENSION vector;'"
+docker exec $(docker ps --format '{{.Names}}' | grep ^my2ndbrain | head -1) su - postgres -c "psql -d my2ndbrain -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO my2ndbrain; CREATE EXTENSION vector;'"
 
 echo "==> loading dump"
-docker exec -i my2ndbrain su - postgres -c "psql my2ndbrain" < "$in"
+docker exec -i $(docker ps --format '{{.Names}}' | grep ^my2ndbrain | head -1) su - postgres -c "psql my2ndbrain" < "$in"
 
 echo "==> done"
 echo "  verify: curl http://localhost:8000/api/nodes?limit=200 | python3 -m json.tool"

@@ -34,7 +34,7 @@ else
     out="backups/my2ndbrain-${stamp}.sql"
 fi
 
-if ! docker ps --format '{{.Names}}' | grep -q '^my2ndbrain$'; then
+if ! docker ps --format '{{.Names}}' | grep -q '^my2ndbrain'; then
     echo "✗ my2ndbrain container is not running" >&2
     echo "  start it with ./start.sh first" >&2
     exit 1
@@ -43,7 +43,7 @@ fi
 echo "==> running pg_dump -> $out"
 # pg_dump writes to stdout; we redirect once. Using exec so we don't
 # need to worry about permissions inside the volume.
-docker exec my2ndbrain su - postgres -c "pg_dump my2ndbrain" > "$out"
+docker exec $(docker ps --format '{{.Names}}' | grep ^my2ndbrain | head -1) su - postgres -c "pg_dump my2ndbrain" > "$out"
 
 # Sanity-check the dump
 if [ ! -s "$out" ]; then
@@ -58,6 +58,7 @@ echo "✓ backup written: $out ($size, $tables tables)"
 
 echo
 echo "  to restore into a new container:"
-echo "    docker run -d -p 8000:8000 -v my2ndbrain-data:/var/lib/postgresql/data \\"
-echo "        -e DB_PASSWORD=*** my2ndbrain:latest"
-echo "    docker exec -i my2ndbrain su - postgres -c 'psql my2ndbrain' < $out"
+echo "    # 1. start the container (creates the empty my2ndbrain-data volume):"
+echo "    ./start.sh"
+echo "    # 2. restore the dump into it:"
+echo "    ./restore.sh '$out'"

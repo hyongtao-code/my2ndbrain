@@ -120,6 +120,15 @@ category_cluster(id, name, description, centroid vector(384), node_count)
 
 ## 3. 使用方法
 
+本仓库**同**时** **提**供**两**种**启**动**方**式**, **二**选**一**:
+
+| 方**式** | **脚**本** | **适**合**谁** | **数**据**存**哪** |
+|---|---|---|---|
+| **A. Docker compose (推荐,产**品**/服务器/给朋**友**用**)** | `./start.sh` | **普**通**用**户**; **不**想**装** PostgreSQL/Node/Python | host **上**的** named volume `my2ndbrain-data` |
+| **B. 本**地**直**接** (开**发**/调试/贡献代**码**)** | `./dev.sh` | **开**发**者**; **要**看** Vite HMR / 改** Python **源**码** | 你**装**的** postgres (host **或** docker) |
+
+**不**要**同**时**跑** `./start.sh` **和** `./dev.sh` — 它**们** **都**要**占** 8000 **端**口**, **会** **冲**突**!
+
 ### 3.0 一键启动 (推荐,普通用户用这个就行)
 
 ```bash
@@ -162,6 +171,37 @@ docker logs -f my2ndbrain    # 实时看**日**志
 ```bash
 ./stop.sh --rm            # 删**除** container
 docker volume rm my2ndbrain-data   # 删**除** data volume
+```
+
+### 3.0b 本地直接启动 (开发模式,开发者用这个)
+
+> **如**果**你**要**改** Python **源**码**、**改**前**端** component、**看** Vite HMR **热**重**载**, **用** `./dev.sh` **代**替** `./start.sh`。 **它**启**动**的**是** host **上**的** `uvicorn` + `vite dev` (热**重**载), **不**是** Docker **容**器**。
+>
+> **前**置**:
+> - Python 3.11+ (`apt install python3.11-venv`)
+> - Node 20+ (`apt install nodejs npm`)
+> - PostgreSQL 16 + pgvector (见 § 3.2 手工安装) **或** 跑**完** `docker run -d postgres:16-pgvector` **后**让** host **上**的** backend **连**它
+
+```bash
+./dev.sh status    # 看**看** PostgreSQL / port 8000 / port 5173 **状**态**
+./dev.sh start     # **启**动**后**端** (uvicorn) + 前**端** (Vite dev)
+./dev.sh logs      # tail -20 **后**端**+前**端** log
+./dev.sh status    # 再**查**状**态** (start **后**)
+./dev.sh stop      # 停
+
+# 浏**览**器**访**问**:
+#   http://localhost:8000/    (FastAPI + React dev build)
+#   http://localhost:5173/    (Vite dev server, HMR)
+```
+
+`dev.sh` **支**持**的**子**命**令**:
+```bash
+./dev.sh start      # **启**动**后**端** + 前**端** (idempotent: 已**经** **在**跑**就**不**会**重**启**)
+./dev.sh stop       # **停**两**个**
+./dev.sh status     # **查**看**状**态** + 端**口**占**用**
+./dev.sh logs       # tail -20 **后**端**+前**端** log
+./dev.sh reset      # stop + 清**数**据** (会** **丢** **所**有** nodes/drafts/edges, **不**要** **轻**易**跑**)
+./dev.sh help       # **详**细**说**明**
 ```
 
 ### 3.1 方式 A — Docker (推荐,5 分钟起)

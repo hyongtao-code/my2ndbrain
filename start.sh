@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# start.sh — one-command bring-up of MySecondBrain.
+# start.sh — one-command docker compose bring-up of MySecondBrain.
 #
 # What it does:
 #   1. Runs prereq.sh; aborts on a hard failure
@@ -9,6 +9,10 @@
 #   4. Runs `docker compose up -d`
 #   5. Waits for the container to become healthy
 #   6. Prints a one-line summary with the URL and credentials
+#
+# For the **local / direct** workflow (Vite dev + uvicorn against a
+# system-installed postgres), use ./dev.sh instead. dev.sh is the
+# pre-existing start.sh we used before docker packaging.
 #
 # Usage:
 #   ./start.sh                # smart (only build if image missing)
@@ -29,7 +33,7 @@ for arg in "$@"; do
         --rebuild) REBUILD=1 ;;
         --pull)    PULL=1 ;;
         -h|--help)
-            sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
+            sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'
             exit 0
             ;;
         *) echo "unknown arg: $arg" >&2; exit 2 ;;
@@ -48,7 +52,7 @@ if [ ! -f .env ]; then
         echo "  please edit .env to set DB_PASSWORD and any LLM keys,"
         echo "  then re-run ./start.sh"
         echo
-        echo "  default: DB_PASSWORD=my2ndbrain (suitable for local-only use)"
+        echo "  default: DB_PASSWORD=*** (suitable for local-only use)"
         exit 1
     else
         echo "✗ .env.example not found; cannot create .env" >&2
@@ -85,7 +89,12 @@ docker compose up -d
 echo "==> waiting for /api/health to return 200"
 deadline=$(( $(date +%s) + 120 ))
 while [ "$(date +%s)" -lt "$deadline" ]; do
-    status=$(docker inspect --format '{{.State.Health.Status}}' my2ndbrain 2>/dev/null || echo "starting")
+    container=$(docker ps --format '{{.Names}}' | grep '^my2ndbrain' | head -1 || true)
+    if [ -z "$container" ]; then
+        sleep 2
+        continue
+    fi
+    status=$(docker inspect --format '{{.State.Health.Status}}' "$container" 2>/dev/null || echo "starting")
     case "$status" in
         healthy)
             echo "==> container is healthy"
@@ -93,7 +102,7 @@ while [ "$(date +%s)" -lt "$deadline" ]; do
             ;;
         unhealthy)
             echo "✗ container is unhealthy — last 30 log lines:"
-            docker logs --tail 30 my2ndbrain || true
+            docker logs --tail 30 "$container" || true
             exit 1
             ;;
         *)
@@ -102,15 +111,18 @@ while [ "$(date +%s)" -lt "$deadline" ]; do
     esac
 done
 if [ "$(date +%s)" -ge "$deadline" ]; then
-    echo "⚠ container did not become healthy in 120s — last 30 log lines:"
-    docker logs --tail 30 my2ndbrain || true
+    container=$(docker ps --format '{{.Names}}' | grep '^my2ndbrain' | head -1 || true)
+    if [ -n "$container" ]; then
+        echo "⚠ container did not become healthy in 120s — last 30 log lines:"
+        docker logs --tail 30 "$container" || true
+    fi
     exit 1
 fi
 
 # ---- 6. summary -------------------------------------------------------
 echo
 echo "================================================================"
-echo "  MySecondBrain is up."
+echo "  MySecondBrain is up (docker compose)."
 echo
 HOST_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 if [ -z "$HOST_IP" ]; then
@@ -125,5 +137,8 @@ echo
 echo "  Stop      : ./stop.sh"
 echo "  Status    : ./status.sh"
 echo "  Backup    : ./backup.sh"
-echo "  Logs      : docker logs -f my2ndbrain"
+echo "  Logs      : docker logs -f my2ndbrain-prod"
+echo
+echo "  For the local direct dev workflow (Vite + uvicorn against"
+echo "  a system postgres), use ./dev.sh instead."
 echo "================================================================"
