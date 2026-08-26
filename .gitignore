@@ -71,3 +71,6 @@ data/
 
 # accidental empty config file
 .gitconfig
+
+# Local backup dumps (created by ./backup.sh)
+backups/

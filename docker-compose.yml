@@ -1,17 +1,33 @@
-# docker-compose.yml — convenience wrapper around the all-in-one
-# MySecondBrain image. The image bundles PostgreSQL + pgvector +
-# FastAPI + the React build into one process, so this is just one
-# service. Use it for `docker compose up` workflows; for `docker
-# run` you don't even need this file (see the README).
+# docker-compose.yml — single-service compose for MySecondBrain.
 #
-# What it does:
-#   - exposes 8000 (the FastAPI+frontend port)
-#   - persists PostgreSQL data to the named volume `my2ndbrain-data`
-#   - lets you override the LLM provider, key, model via env
+# The image bundles PostgreSQL 16 + the pgvector extension, the
+# FastAPI backend, and the pre-built React frontend into one
+# process, so this compose file is just one service. Use it for
+# `docker compose up` workflows. For `docker run` you don't even
+# need this file (see DOCKER.md and README.md).
 #
-# Quick start:
+# What this file does:
+#   - exposes 8000 (the FastAPI + frontend port) to the host
+#   - persists PostgreSQL data in the named volume `my2ndbrain-data`
+#     (everything else — Python venv, React build, embedding model
+#     cache — is baked into the image)
+#   - lets you override the LLM provider / key / model via env
+#     variables; default is "heuristic" so the app works fully
+#     offline with no API key.
+#
+# Quick start (the easy way):
+#   ./start.sh                 # full one-command bring-up
+#   ./stop.sh                  # stop the container
+#   ./status.sh                # show running state
+#   ./backup.sh                # snapshot the data to ./backups/
+#   ./restore.sh               # restore from a snapshot
+#
+# Equivalent raw docker compose:
 #   docker compose up -d
 #   open http://localhost:8000/
+#
+# To wipe the data and start clean:
+#   docker compose down -v     # WARNING: this deletes my2ndbrain-data
 
 services:
   my2ndbrain:
@@ -21,7 +37,8 @@ services:
       args:
         # Set HF_HUB_OFFLINE=1 if you want to skip the embedding-model
         # download at build time (the image will fall back to TF-IDF
-        # embeddings on first run).
+        # embeddings on first run, which is lower quality but works
+        # fully offline).
         HF_HUB_OFFLINE: "0"
     image: my2ndbrain:latest
     container_name: my2ndbrain
@@ -29,39 +46,40 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      # The only persistent state: PostgreSQL data directory.
-      # Everything else (Python venv, React build, embedding model)
-      # is baked into the image.
+      # The only persistent state. Everything else (Python venv,
+      # React build, embedding model cache) is baked into the image.
+      # `docker volume rm my2ndbrain-data` will wipe this.
       - my2ndbrain-data:/var/lib/postgresql/data
-      # Optional: tail logs to host (in addition to docker logs).
-      # - ./logs:/app/logs
     environment:
-      # --- Database ---
+      # ---- Database (matches entrypoint.sh + Dockerfile) ----
       DB_HOST: "127.0.0.1"
       DB_PORT: "5432"
       DB_USER: "my2ndbrain"
       DB_PASSWORD: "${DB_PASSWORD:-my2ndbrain}"
       DB_NAME: "my2ndbrain"
-      # --- Embedding model ---
+      # ---- Embedding model ----
       EMBED_MODEL: "sentence-transformers/all-MiniLM-L6-v2"
       EMBED_DEVICE: "cpu"
-      # --- LLM provider (override here or in the Settings tab) ---
+      # ---- LLM provider ----
       # Defaults to "heuristic" so the app works fully offline with
-      # no API key. To wire a real LLM, change to "openai" / "minimax"
-      # / "kimi" / "qwen" / "gemini" / "deepseek" / "ollama" and set
-      # the corresponding OPENAI_API_KEY (or vendor-specific env).
+      # no API key. To wire a real LLM, change this to e.g.
+      # "openai" / "minimax" / "kimi" / "qwen" / "gemini" / "deepseek"
+      # / "ollama" and set the corresponding key (usually
+      # OPENAI_API_KEY; vendor-specific for some).
       LLM_PROVIDER: "${LLM_PROVIDER:-heuristic}"
       LLM_MODEL: "${LLM_MODEL:-}"
-      # OPENAI_API_KEY: "sk-..."
-      # --- Server bind ---
+      # OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
+      # ---- Server bind ----
       BACKEND_HOST: "0.0.0.0"
       BACKEND_PORT: "8000"
     healthcheck:
+      # The entrypoint takes 5-10 s on first run to initdb. Give it
+      # a 30 s start_period before we start failing healthchecks.
       test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8000/api/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 20s
+      start_period: 30s
 
 volumes:
   my2ndbrain-data:

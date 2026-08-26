@@ -120,6 +120,50 @@ category_cluster(id, name, description, centroid vector(384), node_count)
 
 ## 3. 使用方法
 
+### 3.0 一键启动 (推荐,普通用户用这个就行)
+
+```bash
+# 1. 装好 Docker (https://docs.docker.com/engine/install/)
+# 2. 拉代码 (或解压缩源码包)
+git clone <你的 repo URL> my2ndbrain
+cd my2ndbrain
+
+# 3. 一条命令起! (自动检测环境、自动 build image、自动等健康)
+./start.sh
+```
+
+`start.sh` **会**自**动**:
+- 检**查** Docker daemon、port 8000 **是**否**空**、**足**够**磁**盘**/RAM
+- 如**果**没**有** `.env` 就**从** `.env.example` **复**制** (默认 `DB_PASSWORD=*** ***)**
+- 如**果**没**有** `my2ndbrain:latest` image **就** build (~1GB, **首**次** 5-10 min, **后**续** 1-2 min)
+- `docker compose up -d`
+- **等** `/api/health` 返**回** 200 (最**多** 120s)
+- 打**印**访**问** URL **和**管**理**命令
+
+启**动**完**成**后**会**显**示**:
+```
+Web UI    : http://<host>:8000/
+Health    : http://<host>:8000/api/health
+Swagger   : http://<host>:8000/docs
+Data      : stored in named volume 'my2ndbrain-data'
+```
+
+**日**常**管**理** (数**据** **全**部**保**留**):
+```bash
+./start.sh    # 启**动** (如**果**已**经**起**了**就**没**事)
+./stop.sh     # **停**止** (数**据** **保**留**)
+./status.sh   # **查**看**状**态** + last logs
+./backup.sh   # 备**份**到** ./backups/*.sql
+./restore.sh  # 从**备**份**恢**复** (**会** **清**空**当**前**数**据**)
+docker logs -f my2ndbrain    # 实时看**日**志
+```
+
+**彻**底**清**理** (会** **丢**数**据**):
+```bash
+./stop.sh --rm            # 删**除** container
+docker volume rm my2ndbrain-data   # 删**除** data volume
+```
+
 ### 3.1 方式 A — Docker (推荐,5 分钟起)
 
 **前置**: Docker 20+ 已装

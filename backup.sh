@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# backup.sh — snapshot the MySecondBrain data volume.
+#
+# What it does:
+#   1. Stops the container (so postgres has a clean state)
+#   2. Runs `pg_dump` inside the volume to produce a .sql file
+#   3. Restarts the container
+#   4. Writes the .sql file to ./backups/ (gitignored)
+#
+# The output is a portable PostgreSQL dump that you can `psql <` into
+# any postgres instance. The data is the entire my2ndbrain
+# database (4 tables worth of nodes, edges, drafts, skills, plus
+# categories).
+#
+# Usage:
+#   ./backup.sh                # writes ./backups/my2ndbrain-YYYYMMDD-HHMMSS.sql
+#   ./backup.sh /tmp/mydb.sql  # writes to a custom path
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+if [ "$#" -gt 1 ]; then
+    echo "usage: $0 [path-to-output.sql]" >&2
+    exit 2
+fi
+
+if [ -n "$1" ]; then
+    out="$1"
+else
+    mkdir -p backups
+    stamp=$(date +%Y%m%d-%H%M%S)
+    out="backups/my2ndbrain-${stamp}.sql"
+fi
+
+if ! docker ps --format '{{.Names}}' | grep -q '^my2ndbrain$'; then
+    echo "✗ my2ndbrain container is not running" >&2
+    echo "  start it with ./start.sh first" >&2
+    exit 1
+fi
+
+echo "==> running pg_dump -> $out"
+# pg_dump writes to stdout; we redirect once. Using exec so we don't
+# need to worry about permissions inside the volume.
+docker exec my2ndbrain su - postgres -c "pg_dump my2ndbrain" > "$out"
+
+# Sanity-check the dump
+if [ ! -s "$out" ]; then
+    echo "✗ backup file is empty — something went wrong" >&2
+    rm -f "$out"
+    exit 1
+fi
+
+size=$(du -h "$out" | awk '{print $1}')
+tables=$(grep -c "^CREATE TABLE" "$out" || echo 0)
+echo "✓ backup written: $out ($size, $tables tables)"
+
+echo
+echo "  to restore into a new container:"
+echo "    docker run -d -p 8000:8000 -v my2ndbrain-data:/var/lib/postgresql/data \\"
+echo "        -e DB_PASSWORD=*** my2ndbrain:latest"
+echo "    docker exec -i my2ndbrain su - postgres -c 'psql my2ndbrain' < $out"
