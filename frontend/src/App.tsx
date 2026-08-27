@@ -233,7 +233,7 @@ function AppInner() {
                                 title="Clear"
                                 onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => { setSearchQuery(""); setSearchOpen(false); }}
-                            >✕</button>
+                            ><IconClose /></button>
                         )}
                     </div>
                     {searchOpen && searchMatches.length > 0 && (
