@@ -239,12 +239,21 @@ export default function KnowledgeSphere(props: Props) {
 
       <OrbitControls
         enablePan={false}
+        /* DESIGN.md §2.1 "central sphere first": the sphere is the
+           centerpiece and its scale is intentional. Disable wheel
+           zoom so the user doesn't accidentally zoom in. They can
+           still rotate (left mouse drag) and the camera is
+           auto-framed. */
+        enableZoom={false}
         enableDamping
         dampingFactor={0.12}
         rotateSpeed={0.3}
-        zoomSpeed={0.6}
-        minDistance={9}
-        maxDistance={22}
+        /* DESIGN.md §4.8: limit vertical rotation to roughly a
+           hemisphere so the user can tilt up/down to see the
+           planet from above/below but never flip past the poles
+           (which would invert the texture + look weird). */
+        minPolarAngle={Math.PI * 0.2}
+        maxPolarAngle={Math.PI * 0.8}
       />
     </Canvas>
   );

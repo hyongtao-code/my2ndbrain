@@ -156,6 +156,26 @@ button { cursor: pointer; }
 .app[data-assistant-minimized="true"] {
   grid-template-columns: 52px 1fr var(--col-right);
 }
+/* When the user expands the assistant panel via the corners-out
+   toggle, take over the left half of the screen — the canvas and
+   the right column both collapse to give the chat more breathing
+   room. The assistant column itself uses `50vw` so it tracks the
+   viewport, and the chat body inside grows accordingly. */
+/* When the user expands the assistant, the grid becomes a simple
+   two-column layout: left half = assistant, right half = right
+   column. The canvas is fully hidden by setting its track to 0
+   width. We DO NOT redefine grid-template-areas here (it would
+   conflict with the base 3-row/3-area definition). Instead the
+   .column-left.is-expanded rule uses grid-column to span the
+   full left half (50vw), and the .stage / .column-right fall
+   into the remaining 1fr (or 0 / 1fr in detail-open=false). */
+.app[data-assistant-expanded="true"] {
+  /* !important is required: the base .app rule's
+     grid-template-columns comes from a higher-specificity source
+     order in the bundled CSS, and the grid is silently falling
+     back to it. */
+  grid-template-columns: 50vw 1fr 0 !important;
+}
 /* When nothing is selected, the right column collapses. App.tsx
   sets data-detail-open="false" on .app to control this. */
 .app[data-detail-open="false"] {
@@ -1871,7 +1891,12 @@ button { cursor: pointer; }
   align-self: stretch;
 }
 .column-left.is-expanded {
-  grid-column-end: span 2;
+  /* When expanded, the assistant takes over the left half of the
+     screen. The .app[data-assistant-expanded="true"] rule sets
+     the grid to "left left right" but grid items don't
+     automatically span multiple named areas — we have to
+     explicitly span 2 columns here. */
+  grid-column: 1 / span 2;
   padding: 20px 28px;
   max-width: 720px;
 }
