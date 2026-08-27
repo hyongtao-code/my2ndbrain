@@ -1002,9 +1002,32 @@ button { cursor: pointer; }
 }
 
 /* ============================================================
-   Right-half panel (replaces the old 320px narrow slide-in)
-   - Used by both AddNodeModal and NodeDetail
-   - 50vw width, full height
+   Right column (Phase 3 IA — used by NodeDetail)
+   - Lives in grid-area: right of the .app grid
+   - Width collapses to 0 when no node is selected
+     (controlled by .app[data-detail-open="false"])
+   ============================================================ */
+.column-right {
+  grid-area: right;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-1);
+  border-left: 1px solid var(--line-strong);
+  padding: 18px;
+  overflow-y: auto;
+  align-self: stretch;
+  /* No more box-shadow — the panel lives in its own column. */
+}
+.column-right .panel-title { margin: -2px 0 14px 0; }
+.column-right.is-fullscreen {
+  grid-column-start: left;
+  grid-column-end: right;
+  padding: 24px;
+}
+
+/* ============================================================
+   Right-half panel (legacy, used by AddNodeModal until commit 5)
+   - 50vw width, full height, slides in from the right edge
    ============================================================ */
 .panel-right-full {
   position: fixed;

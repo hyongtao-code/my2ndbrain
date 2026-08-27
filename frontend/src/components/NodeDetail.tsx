@@ -26,6 +26,54 @@ const EMPTY_EDIT: EditState = {
     title: "", content: "", category: "", importance: 1.0, busy: false, err: null,
 };
 
+// Inline SVG icons (DESIGN.md §6: no emoji as icon in chrome).
+function IconEdit({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <path d="M3 13 L3 11 L11 3 L13 5 L5 13 Z" />
+      <line x1={9} y1={5} x2={11} y2={7} />
+    </svg>
+  );
+}
+function IconLink({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <path d="M7 9 C5.5 10.5 3.5 10.5 2.5 9.5 C1.5 8.5 1.5 6.5 2.5 5.5 L4 4" />
+      <path d="M9 7 C10.5 5.5 12.5 5.5 13.5 6.5 C14.5 7.5 14.5 9.5 13.5 10.5 L12 12" />
+      <line x1={6} y1={10} x2={10} y2={6} />
+    </svg>
+  );
+}
+function IconTrash({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <line x1={3} y1={5} x2={13} y2={5} />
+      <path d="M5 5 L5 12.5 C5 13 5.5 13.5 6 13.5 L10 13.5 C10.5 13.5 11 13 11 12.5 L11 5" />
+      <path d="M6 5 L6 3.5 C6 3 6.5 2.5 7 2.5 L9 2.5 C9.5 2.5 10 3 10 3.5 L10 5" />
+      <line x1={7} y1={7} x2={7} y2={12} />
+      <line x1={9} y1={7} x2={9} y2={12} />
+    </svg>
+  );
+}
+function IconExpand({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <polyline points="2,6 2,2 6,2" />
+      <polyline points="14,6 14,2 10,2" />
+      <polyline points="2,10 2,14 6,14" />
+      <polyline points="14,10 14,14 10,14" />
+    </svg>
+  );
+}
+
 export default function NodeDetail({ node, onJump, onClose, onMutated }: Props) {
     const t = useTranslations();
     const { locale } = useI18n();
@@ -121,7 +169,7 @@ export default function NodeDetail({ node, onJump, onClose, onMutated }: Props) 
     };
 
     return (
-        <div className={"panel panel-right-full detail" + (fullscreen ? " is-fullscreen" : "")}>
+        <div className={"column-right detail" + (fullscreen ? " is-fullscreen" : "")}>
             <div className="panel-title">
                 <span>{editing ? t("detail.editTitle") : t("detail.title")}</span>
                 <div style={{ display: "flex", gap: 6 }}>
@@ -130,7 +178,7 @@ export default function NodeDetail({ node, onJump, onClose, onMutated }: Props) 
                         title={fullscreen ? t("panel.restore") : t("panel.fullscreen")}
                         onClick={() => setFullscreen((f) => !f)}
                     >
-                        {fullscreen ? "⤡" : "⤢"}
+                        <IconExpand />
                     </button>
                     {!editing && !confirmDelete && (
                         <>
@@ -138,7 +186,7 @@ export default function NodeDetail({ node, onJump, onClose, onMutated }: Props) 
                                 {t("detail.edit")}
                             </button>
                             <button className="btn-icon" onClick={() => setShowLinkPicker(true)} title={t("detail.addLink")}>
-                                🔗
+                                <IconLink />
                             </button>
                             <button className="btn-icon" onClick={() => setConfirmDelete(true)} title={t("detail.delete")}>
                                 {t("detail.delete")}
