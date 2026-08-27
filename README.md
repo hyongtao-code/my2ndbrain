@@ -6,6 +6,19 @@
 
 ---
 
+## 0. 一键启动 (TL;DR)
+
+```bash
+git clone <你的 repo URL> my2ndbrain && cd my2ndbrain
+./compose-up.sh                       # Docker compose (推荐,生产/服务器)
+# 或者:
+./start.sh start                      # 本地直接 (开发模式, 需 Python + Node + postgres)
+```
+
+打开 `http://localhost:8000/`。详细对比见 §3。
+
+---
+
 ## 1. 软件简介
 
 **MySecondBrain** 是一个 100% 本地运行、开箱即用的「**第二大脑**」应用 —— 你的所有零散知识(笔记、问题、灵感、读书摘录、聊天对话)在三维球面上以节点的形式**自动**组织起来,系统会:

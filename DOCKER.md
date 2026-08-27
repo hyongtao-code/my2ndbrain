@@ -6,6 +6,19 @@ frontend. One image, one command, one persistent volume.
 
 ## Quick start (the only command you need)
 
+The easiest way is `./compose-up.sh` (a thin shim that calls
+`scripts/start.sh`, which runs `docker compose up -d` for you):
+
+```bash
+./compose-up.sh                     # build image if missing, then docker compose up -d
+open http://localhost:8000/
+```
+
+If you prefer to call docker compose directly (e.g. to pass extra
+flags), the equivalent raw docker commands are:
+
+
+
 ```bash
 docker run -d -p 8000:8000 \
     --name my2ndbrain \
