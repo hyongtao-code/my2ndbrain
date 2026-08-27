@@ -78,9 +78,19 @@ RUN python -m venv /app/venv \
 
 # Pre-download the sentence-transformers model so the runtime
 # container can run offline. The model is ~90MB and ends up in
-# /app/models/. We only do this if HF_HUB_OFFLINE != 1; users with
-# air-gapped installs can pass that env to skip the download.
-ARG HF_HUB_OFFLINE=0
+# /app/models/. By default (HF_HUB_OFFLINE=1) we skip this block
+# entirely; the runtime embedding service auto-falls back to a
+# deterministic TF-IDF/SVD embedder when sentence-transformers
+# is unavailable. Users who want real semantic search can rebuild
+# with `HF_HUB_OFFLINE=0 docker build`.
+# HF_HUB_OFFLINE controls whether we pre-install
+# sentence-transformers (and its torch dependency). Default is
+# 1 (skip) — the runtime embedding service falls back to a
+# deterministic TF-IDF/SVD embedder which is sufficient for the
+# sample graph. Set HF_HUB_OFFLINE=0 at build time if you need
+# real semantic embeddings (this drags in ~600 MB of Python
+# wheels).
+ARG HF_HUB_OFFLINE=1
 ENV HF_HUB_OFFLINE=${HF_HUB_OFFLINE} \
     HF_HOME=/app/models
 # Always create /app/models (with a sentinel file) so the COPY
