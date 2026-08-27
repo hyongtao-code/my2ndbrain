@@ -540,16 +540,52 @@ button { cursor: pointer; }
 /* ============================================================
    Modal overlay
    ============================================================ */
-.modal-overlay {
-  /* DESIGN.md §3.4 + §6: no tinted blur. rgba(5,6,8,0.72) is the
-     overlay tint — no glassmorphism wash on top. */
+/* ============================================================
+   Right-slide-in sheet (Phase 3 IA — replaces the centered
+   modal overlay).
+   .modal-sheet-wrap is the click-outside-to-close layer; it
+   covers the whole canvas area but is transparent so the
+   canvas behind stays visible (just dimmed a touch).
+   .modal-sheet is the actual sheet — 480 px wide, slides in
+   from the right, hairline left border, no shadow.
+   ============================================================ */
+.modal-sheet-wrap {
   position: fixed;
-  inset: 0;
-  background: rgba(5, 6, 8, 0.72);
+  inset: var(--topbar-h) 0 0 0;
+  background: rgba(5, 6, 8, 0.32);
   z-index: 20;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
+  animation: modal-fade-in var(--dur-base) var(--ease-out-cubic);
+}
+@keyframes modal-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.modal-sheet {
+  width: min(480px, calc(100vw - var(--col-left)));
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-1);
+  border-left: 1px solid var(--line-strong);
+  padding: 18px;
+  overflow-y: auto;
+  animation: modal-slide-in var(--dur-base) var(--ease-out-cubic);
+}
+@keyframes modal-slide-in {
+  from { transform: translateX(40px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+/* LEGACY .modal-overlay — kept for any external code that
+   still targets it. Same shape as the new wrap. */
+.modal-overlay {
+  position: fixed;
+  inset: var(--topbar-h) 0 0 0;
+  background: rgba(5, 6, 8, 0.32);
+  z-index: 20;
+  display: flex;
+  justify-content: flex-end;
 }
 .modal {
   width: 520px;

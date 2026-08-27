@@ -6,6 +6,32 @@ import MarkdownEditor from "./MarkdownEditor";
 
 type Props = { onClose: () => void; onCreated: (r: IngestResponse) => void; };
 
+// Inline SVG icon (DESIGN.md §6: no emoji as icon in chrome).
+function IconClose({ size = 12 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         aria-hidden="true" style={{ display: "block" }}>
+      <line x1={3.5} y1={3.5} x2={12.5} y2={12.5} />
+      <line x1={12.5} y1={3.5} x2={3.5} y2={12.5} />
+    </svg>
+  );
+}
+
+// Inline SVG icon (DESIGN.md §6: no emoji as icon in chrome).
+function IconDraft({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <path d="M3.5 2.5 L10.5 2.5 L13 5 L13 13.5 L3.5 13.5 Z" />
+      <polyline points="10,2.5 10,5.5 13,5.5" />
+      <line x1={5.5} y1={7.5} x2={11} y2={7.5} />
+      <line x1={5.5} y1={10} x2={11} y2={10} />
+    </svg>
+  );
+}
+
 export default function AddNodeModal({ onClose, onCreated }: Props) {
     const t = useTranslations();
     const [fullscreen, setFullscreen] = useState(false);
@@ -41,7 +67,7 @@ export default function AddNodeModal({ onClose, onCreated }: Props) {
     };
 
     return (
-        <div className={"panel-right-full add-modal" + (fullscreen ? " is-fullscreen" : "")} role="dialog" aria-modal="true">
+        <div className={"column-right modal-sheet add-modal"} role="dialog" aria-modal="true">
             <div className="panel-title">
                 <span>{preview ? t("addModal.titleDone") : t("addModal.title")}</span>
                 <div style={{ display: "flex", gap: 4 }}>
@@ -52,7 +78,7 @@ export default function AddNodeModal({ onClose, onCreated }: Props) {
                     >
                         {fullscreen ? "⤡" : "⤢"}
                     </button>
-                    <button className="btn-icon" onClick={onClose}>✕</button>
+                    <button className="btn-icon" onClick={onClose}><IconClose /></button>
                 </div>
             </div>
 
@@ -103,7 +129,7 @@ export default function AddNodeModal({ onClose, onCreated }: Props) {
             {preview && (
                 <div className="add-preview">
                     <div className={`check ${preview.title_check.ok ? "ok" : ""}`}>
-                        <div>📝 <b>{t("addModal.titleCheck.verdict")}</b> · {t("addModal.titleCheck.confidence")} {(preview.title_check.confidence * 100).toFixed(0)}%</div>
+                        <div className="verdict-icon"><IconDraft size={14} /> <b>{t("addModal.titleCheck.verdict")}</b> · {t("addModal.titleCheck.confidence")} {(preview.title_check.confidence * 100).toFixed(0)}%</div>
                         <div>{preview.title_check.reason}</div>
                         {!preview.title_check.ok && (
                             <div>{t("addModal.titleCheck.suggested")}: <b>{preview.title_check.suggestion}</b></div>

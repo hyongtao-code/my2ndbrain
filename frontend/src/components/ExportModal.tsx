@@ -21,6 +21,31 @@ type Props = {
     onClose: () => void;
 };
 
+// Inline SVG icon (DESIGN.md §6: no emoji as icon in chrome).
+function IconClose({ size = 12 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         aria-hidden="true" style={{ display: "block" }}>
+      <line x1={3.5} y1={3.5} x2={12.5} y2={12.5} />
+      <line x1={12.5} y1={3.5} x2={3.5} y2={12.5} />
+    </svg>
+  );
+}
+
+// Inline SVG icon (DESIGN.md §6: no emoji as icon in chrome).
+function IconUpload({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <line x1={8} y1={13.5} x2={8} y2={5.5} />
+      <polyline points="4,9 8,5 12,9" />
+      <line x1={3} y1={2.5} x2={13} y2={2.5} />
+    </svg>
+  );
+}
+
 export default function ExportModal({ onClose }: Props) {
     const t = useTranslations();
     const [nodes, setNodes] = useState<GraphNode[]>([]);
@@ -105,11 +130,11 @@ export default function ExportModal({ onClose }: Props) {
     };
 
     return (
-        <div className="modal-overlay" onClick={downloading ? undefined : onClose}>
-            <div className="panel modal import-export-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-sheet-wrap" onClick={downloading ? undefined : onClose}>
+            <div className="column-right modal-sheet import-export-modal" onClick={(e) => e.stopPropagation()}>
                 <div className="panel-title">
-                    <span>📤 {t("export.title")}</span>
-                    <button className="btn-icon" onClick={onClose} disabled={downloading}>✕</button>
+                    <span><IconUpload /> {t("export.title")}</span>
+                    <button className="btn-icon" onClick={onClose} disabled={downloading}><IconClose /></button>
                 </div>
 
                 <p className="assistant-hint">{t("export.hint")}</p>
