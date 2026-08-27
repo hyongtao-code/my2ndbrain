@@ -1839,6 +1839,20 @@ button { cursor: pointer; }
    effectively disappears (its grid cell collapses). The dim-the-
    canvas filter no longer applies — there IS no canvas visible in
    expanded mode, so dimming is moot. */
+
+/* Phase 3 IA: assistant column lives in the grid's left cell.
+   No more position: fixed. It slots into grid-area: left via the
+   .column-left class on the AssistantPanel root. */
+.column-left {
+  grid-area: left;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-1);
+  border-right: 1px solid var(--line-strong);
+  overflow-y: auto;
+  padding: 14px;
+  align-self: stretch;
+}
 .column-left.is-expanded {
   grid-column-end: span 2;
   padding: 20px 28px;
