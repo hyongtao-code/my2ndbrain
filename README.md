@@ -120,18 +120,69 @@ category_cluster(id, name, description, centroid vector(384), node_count)
 
 ## 3. 使用方法
 
-本仓库同时提供两种启动方式,  二选一:
+本仓库同时提供两种启动方式, 二选一:
 
 | 方式 | 脚本 | 实际位置 | 适合谁 | 数据存哪 |
 |---|---|---|---|---|
-| **A. Docker compose (推荐,产品/服务器/给朋友用)** | `./start.sh` | `scripts/start.sh` (root 有 thin shim) | 普通用户; 不想装 PostgreSQL/Node/Python | host 上的 named volume `my2ndbrain-data` |
-| **B. 本地直接 (开发/调试/贡献代码)** | `./dev.sh` | `scripts/dev.sh` (root 有 thin shim) | 开发者; 要看 Vite HMR / 改 Python 源码 | 你装的 postgres (host 或 docker) |
+| **A. 本地直接 (开发/调试/贡献代码)** | `./start.sh` | `scripts/dev.sh` (root 有 thin shim) | 开发者; 要看 Vite HMR / 改 Python 源码 | 你装的 postgres (host 或 docker) |
+| **B. Docker compose (产品/服务器/给朋友用)** | `./compose-up.sh` + `./compose-down.sh` | `scripts/start.sh` + `scripts/stop.sh` (root 有 thin shim) | 普通用户; 不想装 PostgreSQL/Node/Python | host 上的 named volume `my2ndbrain-data` |
 
-所有 user-facing 脚本 (`start` / `stop` / `status` / `backup` / `restore` / `prereq` / `dev`) 都在 `scripts/` 下, root 只有 1 行 shim 让 `./start.sh` 和 `./dev.sh` 还能直接用 (与 `Dockerfile COPY docker-entrypoint.sh` 不冲突 — entrypoint 在 root, 没移动)。 你可以用 `./scripts/start.sh` 或 `./start.sh` — 都能 work。
+所有 user-facing 脚本 (`start` / `stop` / `status` / `backup` / `restore` / `prereq` / `dev`) 都在 `scripts/` 下, root 只有 thin shim 让 `./start.sh` `./compose-up.sh` `./compose-down.sh` 还能直接用 (与 `Dockerfile COPY docker-entrypoint.sh` 不冲突 — entrypoint 在 root, 没移动)。
 
-不要同时跑 `./start.sh` 和 `./dev.sh` — 它们 都要占 8000 端口, 会 冲突!
+不要同时跑 `./start.sh start` 和 `./compose-up.sh` — 它们 都要占 8000 端口, 会 冲突!
 
-### 3.0 一键启动 (推荐,普通用户用这个就行)
+### 3.0 本地直接启动 (开发模式,推荐给开发者)
+
+> `./start.sh` 是 直接本地启动 (uvicorn + vite dev), 不用 docker。
+
+```bash
+git clone <你的 repo URL> my2ndbrain
+cd my2ndbrain
+
+# 一条命令起 (前置: PostgreSQL 16 + pgvector + Python 3.11 + Node 20)
+./start.sh start           # backend :8000 + frontend :5173
+./start.sh status          # 看进程
+./start.sh logs            # tail 日志
+./start.sh stop            # 停
+```
+
+子命令:
+```bash
+./start.sh start      # 启动后端 + 前端 (idempotent: 已经 在跑就不会重启)
+./start.sh stop       # 停两个
+./start.sh status     # 查看状态 + 端口占用
+./start.sh logs       # tail -20 后端+前端 log
+./start.sh reset      # stop + 清数据 (会 丢 所有 nodes/drafts/edges, 不要 轻易跑)
+./start.sh help       # 详细说明
+```
+
+如果 `./start.sh` 报错说 `pg_isready` 失败、或 postgres 没启动, 请先装 PostgreSQL 16 + pgvector, 详见 §3.2。 `start.sh` 会自动 检测 host 是否已经有 postgres 在 5432 跑。
+
+### 3.0a Docker compose 启动 (生产/服务器/给朋友用)
+
+> `./compose-up.sh` 是 Docker compose 启动 (postgres + pgvector + 后端 + 前端 全在一个 image 里)。
+
+```bash
+# 前置: 装好 Docker 20+
+git clone <你的 repo URL> my2ndbrain
+cd my2ndbrain
+
+# 一条命令起 (首次会自动 build image, 5-10 min)
+./compose-up.sh                       # smart: 只有 image 不存在才 build
+./compose-up.sh --rebuild           # 强制重新 build
+./compose-up.sh --pull              # 拉最新 base image (之后再 build)
+./compose-up.sh --help              # 详细说明
+
+# 浏览器访问:
+#   http://localhost:8000/   (FastAPI + React build)
+```
+
+停止 / 卸载:
+```bash
+./compose-down.sh             # 停 container (数据 保留)
+./compose-down.sh --rm        # 停并删除 container (数据仍然 保留)
+docker volume rm my2ndbrain-data   # 彻底清除数据 (慎用!)
+```### 3.0 一键启动 (推荐,普通用户用这个就行)
 
 ```bash
 # 1. 装好 Docker (https://docs.docker.com/engine/install/)
@@ -177,39 +228,6 @@ docker logs -f my2ndbrain    # 实时看日志
 docker volume rm my2ndbrain-data   # 删除 data volume
 ```
 
-### 3.0b 本地直接启动 (开发模式,开发者用这个)
-
-> 如果你要改 Python 源码、改前端 component、看 Vite HMR 热重载, 用 `./dev.sh` 代替 `./start.sh`。 它启动的是 host 上的 `uvicorn` + `vite dev` (热重载), 不是 Docker 容器。
->
-> 前置:
-> - Python 3.11+ (`apt install python3.11-venv`)
-> - Node 20+ (`apt install nodejs npm`)
-> - PostgreSQL 16 + pgvector (见 § 3.2 手工安装) 或 跑完 `docker run -d postgres:16-pgvector` 后让 host 上的 backend 连它
-
-```bash
-./dev.sh status    # 看看 PostgreSQL / port 8000 / port 5173 状态
-./dev.sh start     # 启动后端 (uvicorn) + 前端 (Vite dev)
-./dev.sh logs      # tail -20 后端+前端 log
-./dev.sh status    # 再查状态 (start 后)
-./dev.sh stop      # 停
-
-# 浏览器访问:
-#   http://localhost:8000/    (FastAPI + React dev build)
-#   http://localhost:5173/    (Vite dev server, HMR)
-```
-
-> `dev.sh` 在 `scripts/dev.sh` (root 有 shim 转发)。 你可以用 `./dev.sh` 或 `./scripts/dev.sh`, 两个一样。
-
-`dev.sh` 支持的子命令:
-```bash
-./dev.sh start      # 启动后端 + 前端 (idempotent: 已经 在跑就不会重启)
-./dev.sh stop       # 停两个
-./dev.sh status     # 查看状态 + 端口占用
-./dev.sh logs       # tail -20 后端+前端 log
-./dev.sh reset      # stop + 清数据 (会 丢 所有 nodes/drafts/edges, 不要 轻易跑)
-./dev.sh help       # 详细说明
-```
-
 ### 3.1 Docker 深入:启动顺序 (entrypoint 内部)
 
 > 新手用户不用看这一节。 一键启动 `./start.sh` 会自动做完所有事。 这一节只记录 `docker-entrypoint.sh` 在容器里的 8 步执行序列,方便排查问题时对账。
@@ -248,7 +266,7 @@ docker volume rm my2ndbrain-data   # 删除 data volume
 
 ### 3.2 本地模式深入:跨平台 PostgreSQL 启动
 
-> 新手用户不用看这一节。 `./dev.sh` 会自动检测 host 上是否已经有 postgres 在 5432 跑。 这一节只是详细的手动 PostgreSQL 装置文档, 给你不想用 docker 但也不想让 `./dev.sh` 管 postgres 的情况用。
+> 新手用户不用看这一节。 `./start.sh start` 会自动检测 host 上是否已经有 postgres 在 5432 跑。 这一节只是详细的手动 PostgreSQL 装置文档, 给你不想用 docker 但也不想让 `./start.sh` 管 postgres 的情况用。
 
 **macOS (Homebrew)**:
 ```bash
@@ -282,7 +300,7 @@ sudo -u postgres psql -d my2ndbrain -c "\dx"
 
 **其他系统** (CentOS / Arch / Windows) — 装 `postgresql-16` + `postgresql-16-pgvector` 包即可, 后面的 SQL 完全一样。
 
-自动化版本的 ./dev.sh start 已经帮你跑完了上面所有事情 (创建 role + db + pgvector extension), 所以手动只在你要单独管 PostgreSQL 时用。
+自动化版本的 `./start.sh start` 已经帮你跑完了上面所有事情 (创建 role + db + pgvector extension), 所以手动只在你要单独管 PostgreSQL 时用。
 
 ## 4. 视频教程(待上传)
 
