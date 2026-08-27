@@ -3,12 +3,15 @@ import { useTranslations } from "next-intl";
 import { api } from "../lib/api";
 import type { IngestResponse } from "../types";
 import MarkdownEditor from "./MarkdownEditor";
+import ModalSizeToggle from "./ModalSizeToggle";
 
 type Props = {
     onClose: () => void;
     onCreated: (r: IngestResponse) => void;
-    fullscreen?: boolean;
-    onFullscreenChange?: (v: boolean) => void;
+    /** Modal layout mode: "default" = 1/4 (320px), "half" = 1/2 (50vw). */
+    modalMode: "default" | "half";
+    /** Set the modal's layout mode. */
+    onSetMode: (m: "default" | "half") => void;
 };
 
 // Inline SVG icon (DESIGN.md §6: no emoji as icon in chrome).
@@ -37,7 +40,7 @@ function IconDraft({ size = 14 }: { size?: number }) {
   );
 }
 
-export default function AddNodeModal({ onClose, onCreated, fullscreen = false, onFullscreenChange }: Props) {
+export default function AddNodeModal({ onClose, onCreated, modalMode = "default", onSetMode }: Props) {
     const t = useTranslations();
     
     const [title, setTitle] = useState("");
@@ -72,20 +75,11 @@ export default function AddNodeModal({ onClose, onCreated, fullscreen = false, o
     };
 
     return (
-        <div className={"column-right modal-sheet add-modal" + (fullscreen ? " is-fullscreen" : "")} role="dialog" aria-modal="true">
+        <div className={"column-right modal-sheet add-modal" + (modalMode === "half" ? " is-fullscreen" : "")} role="dialog" aria-modal="true">
             <div className="panel-title">
                 <span>{preview ? t("addModal.titleDone") : t("addModal.title")}</span>
                 <div style={{ display: "flex", gap: 4 }}>
-                    <button
-                        className="panel-full-toggle"
-                        title={fullscreen ? t("panel.restore") : t("panel.fullscreen")}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onFullscreenChange?.(!fullscreen);
-                        }}
-                    >
-                        {fullscreen ? "⤡" : "⤢"}
-                    </button>
+                    <ModalSizeToggle mode={modalMode} onSetMode={onSetMode} />
                     <button className="btn-icon" onClick={onClose}><IconClose /></button>
                 </div>
             </div>

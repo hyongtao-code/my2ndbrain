@@ -39,24 +39,22 @@ function AppInner() {
     //   closed      → "minimized" (column 0)
     //   open        → "default"  (column 320px)
     //   fullscreen  → "half"     (column 50vw)
-    // Per-modal fullscreen state. Each modal calls setXxxFullscreen(true|false)
-    // when the user clicks the corners-out toggle in its header. The
-    // 50vw half-screen mode for the right column is gated on this.
-    const [addFullscreen, setAddFullscreen] = useState(false);
-    const [importFullscreen, setImportFullscreen] = useState(false);
-    const [exportFullscreen, setExportFullscreen] = useState(false);
-    const [detailFullscreen, setDetailFullscreen] = useState(false);
-    // Derived from which modal is open + that modal's fullscreen flag.
+    // Per-modal size state. Each modal is independent (open with
+    // "default" = 1/4 or "half" = 1/2). The 4 booleans collapsed
+    // into 4 strings so the modal header can render two separate
+    // buttons (1/4 / 1/2) and highlight the active one.
+    const [addMode, setAddMode] = useState<"default" | "half">("default");
+    const [importMode, setImportMode] = useState<"default" | "half">("default");
+    const [exportMode, setExportMode] = useState<"default" | "half">("default");
+    const [detailMode, setDetailMode] = useState<"default" | "half">("default");
+    // Derived from which modal is open + that modal's mode flag.
     const anyModalOpen = !!(selected || showAdd || showImport || showExport);
-    const anyModalFullscreen = !!((selected && detailFullscreen) || addFullscreen || importFullscreen || exportFullscreen);
+    const anyModalFullscreen = !!((selected && detailMode === "half") || addMode === "half" || importMode === "half" || exportMode === "half");
     const computedModalMode: "default" | "half" | "minimized" =
         !anyModalOpen ? "minimized" :
         anyModalFullscreen ? "half" : "default";
-    const cycleAssistantMode = useCallback(() => {
-        setAssistantMode((m) =>
-            m === "default" ? "minimized" : m === "minimized" ? "half" : "default"
-        );
-    }, []);
+    // Assistant uses a direct setAssistantMode so the user can pick any
+    // of the three sizes from the segmented control in the panel header.
     const refreshDrafts = useCallback(async () => {
         try {
             const list = await api.listDrafts(false);
@@ -341,23 +339,23 @@ function AppInner() {
                     onJump={(id) => selectNode(id)}
                     onClose={closeDetail}
                     onMutated={refresh}
-                    fullscreen={detailFullscreen}
-                    onFullscreenChange={setDetailFullscreen}
+                    modalMode={detailMode}
+                    onSetMode={setDetailMode}
                 />
             )}
 
-            <AssistantPanel onJump={(id) => selectNode(id)} drafts={drafts} refreshDrafts={refreshDrafts} assistantMode={assistantMode} onCycleMode={cycleAssistantMode} />
+            <AssistantPanel onJump={(id) => selectNode(id)} drafts={drafts} refreshDrafts={refreshDrafts} assistantMode={assistantMode} onSetMode={setAssistantMode} />
 
 
 
             {showAdd && (
-                <AddNodeModal onClose={() => setShowAdd(false)} onCreated={handleCreated} fullscreen={addFullscreen} onFullscreenChange={setAddFullscreen} />
+                <AddNodeModal onClose={() => setShowAdd(false)} onCreated={handleCreated} modalMode={addMode} onSetMode={setAddMode} />
             )}
             {showImport && (
-                <ImportModal onClose={() => setShowImport(false)} onCreated={handleCreated} fullscreen={importFullscreen} onFullscreenChange={setImportFullscreen} />
+                <ImportModal onClose={() => setShowImport(false)} onCreated={handleCreated} modalMode={importMode} onSetMode={setImportMode} />
             )}
             {showExport && (
-                <ExportModal onClose={() => setShowExport(false)} fullscreen={exportFullscreen} onFullscreenChange={setExportFullscreen} />
+                <ExportModal onClose={() => setShowExport(false)} modalMode={exportMode} onSetMode={setExportMode} />
             )}
         </div>
     );

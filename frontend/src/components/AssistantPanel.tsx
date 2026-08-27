@@ -6,14 +6,16 @@ import { useI18n } from "../i18n";
 
 type Mode = "ask" | "suggest" | "settings" | "draft";
 
+type AssistantMode = "default" | "minimized" | "half";
+
 type Props = {
     onJump: (id: string) => void;
     drafts: import("../types").DraftOut[];
     refreshDrafts: () => void;
     /** Three-state layout mode for the assistant column. */
-    assistantMode: "default" | "minimized" | "half";
-    /** Cycles default → minimized → half → default */
-    onCycleMode: () => void;
+    assistantMode: AssistantMode;
+    /** Set the assistant mode to any of the three values. */
+    onSetMode: (m: AssistantMode) => void;
 };
 
 type ProviderInfo = {
@@ -235,7 +237,7 @@ function IconRefresh({ size = 14 }: { size?: number }) {
   );
 }
 
-export default function AssistantPanel({ onJump, drafts, refreshDrafts, assistantMode, onCycleMode }: Props) {
+export default function AssistantPanel({ onJump, drafts, refreshDrafts, assistantMode, onSetMode }: Props) {
     const t = useTranslations();
     const { locale } = useI18n();
     const [mode, setMode] = useState<Mode>("draft");
@@ -248,34 +250,51 @@ export default function AssistantPanel({ onJump, drafts, refreshDrafts, assistan
                     <span className="assistant-title-text">{t("assistant.title")}</span>
                 </div>
                 <div className="assistant-header-actions">
-                    {/* Cycle-mode button — default (1/4) → minimized (rail)
-                       → half (50vw) → default. Same icon for the cycle;
-                       title tooltip describes the next state. */}
-                    <button
-                        className="assistant-toggle-btn"
-                        onClick={onCycleMode}
-                        title={
-                            assistantMode === "default"
-                                ? t("assistant.cycleToMinimize")
-                                : assistantMode === "minimized"
-                                    ? t("assistant.cycleToHalf")
-                                    : t("assistant.cycleToDefault")
-                        }
-                        aria-label={
-                            assistantMode === "default"
-                                ? t("assistant.cycleToMinimize")
-                                : assistantMode === "minimized"
-                                    ? t("assistant.cycleToHalf")
-                                    : t("assistant.cycleToDefault")
-                        }
-                    >
-                        {assistantMode === "default"
-                            ? <IconMinimize />
-                            : assistantMode === "minimized"
-                                ? <IconExpand />
-                                : <IconExpand />
-                        }
-                    </button>
+                    {/* Segmented control — 3 independent buttons so the user
+                       can jump straight to any size (minimized / 1/4 / 1/2)
+                       instead of cycling through them. The current mode is
+                       highlighted with the active class. */}
+                    <div className="assistant-size-toggle" role="group" aria-label={t("assistant.sizeGroup")}>
+                        <button
+                            className={"assistant-size-btn" + (assistantMode === "minimized" ? " active" : "")}
+                            onClick={() => onSetMode("minimized")}
+                            title={t("assistant.sizeMinimize")}
+                            aria-label={t("assistant.sizeMinimize")}
+                            aria-pressed={assistantMode === "minimized"}
+                        >
+                            <IconMinimize />
+                        </button>
+                        <button
+                            className={"assistant-size-btn" + (assistantMode === "default" ? " active" : "")}
+                            onClick={() => onSetMode("default")}
+                            title={t("assistant.sizeQuarter")}
+                            aria-label={t("assistant.sizeQuarter")}
+                            aria-pressed={assistantMode === "default"}
+                        >
+                            {/* 1/4 icon: a square occupying the leftmost quarter */}
+                            <svg width={14} height={14} viewBox="0 0 16 16" fill="none"
+                                 stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+                                 strokeLinejoin="round">
+                                <rect x="2.5" y="3.5" width="11" height="9" rx="1" />
+                                <rect x="2.5" y="3.5" width="2.75" height="9" fill="currentColor" stroke="none" />
+                            </svg>
+                        </button>
+                        <button
+                            className={"assistant-size-btn" + (assistantMode === "half" ? " active" : "")}
+                            onClick={() => onSetMode("half")}
+                            title={t("assistant.sizeHalf")}
+                            aria-label={t("assistant.sizeHalf")}
+                            aria-pressed={assistantMode === "half"}
+                        >
+                            {/* 1/2 icon: square split, left half filled */}
+                            <svg width={14} height={14} viewBox="0 0 16 16" fill="none"
+                                 stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+                                 strokeLinejoin="round">
+                                <rect x="2.5" y="3.5" width="11" height="9" rx="1" />
+                                <rect x="2.5" y="3.5" width="5.5" height="9" fill="currentColor" stroke="none" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
             </div>
 

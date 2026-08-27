@@ -123,9 +123,10 @@
     "askWelcome": "👋 Hi! Ask me anything about your notes.\n(e.g. \"What is harness?\" or \"How does harness connect to 张雪峰?\")",
     "expandPanel": "Expand panel",
     "minimizePanel": "Minimize panel",
-    "cycleToMinimize": "Minimize",
-    "cycleToHalf": "Expand (left half)",
-    "cycleToDefault": "Collapse (back to 1/4)"
+    "sizeGroup": "AI Assistant size",
+    "sizeMinimize": "Minimize to rail",
+    "sizeQuarter": "1/4 width (default)",
+    "sizeHalf": "1/2 width (left half)"
   },
   "lang": {
     "switch": "Switch language",
@@ -163,6 +164,11 @@
     "tabPreview": "Preview",
     "placeholder": "Markdown supported: **bold**, *italic*, `inline code`, [link](url), lists, ...",
     "emptyPreview": "(preview is empty — type something in Edit mode)"
+  },
+  "modal": {
+    "sizeGroup": "Panel size",
+    "sizeQuarter": "1/4 width (default)",
+    "sizeHalf": "1/2 width (right half)"
   },
   "panel": {
     "fullscreen": "Fullscreen",

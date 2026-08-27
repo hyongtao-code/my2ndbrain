@@ -4,6 +4,7 @@ import type { NodeOut } from "../types";
 import { useI18n } from "../i18n";
 import { api } from "../lib/api";
 import MarkdownEditor from "./MarkdownEditor";
+import ModalSizeToggle from "./ModalSizeToggle";
 
 type Props = {
     node: NodeOut;
@@ -11,10 +12,10 @@ type Props = {
     onClose: () => void;
     /** called after a successful edit or delete so App can refresh the graph */
     onMutated: () => void;
-    /** Whether the panel is in 1/2 (50vw) fullscreen mode. Driven by App. */
-    fullscreen?: boolean;
-    /** Notifies App when the user toggles the fullscreen icon. */
-    onFullscreenChange?: (v: boolean) => void;
+    /** Modal layout mode: "default" = 1/4 (320px), "half" = 1/2 (50vw). */
+    modalMode: "default" | "half";
+    /** Set the modal's layout mode. */
+    onSetMode: (m: "default" | "half") => void;
 };
 
 type EditState = {
@@ -65,20 +66,7 @@ function IconTrash({ size = 14 }: { size?: number }) {
     </svg>
   );
 }
-function IconExpand({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
-         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
-         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
-      <polyline points="2,6 2,2 6,2" />
-      <polyline points="14,6 14,2 10,2" />
-      <polyline points="2,10 2,14 6,14" />
-      <polyline points="14,10 14,14 10,14" />
-    </svg>
-  );
-}
-
-export default function NodeDetail({ node, onJump, onClose, onMutated, fullscreen = false, onFullscreenChange }: Props) {
+export default function NodeDetail({ node, onJump, onClose, onMutated, modalMode = "default", onSetMode }: Props) {
     const t = useTranslations();
     const { locale } = useI18n();
     const [full, setFull] = useState<NodeOut | null>(null);
@@ -173,17 +161,11 @@ export default function NodeDetail({ node, onJump, onClose, onMutated, fullscree
     };
 
     return (
-        <div className={"column-right detail" + (fullscreen ? " is-fullscreen" : "")}>
+        <div className={"column-right detail" + (modalMode === "half" ? " is-fullscreen" : "")}>
             <div className="panel-title">
                 <span>{editing ? t("detail.editTitle") : t("detail.title")}</span>
                 <div style={{ display: "flex", gap: 6 }}>
-                    <button
-                        className="panel-full-toggle"
-                        title={fullscreen ? t("panel.restore") : t("panel.fullscreen")}
-                        onClick={() => onFullscreenChange?.(!fullscreen)}
-                    >
-                        <IconExpand />
-                    </button>
+                    <ModalSizeToggle mode={modalMode} onSetMode={onSetMode} />
                     {!editing && !confirmDelete && (
                         <>
                             <button className="btn-icon" onClick={startEdit} title={t("detail.edit")}>

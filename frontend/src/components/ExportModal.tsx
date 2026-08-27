@@ -9,6 +9,7 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "../lib/api";
+import ModalSizeToggle from "./ModalSizeToggle";
 
 type GraphNode = {
     id: string;
@@ -19,8 +20,10 @@ type GraphNode = {
 
 type Props = {
     onClose: () => void;
-    fullscreen?: boolean;
-    onFullscreenChange?: (v: boolean) => void;
+    /** Modal layout mode: "default" = 1/4, "half" = 1/2. */
+    modalMode: "default" | "half";
+    /** Set the modal's layout mode. */
+    onSetMode: (m: "default" | "half") => void;
 };
 
 // Inline SVG icon (DESIGN.md §6: no emoji as icon in chrome).
@@ -48,19 +51,7 @@ function IconUpload({ size = 14 }: { size?: number }) {
   );
 }
 
-
-function IconExpand({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
-         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
-         strokeLinejoin="round">
-      <path d="M3 9 V13 H13 V9" />
-      <path d="M5 5 L8 2 L11 5" />
-      <path d="M8 2 V10" />
-    </svg>
-  );
-}
-export default function ExportModal({ onClose , fullscreen = false, onFullscreenChange}: Props) {
+export default function ExportModal({ onClose , modalMode = "default", onSetMode}: Props) {
     const t = useTranslations();
     const [nodes, setNodes] = useState<GraphNode[]>([]);
     const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -145,20 +136,11 @@ export default function ExportModal({ onClose , fullscreen = false, onFullscreen
 
     return (
         <div className="modal-sheet-wrap" onClick={downloading ? undefined : onClose}>
-            <div className={"column-right modal-sheet import-export-modal" + (fullscreen ? " is-fullscreen" : "")} onClick={(e) => e.stopPropagation()}>
+            <div className={"column-right modal-sheet import-export-modal" + (modalMode === "half" ? " is-fullscreen" : "")} onClick={(e) => e.stopPropagation()}>
                 <div className="panel-title">
                     <span><IconUpload /> {t("export.title")}</span>
                     <div style={{ display: "flex", gap: 4 }}>
-                        <button
-                            className="panel-full-toggle"
-                            title={fullscreen ? t("panel.restore") : t("panel.fullscreen")}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onFullscreenChange?.(!fullscreen);
-                            }}
-                        >
-                            <IconExpand />
-                        </button>
+                        <ModalSizeToggle mode={modalMode} onSetMode={onSetMode} />
                         <button className="btn-icon" onClick={onClose} disabled={downloading}><IconClose /></button>
                     </div>
                 </div>

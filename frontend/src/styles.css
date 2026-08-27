@@ -59,9 +59,19 @@
   --space-7: 48px;
   --space-8: 64px;
   --space-9: 96px;
-  /* —— Column widths (Phase 3 IA: left-assistant / canvas / right-detail) —— */
-  --col-left:  280px;
-  --col-right: 320px;
+  /* —— Column widths (Phase 4 IA + responsive) ————————————————
+     1/4 永远跟随视窗：clamp(0, 25vw, 480)
+       1280 viewport → 25vw = 320px (1/4 视觉感)
+       1920 viewport → 25vw = 480px (夹到 max)
+       3440 viewport → 25vw = 860px → 夹到 480px (不会拉到 860)
+       375  mobile   → 25vw = 94px → 夹到 0 (列消失，canvas 占满)
+     1/2 由 grid 直接写 50vw（无需 token）
+     minimized rail: clamp(44px, 4vw, 64px)，跟视窗比例缩放
+       1280 → 51px, 1920 → 64px (max), 3440 → 64px, 375 → 44px (min)
+  */
+  --col-left:  clamp(0px, 25vw, 480px);
+  --col-right: clamp(0px, 25vw, 480px);
+  --rail-w:    clamp(44px, 4vw, 64px);
   --topbar-h:   52px;
 
   /* legacy names kept for the existing JS that reads --xxs / --xs etc. */
@@ -181,12 +191,14 @@ button { cursor: pointer; }
 /* assistant = minimized, modal = default */
 .app[data-assistant-mode="minimized"][data-modal-mode="default"],
 .app[data-assistant-mode="minimized"]:not([data-modal-mode]) {
-  grid-template-columns: 52px 1fr var(--col-right);
+  grid-template-columns: var(--rail-w) 1fr var(--col-right);
 }
-/* assistant = half, modal = default */
+/* assistant = half, modal = default — 1/2 + 1/4 mixed (left panel half,
+   right closed). Same idea as default+half but mirrored: 50vw for
+   assistant, 1fr for canvas, var(--col-right) for modal-when-open. */
 .app[data-assistant-mode="half"][data-modal-mode="default"],
 .app[data-assistant-mode="half"]:not([data-modal-mode]) {
-  grid-template-columns: 50vw 0 var(--col-right);
+  grid-template-columns: 50vw 1fr var(--col-right);
 }
 /* assistant = default, modal = minimized */
 .app[data-assistant-mode="default"][data-modal-mode="minimized"] {
@@ -194,19 +206,27 @@ button { cursor: pointer; }
 }
 /* assistant = minimized, modal = minimized (both collapsed) */
 .app[data-assistant-mode="minimized"][data-modal-mode="minimized"] {
-  grid-template-columns: 52px 1fr 0px;
+  grid-template-columns: var(--rail-w) 1fr 0px;
 }
 /* assistant = half, modal = minimized */
 .app[data-assistant-mode="half"][data-modal-mode="minimized"] {
   grid-template-columns: 50vw 1fr 0px;
 }
-/* assistant = default, modal = half */
+/* assistant = default, modal = half — both 1/4 + 1/2 mixed.
+   var(--col-left) for assistant (1/4), 1fr for the canvas (so the
+   sphere stays visible in the gap between panels), 50vw for modal.
+   At 1280 viewport: 320 + 1fr + 640 → 1fr = 320 (sphere visible
+   in a 320px middle column). At 1920 viewport: 480 + 1fr + 960
+   → 1fr = 480. At 3440 ultrawide viewport: 480 + 1fr + 1720
+   → 1fr = 1240. */
 .app[data-assistant-mode="default"][data-modal-mode="half"] {
-  grid-template-columns: var(--col-left) 0 50vw;
+  grid-template-columns: var(--col-left) 1fr 50vw;
 }
-/* assistant = minimized, modal = half */
+/* assistant = minimized, modal = half — rail + 1/2 mixed. Rail +
+   1fr canvas gap + 50vw modal panel. At 1280 viewport: 51 + 1fr +
+   640 → 1fr = 589 (sphere has a wide center slot to breathe). */
 .app[data-assistant-mode="minimized"][data-modal-mode="half"] {
-  grid-template-columns: 52px 0 50vw;
+  grid-template-columns: var(--rail-w) 1fr 50vw;
 }
 /* both = half (THE KEY STATE): 50vw + 1fr + 50vw — canvas is 1fr in
    the middle column. Since 50vw+50vw = 100vw, the 1fr track is
@@ -1225,7 +1245,24 @@ button { cursor: pointer; }
   pointer-events: auto;
 }
 @media (max-width: 720px) {
-  .panel-right-full { width: 100vw; min-width: 0; }
+  /* On mobile (< 720px), 25vw is still ~94px which is wider than the
+     viewport (375) and would overflow. Force the column tokens to 0
+     so the default / minimized states give the canvas the full
+     viewport. Also expand 1/2 modes to 100vw because 50vw is too
+     narrow to be useful. */
+  :root {
+    --col-left:  0px;
+    --col-right: 0px;
+    --rail-w:    44px;
+  }
+  .app[data-assistant-mode="half"] { grid-template-columns: 100vw 0 0; }
+  .app[data-modal-mode="half"]      { grid-template-columns: 0 0 100vw; }
+  .app[data-assistant-mode="half"][data-modal-mode="half"] {
+    grid-template-columns: 0 100vw 0;
+  }
+  /* Modal sheet goes full-width on mobile regardless of fullscreen. */
+  .modal-sheet { width: 100vw; }
+  .modal-sheet.is-fullscreen { width: 100vw; }
 }
 .panel-right-full .panel-title {
   margin: -2px 0 14px 0;
@@ -2032,14 +2069,24 @@ button { cursor: pointer; }
   align-items: center;
   gap: 4px;
 }
-/* Both minimize and expand buttons share this style. */
-.assistant-toggle-btn {
-  background: transparent;
+/* Segmented control — 3 buttons grouped together. Active button has
+   a filled background; inactive ones are outline-only. */
+.assistant-size-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  background: var(--bg-2);
   border: 1px solid var(--line);
-  color: var(--text-1);
-  width: 28px;
-  height: 28px;
   border-radius: var(--r-pill);
+  padding: 2px;
+}
+.assistant-size-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-2);
+  width: 26px;
+  height: 24px;
+  border-radius: calc(var(--r-pill) - 2px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2047,15 +2094,30 @@ button { cursor: pointer; }
   line-height: 1;
   font-family: inherit;
   transition: background var(--dur-instant) var(--ease-out-cubic),
-              color var(--dur-instant) var(--ease-out-cubic),
-              border-color var(--dur-instant) var(--ease-out-cubic);
+              color var(--dur-instant) var(--ease-out-cubic);
 }
-.assistant-toggle-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
+.assistant-size-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
   color: var(--text-0);
-  border-color: var(--line-strong);
 }
-.assistant-toggle-btn svg { display: block; }
+.assistant-size-btn.active {
+  background: var(--accent);
+  color: var(--accent-on);
+}
+.assistant-size-btn svg { display: block; }
+/* In minimized (rail) mode, the segmented control stacks vertically
+   under the brain icon. Each button keeps the same width so the
+   icons stay readable. */
+.column-left.minimized .assistant-size-toggle {
+  flex-direction: column;
+  border-radius: var(--r-pill);
+  padding: 2px;
+  gap: 2px;
+}
+.column-left.minimized .assistant-size-btn {
+  width: 24px;
+  height: 22px;
+}
 
 /* Chat scroll area + input row. The body is a vertical flex
    container; the .chat-scroll grows to fill, the .chat-input-row
