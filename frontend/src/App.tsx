@@ -32,10 +32,7 @@ function AppInner() {
     // own z-index).
     const [assistantExpanded, setAssistantExpanded] = useState(false);
     const [assistantMinimized, setAssistantMinimized] = useState(false);
-    const toggleAssistantExpand = useCallback(() => {
-        setAssistantExpanded((v) => !v);
-    }, []);
-    const toggleAssistantMinimize = useCallback(() => {
+const toggleAssistantMinimize = useCallback(() => {
         setAssistantMinimized((v) => !v);
     }, []);
     const refreshDrafts = useCallback(async () => {
@@ -167,7 +164,6 @@ function AppInner() {
         <div
             className="app"
             data-detail-open={(selected || showAdd || showImport || showExport) ? "true" : "false"}
-            data-assistant-expanded={assistantExpanded ? "true" : "false"}
             data-assistant-minimized={assistantMinimized ? "true" : "false"}
         >
             <div className="stage" ref={stageRef}>
@@ -326,7 +322,7 @@ function AppInner() {
                 />
             )}
 
-            <AssistantPanel onJump={(id) => selectNode(id)} drafts={drafts} refreshDrafts={refreshDrafts} expanded={assistantExpanded} onToggleExpand={toggleAssistantExpand} minimized={assistantMinimized} onToggleMinimize={toggleAssistantMinimize} />
+            <AssistantPanel onJump={(id) => selectNode(id)} drafts={drafts} refreshDrafts={refreshDrafts} minimized={assistantMinimized} onToggleMinimize={toggleAssistantMinimize} />
 
 
 

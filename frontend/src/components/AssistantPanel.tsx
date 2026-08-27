@@ -10,8 +10,6 @@ type Props = {
     onJump: (id: string) => void;
     drafts: import("../types").DraftOut[];
     refreshDrafts: () => void;
-    expanded: boolean;
-    onToggleExpand: () => void;
     minimized?: boolean;
     onToggleMinimize?: () => void;
 };
@@ -235,13 +233,13 @@ function IconRefresh({ size = 14 }: { size?: number }) {
   );
 }
 
-export default function AssistantPanel({ onJump, drafts, refreshDrafts, expanded, onToggleExpand, minimized, onToggleMinimize }: Props) {
+export default function AssistantPanel({ onJump, drafts, refreshDrafts, minimized, onToggleMinimize }: Props) {
     const t = useTranslations();
     const { locale } = useI18n();
     const [mode, setMode] = useState<Mode>("draft");
 
     return (
-        <div className={"column-left" + (expanded ? " is-expanded" : "") + (minimized ? " minimized" : "")}>
+        <div className={"column-left" + (minimized ? " minimized" : "")}>
             <div className="panel-title assistant-title">
                 <div className="assistant-title-row">
                     <span className="assistant-brain"><IconBrain /></span>
@@ -262,16 +260,6 @@ export default function AssistantPanel({ onJump, drafts, refreshDrafts, expanded
                             {minimized ? <IconExpand /> : <IconMinimize />}
                         </button>
                     )}
-                    {/* Expand button — toggles between narrow and wide
-                       assistant layout (still on the canvas row). */}
-                    <button
-                        className="assistant-toggle-btn"
-                        onClick={onToggleExpand}
-                        title={expanded ? t("assistant.collapse") : t("assistant.expand")}
-                        aria-label={expanded ? t("assistant.collapse") : t("assistant.expand")}
-                    >
-                        <IconExpand />
-                    </button>
                 </div>
             </div>
 
@@ -304,7 +292,7 @@ export default function AssistantPanel({ onJump, drafts, refreshDrafts, expanded
                 </button>
             </div>
 
-            {mode === "ask" && <AskTab onJump={onJump} locale={locale} expanded={expanded} />}
+            {mode === "ask" && <AskTab onJump={onJump} locale={locale} />}
             {mode === "suggest" && <SuggestTab onJump={onJump} drafts={drafts} refreshDrafts={refreshDrafts} />}
             {mode === "settings" && <SettingsTab />}
             {mode === "draft" && <DraftTab onJump={onJump} />}
@@ -330,10 +318,9 @@ type ChatMessage = {
     error?: boolean;       // true if the call failed
 };
 
-function AskTab({ onJump, locale, expanded }: {
+function AskTab({ onJump, locale }: {
     onJump: (id: string) => void;
     locale: string;
-    expanded: boolean;
 }) {
     const t = useTranslations();
     const [q, setQ] = useState("");
@@ -353,7 +340,7 @@ function AskTab({ onJump, locale, expanded }: {
         const el = scrollRef.current;
         if (!el) return;
         el.scrollTop = el.scrollHeight;
-    }, [messages, expanded]);
+    }, [messages]);
 
     const ask = async () => {
         if (!q.trim() || loading) return;
@@ -468,7 +455,7 @@ function AskTab({ onJump, locale, expanded }: {
     };
 
     return (
-        <div className={"assistant-tab-body" + (expanded ? " is-expanded" : "")}>
+        <div className="assistant-tab-body">
             <div className="chat-scroll" ref={scrollRef}>
                 {messages.length === 0 && (
                     <div className="chat-empty">
