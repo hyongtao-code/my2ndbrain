@@ -147,17 +147,33 @@ chown -R nobody:nogroup /app/data /app/logs 2>/dev/null || \
     chown -R root:root /app/data /app/logs
 chmod 0755 /app/data /app/logs
 
-# The backend-builder stage creates a venv with python linked
-# to /usr/local/bin/python (the path inside python:3.12-bookworm).
-# The runtime stage is debian:bookworm where python lives at
-# /usr/bin/python3. If the venv can't find /usr/local/bin/python,
-# uvicorn fails with "required file not found". Detect that and
-# create a compat symlink.
-if [ ! -x /usr/local/bin/python ] && [ -x /usr/bin/python3 ]; then
+# The backend-builder stage uses python:3.11-bookworm which ships
+# python at /usr/local/bin/python (and /usr/local/bin/python3.11).
+# `uv venv` inside that builder creates /app/venv/bin/python as a
+# symlink to /usr/local/bin/python3.11. The runtime stage is
+# debian:bookworm which only has /usr/bin/python3 — no /usr/local/bin/
+# at all. The entrypoint creates a compat symlink at /usr/local/bin/
+# python, but the venv's symlink targets the version-specific
+# python3.11, not the generic `python`, so uvicorn fails with
+# "required file not found". Fix: symlink BOTH the generic `python`
+# AND the version-specific `python3.11` so the venv's shebangs
+# resolve to the runtime python.
+if [ ! -x /usr/local/bin/python ]; then
     log "linking /usr/local/bin/python -> /usr/bin/python3 (venv compat)"
     mkdir -p /usr/local/bin
     ln -sf /usr/bin/python3 /usr/local/bin/python
 fi
+if [ ! -e /usr/local/bin/python3.11 ] && [ -x /usr/bin/python3.11 ]; then
+    log "linking /usr/local/bin/python3.11 -> /usr/bin/python3.11 (venv compat)"
+    ln -sf /usr/bin/python3.11 /usr/local/bin/python3.11
+fi
+# Some venvs (depending on uv version) symlink to a different
+# version-specific name. Cover the common bases.
+for v in 3.10 3.11 3.12 3.13; do
+    if [ ! -e "/usr/local/bin/python${v}" ] && [ -x "/usr/bin/python${v}" ]; then
+        ln -sf "/usr/bin/python${v}" "/usr/local/bin/python${v}"
+    fi
+done
 
 # Ensure venv tools are on PATH for the exec
 export PATH="/app/venv/bin:${PATH}"
