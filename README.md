@@ -120,16 +120,16 @@ category_cluster(id, name, description, centroid vector(384), node_count)
 
 ## 3. 使用方法
 
-本仓库同时** 提供两种启动方式**, 二选一:
+本仓库同时提供两种启动方式,  二选一:
 
 | 方式 | 脚本 | 实际位置 | 适合谁 | 数据存哪 |
 |---|---|---|---|---|
-| **A. Docker compose (推荐,产品/服务器/给朋友用**)** | `./start.sh` | `scripts/start.sh` (root 有 thin shim) | 普通用户**; 不想装 PostgreSQL/Node/Python | host 上的 named volume `my2ndbrain-data` |
-| **B. 本地直接 (开发/调试/贡献代码)** | `./dev.sh` | `scripts/dev.sh` (root 有 thin shim) | 开发者; 要看** Vite HMR / 改** Python 源码** | 你装的** postgres (host 或 docker) |
+| **A. Docker compose (推荐,产品/服务器/给朋友用)** | `./start.sh` | `scripts/start.sh` (root 有 thin shim) | 普通用户; 不想装 PostgreSQL/Node/Python | host 上的 named volume `my2ndbrain-data` |
+| **B. 本地直接 (开发/调试/贡献代码)** | `./dev.sh` | `scripts/dev.sh` (root 有 thin shim) | 开发者; 要看 Vite HMR / 改 Python 源码 | 你装的 postgres (host 或 docker) |
 
 所有 user-facing 脚本 (`start` / `stop` / `status` / `backup` / `restore` / `prereq` / `dev`) 都在 `scripts/` 下, root 只有 1 行 shim 让 `./start.sh` 和 `./dev.sh` 还能直接用 (与 `Dockerfile COPY docker-entrypoint.sh` 不冲突 — entrypoint 在 root, 没移动)。 你可以用 `./scripts/start.sh` 或 `./start.sh` — 都能 work。
 
-不要同时跑 `./start.sh` 和 `./dev.sh` — 它们 都要占 8000 端口**, 会 冲突**!
+不要同时跑 `./start.sh` 和 `./dev.sh` — 它们 都要占 8000 端口, 会 冲突!
 
 ### 3.0 一键启动 (推荐,普通用户用这个就行)
 
@@ -147,8 +147,8 @@ cd my2ndbrain
 
 `start.sh` 会自动:
 - 检查 Docker daemon、port 8000 是否空、足够磁盘/RAM
-- 如果没有 `.env` 就从 `.env.example` 复制** (默认 `DB_PASSWORD=*** ***)**
-- 如果没有 `my2ndbrain:latest` image 就 build (~1GB, 首次** 5-10 min, 后续** 1-2 min)
+- 如果没有 `.env` 就从 `.env.example` 复制 (默认 `DB_PASSWORD=my2ndbrain`, 适合本地 only)`)
+- 如果没有 `my2ndbrain:latest` image 就 build (~1GB, 首次 5-10 min, 后续 1-2 min)
 - `docker compose up -d`
 - 等 `/api/health` 返回 200 (最多 120s)
 - 打印访问 URL 和管理命令
@@ -161,17 +161,17 @@ Swagger   : http://<host>:8000/docs
 Data      : stored in named volume 'my2ndbrain-data'
 ```
 
-日常管理** (数据 全部保留**):
+日常管理 (数据 全部保留):
 ```bash
 ./start.sh    # 启动 (如果已经起了就没事)
-./stop.sh     # 停止** (数据 保留**)
+./stop.sh     # 停止 (数据 保留)
 ./status.sh   # 查看状态 + last logs
 ./backup.sh   # 备份到 ./backups/*.sql
-./restore.sh  # 从备份恢复** (会 清空当前数据**)
+./restore.sh  # 从备份恢复 (会 清空当前数据)
 docker logs -f my2ndbrain    # 实时看日志
 ```
 
-彻底清理** (会** 丢数据):
+彻底清理 (会 丢数据):
 ```bash
 ./stop.sh --rm            # 删除 container
 docker volume rm my2ndbrain-data   # 删除 data volume
@@ -184,7 +184,7 @@ docker volume rm my2ndbrain-data   # 删除 data volume
 > 前置:
 > - Python 3.11+ (`apt install python3.11-venv`)
 > - Node 20+ (`apt install nodejs npm`)
-> - PostgreSQL 16 + pgvector (见 § 3.2 手工安装) 或 跑完 `docker run -d postgres:16-pgvector` 后让** host 上的** backend 连它
+> - PostgreSQL 16 + pgvector (见 § 3.2 手工安装) 或 跑完 `docker run -d postgres:16-pgvector` 后让 host 上的 backend 连它
 
 ```bash
 ./dev.sh status    # 看看 PostgreSQL / port 8000 / port 5173 状态
@@ -206,7 +206,7 @@ docker volume rm my2ndbrain-data   # 删除 data volume
 ./dev.sh stop       # 停两个
 ./dev.sh status     # 查看状态 + 端口占用
 ./dev.sh logs       # tail -20 后端+前端 log
-./dev.sh reset      # stop + 清数据** (会** 丢 所有** nodes/drafts/edges, 不要** 轻易跑)
+./dev.sh reset      # stop + 清数据 (会 丢 所有 nodes/drafts/edges, 不要 轻易跑)
 ./dev.sh help       # 详细说明
 ```
 
