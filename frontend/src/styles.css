@@ -263,6 +263,15 @@ button { cursor: pointer; }
   font-variant-numeric: tabular-nums;
 }
 
+.assistant-brain {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px; height: 18px;
+  color: var(--text-1);
+  margin-right: 6px;
+}
+.assistant-brain svg { display: block; }
 /* ============================================================
    Floating panels — Apple surface hierarchy
    ============================================================ */
@@ -1174,10 +1183,7 @@ button { cursor: pointer; }
   border-color: var(--accent);
   background: rgba(10, 132, 255, 0.08);
 }
-.search-icon {
-  font-size: 11px;
-  opacity: 0.6;
-}
+.search-icon { width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-2); }
 .search-field {
   background: transparent;
   border: none;

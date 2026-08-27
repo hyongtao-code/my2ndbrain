@@ -193,7 +193,7 @@ function AppInner() {
                 </div>
                 <div className="search-wrap">
                     <div className="search-input">
-                        <span className="search-icon">🔍</span>
+                        <span className="search-icon"><IconSearch /></span>
                         <input
                             type="search"
                             className="search-field"
@@ -313,13 +313,13 @@ function AppInner() {
                     className="fab fab-action"
                     title={t("fab.import")}
                     onClick={() => setShowImport(true)}
-                >⬆</button>
+                ><IconArrowUp /></button>
                 <button
                     className="fab fab-action"
                     title={t("fab.export")}
                     onClick={() => setShowExport(true)}
-                >⬇</button>
-                <button className="fab" onClick={() => setShowAdd(true)} title={t("fab.add")}>＋</button>
+                ><IconArrowDown /></button>
+                <button className="fab" onClick={() => setShowAdd(true)} title={t("fab.add")}><IconPlus /></button>
             </div>
 
             {showAdd && (
@@ -333,6 +333,87 @@ function AppInner() {
             )}
         </div>
     );
+}
+
+// ============================================================================
+// Inline SVG icons (DESIGN.md §6: no emoji as icon in chrome).
+// All icons are stroke 1 px, sized 14-16 px, currentColor.
+// ============================================================================
+function IconSearch({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         aria-hidden="true" style={{ display: "block" }}>
+      <circle cx={7} cy={7} r={4.5} />
+      <line x1={10.4} y1={10.4} x2={13.5} y2={13.5} />
+    </svg>
+  );
+}
+function IconClose({ size = 11 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         aria-hidden="true" style={{ display: "block" }}>
+      <line x1={3.5} y1={3.5} x2={12.5} y2={12.5} />
+      <line x1={12.5} y1={3.5} x2={3.5} y2={12.5} />
+    </svg>
+  );
+}
+function IconLang({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         aria-hidden="true" style={{ display: "block" }}>
+      <line x1={2.5} y1={5}   x2={13.5} y2={5} />
+      <line x1={2.5} y1={11}  x2={13.5} y2={11} />
+    </svg>
+  );
+}
+function IconBrain({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.2} strokeLinecap="round"
+         aria-hidden="true" style={{ display: "block" }}>
+      <path d="M5 4.5 C3.5 4.5 3 6 3 7.2 C3 8.2 3.5 9 4.2 9.3
+               C4.1 9.5 4.2 10.2 4 10.7 C4 12 5.3 12.6 6.4 12.3
+               L6.4 13 L8 12.5 L9.6 13 L9.6 12.3
+               C10.7 12.6 12 12 12 10.7 C11.8 10.2 11.9 9.5 12.8 9.3
+               C12.5 9 13 8.2 13 7.2 C13 6 12.5 4.5 11 4.5
+               C10.5 3.5 9.5 3.5 9 4.2 C8.5 3.5 7.5 3.5 7 4.2
+               C6.5 3.5 5.5 3.5 5 4.5 Z" />
+      <line x1={8} y1={5.5} x2={8} y2={12} />
+    </svg>
+  );
+}
+function IconArrowUp({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <line x1={8} y1={13} x2={8} y2={3} />
+      <polyline points="3.5,7.5 8,3 12.5,7.5" />
+    </svg>
+  );
+}
+function IconArrowDown({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <line x1={8} y1={3} x2={8} y2={13} />
+      <polyline points="3.5,8.5 8,13 12.5,8.5" />
+    </svg>
+  );
+}
+function IconPlus({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         aria-hidden="true" style={{ display: "block" }}>
+      <line x1={8} y1={3} x2={8} y2={13} />
+      <line x1={3} y1={8} x2={13} y2={8} />
+    </svg>
+  );
 }
 
 export function App() {

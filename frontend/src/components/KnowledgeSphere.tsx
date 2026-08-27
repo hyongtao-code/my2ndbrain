@@ -319,12 +319,22 @@ function SphereGroup({
   children: React.ReactNode;
 }) {
   const group = useRef<THREE.Group>(null);
+  // DESIGN.md §3.7: respect prefers-reduced-motion — freeze auto-spin
+  // when the user has reduced motion enabled at the OS level.
+  const reduced = useRef(false);
   const spinEnabled = useRef(autoSpin);
   useEffect(() => {
-    spinEnabled.current = autoSpin;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    reduced.current = mq.matches;
+    const onChange = () => { reduced.current = mq.matches; };
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  useEffect(() => {
+    spinEnabled.current = autoSpin && !reduced.current;
   }, [autoSpin]);
 
-  // 80 s / revolution ≈ 4.5°/s
+  // 80 s / revolution ≈ 4.5°/s (DESIGN.md §4.8)
   const angularSpeed = (Math.PI * 2) / 80;
   useFrame((_, dt) => {
     if (!group.current) return;
