@@ -30,7 +30,6 @@ function AppInner() {
     // assistant panel is expanded over the canvas, the FAB still
     // works because the panel sits on top of the sphere with its
     // own z-index).
-    const [assistantExpanded, setAssistantExpanded] = useState(false);
     const [assistantMinimized, setAssistantMinimized] = useState(false);
 const toggleAssistantMinimize = useCallback(() => {
         setAssistantMinimized((v) => !v);
