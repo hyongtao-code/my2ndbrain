@@ -31,8 +31,12 @@ function AppInner() {
     // works because the panel sits on top of the sphere with its
     // own z-index).
     const [assistantExpanded, setAssistantExpanded] = useState(false);
+    const [assistantMinimized, setAssistantMinimized] = useState(false);
     const toggleAssistantExpand = useCallback(() => {
         setAssistantExpanded((v) => !v);
+    }, []);
+    const toggleAssistantMinimize = useCallback(() => {
+        setAssistantMinimized((v) => !v);
     }, []);
     const refreshDrafts = useCallback(async () => {
         try {
@@ -164,6 +168,7 @@ function AppInner() {
             className="app"
             data-detail-open={selected ? "true" : "false"}
             data-assistant-expanded={assistantExpanded ? "true" : "false"}
+            data-assistant-minimized={assistantMinimized ? "true" : "false"}
         >
             <div className="stage" ref={stageRef}>
                 {graph && graph.nodes.length > 0 && (
@@ -321,7 +326,7 @@ function AppInner() {
                 />
             )}
 
-            <AssistantPanel onJump={(id) => selectNode(id)} drafts={drafts} refreshDrafts={refreshDrafts} expanded={assistantExpanded} onToggleExpand={toggleAssistantExpand} />
+            <AssistantPanel onJump={(id) => selectNode(id)} drafts={drafts} refreshDrafts={refreshDrafts} expanded={assistantExpanded} onToggleExpand={toggleAssistantExpand} minimized={assistantMinimized} onToggleMinimize={toggleAssistantMinimize} />
 
 
 

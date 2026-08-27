@@ -120,7 +120,9 @@
     "relatedSources": "引用来源",
     "expand": "展开（左半屏）",
     "collapse": "收起（恢复小角）",
-    "askWelcome": "👋 你好！问我关于你笔记里的任何问题。\n（提示：试试问\"什么是 harness？\"或\"harness 和张雪峰有什么联系？\"）"
+    "askWelcome": "👋 你好！问我关于你笔记里的任何问题。\n（提示：试试问\"什么是 harness？\"或\"harness 和张雪峰有什么联系？\"）",
+    "expandPanel": "展开面板",
+    "minimizePanel": "最小化面板"
   },
   "lang": {
     "switch": "切换语言",

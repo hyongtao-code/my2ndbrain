@@ -151,6 +151,11 @@ button { cursor: pointer; }
     "left   canvas right";
   transition: grid-template-columns var(--dur-base) var(--ease-out-cubic);
 }
+/* When the assistant is minimized, the grid column shrinks to
+   the rail width (52 px) so the canvas expands. */
+.app[data-assistant-minimized="true"] {
+  grid-template-columns: 52px 1fr var(--col-right);
+}
 /* When nothing is selected, the right column collapses. App.tsx
   sets data-detail-open="false" on .app to control this. */
 .app[data-detail-open="false"] {
@@ -859,19 +864,31 @@ button { cursor: pointer; }
 }
 .assistant-tabs .tab {
   flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   background: transparent;
   border: none;
-  color: var(--text-2);
+  color: var(--text-1);
   font-size: 11px;
   padding: 5px 8px;
   border-radius: var(--r-pill);
   cursor: pointer;
   font-family: inherit;
-  transition: background 0.15s, color 0.15s;
+  transition: background var(--dur-instant) var(--ease-out-cubic),
+              color var(--dur-instant) var(--ease-out-cubic);
+}
+/* DESIGN.md §3.9: SVG icons inherit the text colour via
+   currentColor. Bump icons to --text-1 (not --text-2) so they're
+   actually visible against --bg-1. */
+.assistant-tabs .tab svg {
+  display: block;
+  flex-shrink: 0;
 }
 .assistant-tabs .tab.active {
   background: var(--accent);
-  color: white;
+  color: var(--accent-on);
   font-weight: 600;
 }
 .assistant-tabs .tab:hover:not(.active) {
@@ -1858,6 +1875,41 @@ button { cursor: pointer; }
   padding: 20px 28px;
   max-width: 720px;
 }
+/* Minimize mode: collapse the assistant to a 52 px rail showing
+   only the brain icon + the title. The two toggle buttons move
+   into a vertical stack below the title. */
+.column-left.minimized {
+  padding: 14px 6px;
+  align-items: center;
+  width: 52px;
+  min-width: 52px;
+  overflow: hidden;
+}
+.column-left.minimized .assistant-title {
+  flex-direction: column;
+  margin: 0;
+  gap: 12px;
+}
+.column-left.minimized .assistant-header-actions {
+  flex-direction: column;
+  gap: 6px;
+}
+/* Hide the title text in minimized mode. The text is wrapped in
+   a <span class="assistant-title-text"> by AssistantPanel.tsx. */
+.column-left.minimized .assistant-title-text {
+  display: none !important;
+}
+.column-left.minimized .assistant-title > span:not(.assistant-header-actions) {
+  font-size: 0;
+  line-height: 0;
+  letter-spacing: 0;
+  display: none;
+}
+.column-left.minimized .assistant-brain {
+  margin-right: 0;
+  width: 24px; height: 24px;
+}
+.column-left.minimized .assistant-brain svg { width: 20px; height: 20px; }
 
 /* Stage no longer needs the brightness filter for the assistant-expanded
    mode. Keep transition: filter so legacy interactions still feel
@@ -1868,7 +1920,7 @@ button { cursor: pointer; }
 }
 
 /* Title row in the assistant panel — flex the title left and the
-   expand toggle to the right. */
+   expand/minimize toggles to the right. */
 .assistant-title {
   display: flex;
   align-items: center;
@@ -1876,7 +1928,13 @@ button { cursor: pointer; }
   gap: 12px;
   margin: -2px 0 14px 0;
 }
-.assistant-expand-btn {
+.assistant-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+/* Both minimize and expand buttons share this style. */
+.assistant-toggle-btn {
   background: transparent;
   border: 1px solid var(--line);
   color: var(--text-1);
@@ -1886,17 +1944,19 @@ button { cursor: pointer; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
   cursor: pointer;
   line-height: 1;
   font-family: inherit;
-  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  transition: background var(--dur-instant) var(--ease-out-cubic),
+              color var(--dur-instant) var(--ease-out-cubic),
+              border-color var(--dur-instant) var(--ease-out-cubic);
 }
-.assistant-expand-btn:hover {
+.assistant-toggle-btn:hover {
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-0);
-  border-color: rgba(255, 255, 255, 0.16);
+  border-color: var(--line-strong);
 }
+.assistant-toggle-btn svg { display: block; }
 
 /* Chat scroll area + input row. The body is a vertical flex
    container; the .chat-scroll grows to fill, the .chat-input-row
