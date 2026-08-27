@@ -1,15 +1,20 @@
 #!/usr/bin/env bash
-# Thin shim for ./scripts/start.sh.
+# Thin shim for the **native / direct** (non-Docker) workflow.
+# The real script lives at scripts/dev.sh; this shim exists so
+# users can run `./start.sh` from the repo root. All arguments are
+# forwarded unchanged (the real script supports start / stop /
+# status / reset / logs / help).
 #
-# The real script lives at scripts/start.sh; this shim exists so
-# users can run `./start.sh` from the repo root (which is what
-# every part of the README / Docker entrypoint / makefile-style
-# docs expects). All arguments are forwarded unchanged.
+# If the resolved file is the real implementation (we landed on
+# scripts/dev.sh because the user invoked the shim from
+# scripts/), there's nothing more to do — return success.
 #
-# Note: scripts/docker-entrypoint.sh stays at the repo root —
-# Dockerfile hardcodes that path, so it cannot be moved.
-
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-exec "$SCRIPT_DIR/scripts/start.sh" "$@"
+# For the **Docker compose** workflow, use `./compose-up.sh` and
+# `./compose-down.sh` instead.
+SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}")"
+PARENT_DIR="$(dirname "$SCRIPT_PATH")"
+if [ "$(basename "$SCRIPT_PATH")" = "dev.sh" ] && [ "$(basename "$PARENT_DIR")" = "scripts" ]; then
+    # Already at the real implementation; nothing to exec.
+    exit 0
+fi
+exec "$PARENT_DIR/scripts/dev.sh" "$@"

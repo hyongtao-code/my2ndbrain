@@ -10,10 +10,15 @@
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "../lib/api";
+import ModalSizeToggle from "./ModalSizeToggle";
 
 type Props = {
     onClose: () => void;
     onCreated: (...args: any[]) => void;
+    /** Modal layout mode: "default" = 1/4, "half" = 1/2. */
+    modalMode: "default" | "half";
+    /** Set the modal's layout mode. */
+    onSetMode: (m: "default" | "half") => void;
 };
 
 type PendingFile = {
@@ -30,7 +35,55 @@ function guessTitleFromFilename(filename: string): string {
     return filename.replace(/\.(md|markdown)$/i, "").trim() || filename;
 }
 
-export default function ImportModal({ onClose, onCreated }: Props) {
+// Inline SVG icon (DESIGN.md §6: no emoji as icon in chrome).
+function IconClose({ size = 12 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         aria-hidden="true" style={{ display: "block" }}>
+      <line x1={3.5} y1={3.5} x2={12.5} y2={12.5} />
+      <line x1={12.5} y1={3.5} x2={3.5} y2={12.5} />
+    </svg>
+  );
+}
+
+// Inline SVG icon (DESIGN.md §6: no emoji as icon in chrome).
+function IconDownload({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <line x1={8} y1={2.5} x2={8} y2={10.5} />
+      <polyline points="4,7 8,11 12,7" />
+      <line x1={3} y1={13.5} x2={13} y2={13.5} />
+    </svg>
+  );
+}
+
+// Inline SVG icons (DESIGN.md §6: no emoji as icon in chrome).
+function IconError({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <circle cx={8} cy={8} r={6} />
+      <line x1={5.5} y1={5.5} x2={10.5} y2={10.5} />
+      <line x1={10.5} y1={5.5} x2={5.5} y2={10.5} />
+    </svg>
+  );
+}
+function IconFile({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <path d="M3.5 2 L10.5 2 L13 4.5 L13 14 L3.5 14 Z" />
+      <polyline points="10,2 10,5 13,5" />
+    </svg>
+  );
+}
+
+export default function ImportModal({ onClose, onCreated , modalMode = "default", onSetMode}: Props) {
     const t = useTranslations();
     const inputRef = useRef<HTMLInputElement>(null);
     const [items, setItems] = useState<PendingFile[]>([]);
@@ -87,11 +140,14 @@ export default function ImportModal({ onClose, onCreated }: Props) {
     };
 
     return (
-        <div className="modal-overlay" onClick={busy ? undefined : onClose}>
-            <div className="panel modal import-export-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-sheet-wrap" onClick={busy ? undefined : onClose}>
+            <div className={"column-right modal-sheet import-export-modal" + (modalMode === "half" ? " is-fullscreen" : "")} onClick={(e) => e.stopPropagation()}>
                 <div className="panel-title">
-                    <span>📥 {t("import.title")}</span>
-                    <button className="btn-icon" onClick={onClose} disabled={busy}>✕</button>
+                    <span><IconDownload /> {t("import.title")}</span>
+                    <div style={{ display: "flex", gap: 4 }}>
+                        <ModalSizeToggle mode={modalMode} onSetMode={onSetMode} />
+                        <button className="btn-icon" onClick={onClose} disabled={busy}><IconClose /></button>
+                    </div>
                 </div>
 
                 <p className="assistant-hint">{t("import.hint")}</p>
@@ -129,7 +185,7 @@ export default function ImportModal({ onClose, onCreated }: Props) {
                             <div className="import-row-main">
                                 <div className="import-row-title">
                                     {it.status === "ok" ? "✅" :
-                                     it.status === "error" ? "❌" : "📄"}
+                                     it.status === "error" ? <IconError size={14} /> : <IconFile size={14} />}
                                     &nbsp;{it.title}
                                 </div>
                                 <div className="import-row-file">{it.file.name}</div>
@@ -142,7 +198,7 @@ export default function ImportModal({ onClose, onCreated }: Props) {
                                 title={t("import.removeRow")}
                                 onClick={() => removeAt(i)}
                                 disabled={busy}
-                            >✕</button>
+                            ><IconClose /></button>
                         </div>
                     ))}
                 </div>

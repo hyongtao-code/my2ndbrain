@@ -1,41 +1,80 @@
 /* ============================================================
    MySecondBrain — design tokens
-   Style: Apple (typography, pill buttons, negative letter-spacing,
-   surface hierarchy) + tech feel (deep dark canvas, accent neon)
+   Art direction: editorial celestial (DESIGN.md §2.1).
+   No purple, no Apple systemBlue, no glow, no tinted glassmorphism.
+   Cool white is the primary accent. Warm tone is reserved for the
+   3D sphere and is forbidden in chrome.
    ============================================================ */
 
 :root {
   color-scheme: dark;
-  /* —— colour tokens (Apple-derived with tech twist) —— */
-  --bg-0: #000000;            /* surface-black: page background */
-  --bg-1: #0b0b0e;            /* deepest panel background */
-  --bg-2: #1d1d1f;            /* ink: primary text + chrome surface */
-  --bg-3: #2c2c2e;            /* raised surface (hover, selected) */
-  --line: rgba(255, 255, 255, 0.10);
-  --line-strong: rgba(255, 255, 255, 0.20);
-  --hairline: rgba(235, 235, 245, 0.10);
 
-  --text-0: #f5f5f7;          /* primary text (paper-on-ink) */
-  --text-1: #a1a1a6;          /* secondary */
-  --text-2: #6e6e73;          /* tertiary / placeholder */
+  /* —— Surface (Layered deep-space black, slightly cool) —— */
+  --bg-void:       #050608;   /* canvas clear colour */
+  --bg-0:          #08090C;   /* page background */
+  --bg-1:          #0E1015;   /* raised surface (panels, sheets) */
+  --bg-2:          #161922;   /* hover / selected panel */
+  --bg-3:          #1E2230;   /* input / chip surface */
 
-  /* Apple Action Blue + tech violet for the data sphere */
-  --accent:        #0a84ff;   /* Apple systemBlue (dark mode) */
-  --accent-hover:  #409cff;
-  --accent-press:  #0066cc;
-  --accent-on:     #ffffff;
-  --violet:        #7c5cff;   /* tech accent for the 3D sphere */
-  --violet-soft:   #9d7bff;
-  --cyan:          #64d2ff;   /* secondary tech accent */
-  --warn:    #ffd60a;          /* Apple systemYellow */
-  --danger:  #ff453a;          /* Apple systemRed */
+  /* —— Hairline —— */
+  --line:          rgba(232, 234, 246, 0.06);
+  --line-strong:   rgba(232, 234, 246, 0.10);
+  --hairline:      rgba(232, 234, 246, 0.04);
 
-  /* —— typography (SF Pro stack with safe fallbacks) —— */
+  /* —— Type —— */
+  --text-0:        #ECEEF5;   /* primary, paper-on-ink, cool */
+  --text-1:        #9DA0AC;   /* secondary */
+  --text-2:        #5C606E;   /* tertiary / placeholder */
+  --text-inverse:  #0B0C10;   /* text on light surfaces (parity only) */
+
+  /* —— Accent (cool white primary; warm amber is sphere-only) —— */
+  --accent:        #E5E7EE;
+  --accent-soft:   rgba(229, 231, 238, 0.65);
+  --accent-faint:  rgba(229, 231, 238, 0.18);
+  --accent-press:   #C9CCD6;
+  --accent-on:     #08090C;
+
+  /* —— Warm key light (sphere only) —— */
+  --warm-key:      #F3C892;
+  --warm-key-soft: rgba(243, 200, 146, 0.30);
+
+  /* —— Semantic (rare) —— */
+  --warn:    #E0B341;
+  --danger:  #C0524C;
+  --ok:      #6B9A78;
+
+  /* —— Typography (SF Pro stack) —— */
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
                "Helvetica Neue", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --font-mono: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
 
-  /* —— spacing scale (Apple 8-px grid) —— */
+  /* —— Spacing scale —— */
+  --space-0:  2px;
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+  /* —— Column widths (Phase 4 IA + responsive) ————————————————
+     1/4 永远跟随视窗：clamp(0, 25vw, 480)
+       1280 viewport → 25vw = 320px (1/4 视觉感)
+       1920 viewport → 25vw = 480px (夹到 max)
+       3440 viewport → 25vw = 860px → 夹到 480px (不会拉到 860)
+       375  mobile   → 25vw = 94px → 夹到 0 (列消失，canvas 占满)
+     1/2 由 grid 直接写 50vw（无需 token）
+     minimized rail: clamp(44px, 4vw, 64px)，跟视窗比例缩放
+       1280 → 51px, 1920 → 64px (max), 3440 → 64px, 375 → 44px (min)
+  */
+  --col-left:  clamp(0px, 25vw, 480px);
+  --col-right: clamp(0px, 25vw, 480px);
+  --rail-w:    clamp(44px, 4vw, 64px);
+  --topbar-h:   52px;
+
+  /* legacy names kept for the existing JS that reads --xxs / --xs etc. */
   --xxs:  4px;
   --xs:   8px;
   --sm:  12px;
@@ -45,15 +84,23 @@
   --xxl: 48px;
   --section: 80px;
 
-  /* —— radii (Apple loves pill) —— */
+  /* —— Radii —— */
   --r-xs:  5px;
   --r-sm:  8px;
   --r-md: 11px;
   --r-lg: 18px;
   --r-pill: 9999px;
 
-  /* —— elevation (Apple flat, but we add subtle hairlines) —— */
-  --shadow-pop: 0 1px 0 rgba(255,255,255,0.04) inset, 0 20px 40px -20px rgba(0,0,0,0.6);
+  /* —— Motion (DESIGN.md §3.7) —— */
+  --dur-instant:    120ms;
+  --dur-quick:      240ms;
+  --dur-base:       420ms;
+  --dur-deliberate: 800ms;
+  --ease-out-cubic: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
+
+  /* —— Shadow (rare, physical only) —— */
+  --shadow-pop: 0 1px 0 rgba(0, 0, 0, 0.6) inset;
 
   font-family: var(--font-sans);
   font-synthesis: none;
@@ -65,13 +112,20 @@
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
 body {
+  /* Layered deep-near-black. Cool white bloom at the top (where the
+     sphere sits) + slightly cooler pool at the bottom (where the
+     floor disc shadow lands). No purple, no blue, no saturated
+     radial. Subtle enough to read as "deep space" rather than
+     "wallpaper". */
   background:
-    radial-gradient(ellipse at 50% -20%, rgba(10, 132, 255, 0.15), transparent 60%),
-    radial-gradient(ellipse at 50% 120%, rgba(124, 92, 255, 0.10), transparent 55%),
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.03), transparent 70%),
+    radial-gradient(ellipse at 50% 100%, rgba(20, 30, 45, 0.50), transparent 60%),
     var(--bg-0);
   color: var(--text-0);
   overflow: hidden;
   font-feature-settings: "ss01", "cv11";  /* SF Pro stylistic alternates */
+  /* Respect reduced-motion: stop auto-spin / parallax in
+     KnowledgeSphere (handled in TS via useEffect listener). */
 }
 
 button, input, textarea, select { font: inherit; color: inherit; }
@@ -80,15 +134,120 @@ button { cursor: pointer; }
 /* ============================================================
    App layout
    ============================================================ */
+/* ============================================================
+   Phase 3 IA — CSS Grid layout (DESIGN.md §2.1 + §3.10).
+   ┌─────────────────────────────────────────────────────────┐
+   │  Topbar (52px, full width)                              │
+   ├──────────┬─────────────────────────┬────────────────────┤
+   │          │                         │                    │
+   │ Left     │    Knowledge Sphere     │   Right detail     │
+   │ column   │       (canvas)          │   (when selected,  │
+   │ (assnt)  │                         │   else hidden)     │
+   │          │                         │                    │
+   ├──────────┴─────────────────────────┴────────────────────┤
+   │  Action bar (top-right, inside topbar)                  │
+   └─────────────────────────────────────────────────────────┘
+   ============================================================ */
 .app {
   position: relative;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+  display: grid;
+  /* Default: assistant 1/4 (280px) + canvas 1fr + modal 1/4 (320px) */
+  grid-template-columns: var(--col-left) 1fr var(--col-right);
+  grid-template-rows: var(--topbar-h) 1fr;
+  grid-template-areas:
+    "topbar topbar topbar"
+    "left   canvas right";
+  transition: grid-template-columns var(--dur-base) var(--ease-out-cubic);
 }
+/* ========================================================================
+   Layout states — driven by data-assistant-mode and data-modal-mode.
+
+   Both attributes can be "default", "minimized", or "half":
+     default   → 1/4 width (assistant=280, modal=320, canvas=1fr)
+     minimized → 52 px rail / 0 px (canvas=1fr)
+     half      → 50vw (canvas=0)
+
+   Layout grid (track widths):
+                              assistant  canvas  modal
+     both default             280        1fr     320
+     assistant minimized      52         1fr     320
+     assistant half           50vw       0       320
+     modal minimized          280        1fr     0
+     modal half               280        0       50vw
+     both minimized           52         1fr     0
+     assist-min, modal-half   52         0       50vw
+     assist-half, modal-min   50vw       0       0      (modal closed + assistant half)
+     both half                50vw       1fr     50vw   (canvas centered, z-index below panels)
+
+   Canvas position: ALWAYS centered in its grid cell. When
+   both-half, canvas (1fr) is sandwiched between two 50vw panels,
+   so it shrinks toward 0 but stays in the middle. z-index is
+   below both panels so the panels visually "float" on top of it.
+   ======================================================================== */
+
+/* assistant = minimized, modal = default */
+.app[data-assistant-mode="minimized"][data-modal-mode="default"],
+.app[data-assistant-mode="minimized"]:not([data-modal-mode]) {
+  grid-template-columns: var(--rail-w) 1fr var(--col-right);
+}
+/* assistant = half, modal = default — 1/2 + 1/4 mixed (left panel half,
+   right closed). Same idea as default+half but mirrored: 50vw for
+   assistant, 1fr for canvas, var(--col-right) for modal-when-open. */
+.app[data-assistant-mode="half"][data-modal-mode="default"],
+.app[data-assistant-mode="half"]:not([data-modal-mode]) {
+  grid-template-columns: 50vw 1fr var(--col-right);
+}
+/* assistant = default, modal = minimized */
+.app[data-assistant-mode="default"][data-modal-mode="minimized"] {
+  grid-template-columns: var(--col-left) 1fr 0px;
+}
+/* assistant = minimized, modal = minimized (both collapsed) */
+.app[data-assistant-mode="minimized"][data-modal-mode="minimized"] {
+  grid-template-columns: var(--rail-w) 1fr 0px;
+}
+/* assistant = half, modal = minimized */
+.app[data-assistant-mode="half"][data-modal-mode="minimized"] {
+  grid-template-columns: 50vw 1fr 0px;
+}
+/* assistant = default, modal = half — both 1/4 + 1/2 mixed.
+   var(--col-left) for assistant (1/4), 1fr for the canvas (so the
+   sphere stays visible in the gap between panels), 50vw for modal.
+   At 1280 viewport: 320 + 1fr + 640 → 1fr = 320 (sphere visible
+   in a 320px middle column). At 1920 viewport: 480 + 1fr + 960
+   → 1fr = 480. At 3440 ultrawide viewport: 480 + 1fr + 1720
+   → 1fr = 1240. */
+.app[data-assistant-mode="default"][data-modal-mode="half"] {
+  grid-template-columns: var(--col-left) 1fr 50vw;
+}
+/* assistant = minimized, modal = half — rail + 1/2 mixed. Rail +
+   1fr canvas gap + 50vw modal panel. At 1280 viewport: 51 + 1fr +
+   640 → 1fr = 589 (sphere has a wide center slot to breathe). */
+.app[data-assistant-mode="minimized"][data-modal-mode="half"] {
+  grid-template-columns: var(--rail-w) 1fr 50vw;
+}
+/* both = half (THE KEY STATE): 50vw + 1fr + 50vw — canvas is 1fr in
+   the middle column. Since 50vw+50vw = 100vw, the 1fr track is
+   effectively 0 width, but we keep it present so the canvas DOM
+   stays in the grid and we can paint the sphere behind both panels.
+   The .stage rule below then gives it z-index lower than the panels. */
+.app[data-assistant-mode="half"][data-modal-mode="half"] {
+  grid-template-columns: 50vw 1fr 50vw;
+}
+/* helper selectors are NOT used — we keep the old data-detail-open
+   fallback for backward compat with anything that still toggles it. */
 .stage {
-  position: absolute;
-  inset: 0;
+  /* Now a grid item, not a positioned overlay. */
+  position: relative;
+  grid-area: canvas;
+  overflow: hidden;
+  z-index: 1;
+  /* Below .column-left / .column-right z-index 2 so that when both
+     panels are in 1/2-half mode the panels visually "float" on
+     top of the centered sphere. The sphere is still in the DOM and
+     animating, just covered by the panels. */
 }
 
 /* ============================================================
@@ -97,16 +256,14 @@ button { cursor: pointer; }
    - SF Pro Display uppercase, tight letter-spacing
    ============================================================ */
 .topbar {
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 52px;
+  grid-area: topbar;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 22px;
-  background: rgba(11, 11, 14, 0.72);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  background: var(--bg-0);
+  backdrop-filter: saturate(180%) blur(4px);
+  -webkit-backdrop-filter: saturate(180%) blur(4px);
   border-bottom: 1px solid var(--hairline);
-  pointer-events: none;
+  pointer-events: none;       /* children opt back in */
   z-index: 5;
 }
 .brand {
@@ -118,14 +275,17 @@ button { cursor: pointer; }
   pointer-events: auto;
 }
 .brand-dot {
+  /* DESIGN.md §6: no glow. Just a cool-white dot, slightly warm
+     accent on the dot to read as "alive" without breaking the
+     "no glow" rule (a single subtle inner ring, no outer shadow). */
   width: 8px; height: 8px; border-radius: 50%;
-  background: var(--violet);
-  box-shadow: 0 0 8px var(--violet-soft);
+  background: var(--text-0);
+  border: 1px solid var(--line-strong);
 }
 .brand-title {
   color: var(--text-0);
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.18em;
 }
 .brand-sep { color: var(--text-2); }
 .brand-sub { color: var(--text-1); }
@@ -156,9 +316,8 @@ button { cursor: pointer; }
 .category-filter {
   display: flex; align-items: center; gap: 8px;
   pointer-events: auto;
-  background: rgba(28, 28, 30, 0.72);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  /* DESIGN.md §3.4: no tinted blur. Solid bg-1, 1 px hairline. */
+  background: var(--bg-1);
   border: 1px solid var(--line);
   border-radius: var(--r-pill);
   padding: 4px 6px 4px 14px;
@@ -166,7 +325,7 @@ button { cursor: pointer; }
   color: var(--text-1);
   font-weight: 500;
   letter-spacing: 0.02em;
-  transition: border-color 0.15s ease;
+  transition: border-color var(--dur-instant) var(--ease-out-cubic);
 }
 .category-filter:focus-within { border-color: var(--accent); }
 .category-filter-label {
@@ -200,16 +359,16 @@ button { cursor: pointer; }
 }
 
 .stats .stat {
-  background: rgba(28, 28, 30, 0.72);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  /* DESIGN.md §3.4: no tinted blur. Just a hairline + tabular nums. */
+  background: transparent;
   border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  padding: 6px 14px;
-  font-size: 12px;
+  border-radius: var(--r-pill);
+  padding: 4px 12px;
+  font-size: 11px;
   color: var(--text-1);
   font-weight: 500;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 .stats .stat b {
   color: var(--text-0);
@@ -218,17 +377,25 @@ button { cursor: pointer; }
   font-variant-numeric: tabular-nums;
 }
 
+.assistant-brain {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px; height: 18px;
+  color: var(--text-1);
+  margin-right: 6px;
+}
+.assistant-brain svg { display: block; }
 /* ============================================================
    Floating panels — Apple surface hierarchy
    ============================================================ */
 .panel {
-  background: rgba(28, 28, 30, 0.78);
-  backdrop-filter: saturate(180%) blur(30px);
-  -webkit-backdrop-filter: saturate(180%) blur(30px);
-  border: 1px solid var(--line);
+  /* DESIGN.md §3.4: solid surface + 1px physical edge, no outer
+     shadow, no tinted blur. The panel feels attached, not lifted. */
+  background: var(--bg-1);
+  border: 1px solid var(--line-strong);
   border-radius: var(--r-lg);
   padding: 18px;
-  box-shadow: var(--shadow-pop);
 }
 
 .panel-right {
@@ -290,12 +457,12 @@ button { cursor: pointer; }
   display: inline-block;
   padding: 3px 10px;
   border-radius: var(--r-pill);
-  background: rgba(10, 132, 255, 0.18);
-  color: #93c5fd;
-  border: 1px solid rgba(10, 132, 255, 0.32);
+  background: var(--bg-2);
+  color: var(--text-0);
+  border: 1px solid var(--line);
   font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.04em;
 }
 .tag.gray {
   background: var(--bg-3);
@@ -358,7 +525,7 @@ button { cursor: pointer; }
 }
 .add-form input:focus, .add-form textarea:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.20);
+  box-shadow: 0 0 0 3px var(--accent-faint);
 }
 .add-form textarea { min-height: 120px; resize: vertical; font-family: inherit; }
 .add-form .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px;}
@@ -369,11 +536,12 @@ button { cursor: pointer; }
   border: none;
   border-radius: var(--r-pill);
   padding: 9px 18px;
-  color: var(--accent-on);
+  color: var(--accent-on);   /* dark text on light accent */
   font-weight: 500;
   font-size: 13px;
   letter-spacing: -0.01em;
-  transition: background 0.12s ease, transform 0.06s ease;
+  transition: background var(--dur-instant) var(--ease-out-cubic),
+              transform 60ms var(--ease-out-cubic);
 }
 .btn-primary:hover  { background: var(--accent-hover); }
 .btn-primary:active { background: var(--accent-press); transform: scale(0.98); }
@@ -389,52 +557,133 @@ button { cursor: pointer; }
   letter-spacing: -0.01em;
   transition: all 0.15s ease;
 }
-.btn-secondary:hover { color: var(--text-0); border-color: var(--accent); background: rgba(10, 132, 255, 0.08); }
+.btn-secondary:hover { color: var(--text-0); border-color: var(--accent); background: var(--bg-2); }
 
 /* ============================================================
-   Add bubble floating button — Apple FAB
+   Top-right action bar (Phase 3 IA — replaces the FAB cluster)
+   - Sits in the topbar, to the right of the stats pill
+   - 3 small icon buttons in a row: import / export / add
+   - Always visible (no hover-expand — that was a legacy
+     pattern from the floating-overlay era)
    ============================================================ */
-/* The main + button is now position: absolute; right: 0 so it
-   sits at the right edge of the cluster (the cluster is 248px
-   wide, + is 56px wide, so + is at x=1010..1066 in the cluster
-   frame, on the right side). The action buttons ⬆ ⬇ use
-   right: 66/132px relative to the cluster. Putting + at right: 0
-   aligns all three buttons on the same right-anchored axis. */
-.fab {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 56px; height: 56px;
-  border-radius: 50%;
-  background: var(--accent);
-  border: none;
-  box-shadow:
-    0 0 0 1px rgba(255,255,255,0.10) inset,
-    0 10px 30px rgba(10, 132, 255, 0.45),
-    0 2px 8px rgba(0,0,0,0.4);
-  color: white;
-  font-size: 28px;
-  font-weight: 300;
-  line-height: 1;
-  display: flex; align-items: center; justify-content: center;
-  transition: background 0.12s ease, transform 0.1s ease;
+.action-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: auto;          /* topbar is pointer-events: none */
+  margin-left: 12px;
 }
-.fab:hover { background: var(--accent-hover); transform: scale(1.04); }
-.fab:active { background: var(--accent-press); transform: scale(0.97); }
+.action-bar .fab {
+  /* Smaller than the legacy 56 px floating version. Now it's a
+     quiet inline icon button in the topbar. */
+  width: 32px; height: 32px;
+  border-radius: var(--r-pill);
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--text-1);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background var(--dur-instant) var(--ease-out-cubic),
+              color var(--dur-instant) var(--ease-out-cubic),
+              border-color var(--dur-instant) var(--ease-out-cubic);
+}
+.action-bar .fab:hover {
+  background: var(--bg-2);
+  color: var(--text-0);
+  border-color: var(--line-strong);
+}
+.action-bar .fab:active {
+  background: var(--bg-3);
+}
+/* The "+" button gets the only "filled" treatment — it's the
+   primary action. */
+.action-bar .fab.fab-primary {
+  background: var(--accent);
+  color: var(--accent-on);
+  border-color: var(--accent);
+}
+.action-bar .fab.fab-primary:hover {
+  background: var(--accent-press);
+  border-color: var(--accent-press);
+}
+/* LEGACY: .fab-cluster rules are kept temporarily for any
+   third-party code or regression tests that might still target
+   them. They are no longer used by App.tsx as of commit 4.
+   These will be removed in a later cleanup commit. */
+.fab-cluster {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  width: 248px;
+  min-width: 248px;
+  height: 56px;
+  z-index: 30;
+  pointer-events: auto;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
 
 /* ============================================================
    Modal overlay
    ============================================================ */
-.modal-overlay {
+/* ============================================================
+   Right-slide-in sheet (Phase 3 IA — replaces the centered
+   modal overlay).
+   .modal-sheet-wrap is the click-outside-to-close layer; it
+   covers the whole canvas area but is transparent so the
+   canvas behind stays visible (just dimmed a touch).
+   .modal-sheet is the actual sheet — 480 px wide, slides in
+   from the right, hairline left border, no shadow.
+   ============================================================ */
+.modal-sheet-wrap {
   position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  inset: var(--topbar-h) 0 0 0;
+  background: rgba(5, 6, 8, 0.32);
   z-index: 20;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
+  animation: modal-fade-in var(--dur-base) var(--ease-out-cubic);
+}
+@keyframes modal-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.modal-sheet {
+  width: min(480px, calc(100vw - var(--col-left)));
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-1);
+  border-left: 1px solid var(--line-strong);
+  padding: 18px;
+  overflow-y: auto;
+  animation: modal-slide-in var(--dur-base) var(--ease-out-cubic);
+  transition: width var(--dur-base) var(--ease-out-cubic);
+}
+/* Phase 3 IA: when the user toggles the fullscreen icon in the
+   modal header, expand the sheet to the right HALF of the
+   viewport (50vw) so the markdown editor has room to breathe
+   without obscuring the sphere. The user reported that
+   fullscreen-mode did nothing on AddNodeModal because this
+   rule was missing — only the icon flipped from ⤢ → ⤡ but the
+   sheet width stayed at 480px (≈ 1/4 of viewport). Now it goes
+   to 50vw (= right half). */
+.modal-sheet.is-fullscreen {
+  width: 50vw;
+  padding: 24px;
+}
+@keyframes modal-slide-in {
+  from { transform: translateX(40px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+/* LEGACY .modal-overlay — kept for any external code that
+   still targets it. Same shape as the new wrap. */
+.modal-overlay {
+  position: fixed;
+  inset: var(--topbar-h) 0 0 0;
+  background: rgba(5, 6, 8, 0.32);
+  z-index: 20;
+  display: flex;
+  justify-content: flex-end;
 }
 .modal {
   width: 520px;
@@ -482,7 +731,7 @@ button { cursor: pointer; }
 }
 .assistant .ask input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.20);
+  box-shadow: 0 0 0 3px var(--accent-faint);
 }
 .assistant .answer {
   font-size: 12px;
@@ -515,9 +764,7 @@ button { cursor: pointer; }
 .tooltip-3d {
   position: absolute;
   pointer-events: none;
-  background: rgba(11, 11, 14, 0.92);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: var(--bg-1);
   border: 1px solid var(--line-strong);
   border-radius: var(--r-sm);
   padding: 5px 10px;
@@ -525,14 +772,15 @@ button { cursor: pointer; }
   font-weight: 500;
   white-space: nowrap;
   z-index: 10;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
   transform: translate(12px, -50%);
-  letter-spacing: -0.01em;
+  letter-spacing: 0.01em;
 }
 
 /* ============================================================
    Empty state
    ============================================================ */
+/* Phase 3: .empty is now a child of .stage (the canvas grid cell),
+   so it positions relative to the canvas — not the whole window. */
 .empty {
   position: absolute;
   top: 50%; left: 50%;
@@ -581,15 +829,14 @@ button { cursor: pointer; }
   pointer-events: auto;
   width: 36px; height: 36px;
   border-radius: var(--r-pill);
-  background: rgba(28, 28, 30, 0.72);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--bg-1);
   border: 1px solid var(--line);
   color: var(--text-0);
   font-size: 16px;
   cursor: pointer;
   margin-right: 12px;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: border-color var(--dur-instant) var(--ease-out-cubic),
+              background var(--dur-instant) var(--ease-out-cubic);
 }
 .draft-toggle:hover { border-color: var(--accent); background: rgba(58, 58, 60, 0.72); }
 
@@ -710,19 +957,31 @@ button { cursor: pointer; }
 }
 .assistant-tabs .tab {
   flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   background: transparent;
   border: none;
-  color: var(--text-2);
+  color: var(--text-1);
   font-size: 11px;
   padding: 5px 8px;
   border-radius: var(--r-pill);
   cursor: pointer;
   font-family: inherit;
-  transition: background 0.15s, color 0.15s;
+  transition: background var(--dur-instant) var(--ease-out-cubic),
+              color var(--dur-instant) var(--ease-out-cubic);
+}
+/* DESIGN.md §3.9: SVG icons inherit the text colour via
+   currentColor. Bump icons to --text-1 (not --text-2) so they're
+   actually visible against --bg-1. */
+.assistant-tabs .tab svg {
+  display: block;
+  flex-shrink: 0;
 }
 .assistant-tabs .tab.active {
   background: var(--accent);
-  color: white;
+  color: var(--accent-on);
   font-weight: 600;
 }
 .assistant-tabs .tab:hover:not(.active) {
@@ -921,9 +1180,55 @@ button { cursor: pointer; }
 }
 
 /* ============================================================
-   Right-half panel (replaces the old 320px narrow slide-in)
-   - Used by both AddNodeModal and NodeDetail
-   - 50vw width, full height
+   Right column (Phase 3 IA — used by NodeDetail)
+   - Lives in grid-area: right of the .app grid
+   - Width collapses to 0 when no node is selected
+     (controlled by .app[data-detail-open="false"])
+   ============================================================ */
+.column-right {
+  grid-area: right;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-1);
+  border-left: 1px solid var(--line-strong);
+  padding: 18px;
+  overflow-y: auto;
+  align-self: stretch;
+  z-index: 2;
+  /* Higher than canvas z-index 1 so when both panels are 1/2,
+     they sit visually on top of the centered sphere. */
+  transition: grid-column-start var(--dur-base) var(--ease-out-cubic),
+              grid-column-end var(--dur-base) var(--ease-out-cubic);
+  /* No more box-shadow — the panel lives in its own column. */
+}
+.column-right .panel-title { margin: -2px 0 14px 0; }
+/* When the right modal is at 1/2 (50vw), the parent .app grid template
+   already places the right column at 50vw via the
+   .app[data-modal-mode="half"] rules. We MUST NOT override grid-column
+   here — the previous version used grid-column-start: canvas /
+   grid-column-end: right which forced the sheet to span the canvas
+   AND right columns, making the sheet ~960px wide (320px canvas +
+   640px 50vw) and pushed it to the MIDDLE of the viewport instead of
+   the right edge.
+
+   What this rule still does:
+   1. Pin the row to the content row (row 2). The base .column-right
+      rule sets grid-area: right which resolves the row line to a NAMED
+      line "right" that doesn't exist in the .app grid template (which
+      only has named lines for left/canvas/right columns, not rows).
+      Without pinning the row, CSS Grid auto-places the sheet into a
+      non-existent row, making it invisible.
+   2. Bump the padding from 18px (1/4 default) to 24px so the wider
+      sheet doesn't feel cramped. */
+.column-right.is-fullscreen {
+  grid-row-start: 2;
+  grid-row-end: 3;
+  padding: 24px;
+}
+
+/* ============================================================
+   Right-half panel (legacy, used by AddNodeModal until commit 5)
+   - 50vw width, full height, slides in from the right edge
    ============================================================ */
 .panel-right-full {
   position: fixed;
@@ -945,7 +1250,24 @@ button { cursor: pointer; }
   pointer-events: auto;
 }
 @media (max-width: 720px) {
-  .panel-right-full { width: 100vw; min-width: 0; }
+  /* On mobile (< 720px), 25vw is still ~94px which is wider than the
+     viewport (375) and would overflow. Force the column tokens to 0
+     so the default / minimized states give the canvas the full
+     viewport. Also expand 1/2 modes to 100vw because 50vw is too
+     narrow to be useful. */
+  :root {
+    --col-left:  0px;
+    --col-right: 0px;
+    --rail-w:    44px;
+  }
+  .app[data-assistant-mode="half"] { grid-template-columns: 100vw 0 0; }
+  .app[data-modal-mode="half"]      { grid-template-columns: 0 0 100vw; }
+  .app[data-assistant-mode="half"][data-modal-mode="half"] {
+    grid-template-columns: 0 100vw 0;
+  }
+  /* Modal sheet goes full-width on mobile regardless of fullscreen. */
+  .modal-sheet { width: 100vw; }
+  .modal-sheet.is-fullscreen { width: 100vw; }
 }
 .panel-right-full .panel-title {
   margin: -2px 0 14px 0;
@@ -1133,10 +1455,7 @@ button { cursor: pointer; }
   border-color: var(--accent);
   background: rgba(10, 132, 255, 0.08);
 }
-.search-icon {
-  font-size: 11px;
-  opacity: 0.6;
-}
+.search-icon { width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-2); }
 .search-field {
   background: transparent;
   border: none;
@@ -1280,24 +1599,25 @@ button { cursor: pointer; }
   width: 56px; height: 56px;
   border-radius: 50%;
   background: var(--accent);
-  color: white;
+  color: var(--accent-on);
   font-size: 22px;
-  border: none;
-  box-shadow: 0 6px 20px rgba(10, 132, 255, 0.4);
+  border: 1px solid var(--line-strong);
+  /* DESIGN.md §3.4 + §6: no blue glow. Cool white solid + hairline. */
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  transition: transform var(--dur-quick) var(--ease-out-cubic),
+              background var(--dur-instant) var(--ease-out-cubic);
   pointer-events: auto;
 }
 .fab-cluster .fab-action {
   position: absolute;
   bottom: 0;
   /* default stack to the LEFT of +, each one 10px further left */
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--bg-1);
   color: var(--text-0);
   border: 1px solid var(--line);
   font-size: 18px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  /* DESIGN.md §6: no box-shadow on chrome. */
   /* Invisible padding around the button gives the cursor a few px of
      slack so the user can drift slightly off the visible circle
      without losing pointer-events. */
@@ -1593,7 +1913,7 @@ button { cursor: pointer; }
 }
 .cat-combo-row:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.20);
+  box-shadow: 0 0 0 3px var(--accent-faint);
 }
 .cat-combo-input {
   flex: 1;
@@ -1664,35 +1984,84 @@ button { cursor: pointer; }
 /* ============================================================
    AI Assistant — chat history + expanded (left-half) mode
    ============================================================ */
-.panel-assistant.is-expanded {
-  /* Expanded: take the left 50vw, full height (below topbar). */
-  left: 0;
-  bottom: 0;
-  top: 60px;
-  width: 50vw;
-  max-width: 50vw;
-  max-height: calc(100vh - 60px);
-  border-radius: 0;
-  border-right: 1px solid var(--line);
-  border-top: 0;
-  border-bottom: 0;
-  border-left: 0;
-  padding: 20px 28px;
-}
+/* Phase 3 IA: when the user expands the assistant, it grows
+   across both the left column AND the canvas's column. The canvas
+   effectively disappears (its grid cell collapses). The dim-the-
+   canvas filter no longer applies — there IS no canvas visible in
+   expanded mode, so dimming is moot. */
 
-/* When the AI panel is expanded, dim the canvas / sphere slightly
-   so the chat feels like a focused workspace. Pure visual polish;
-   no functional change. */
-.app:has(.panel-assistant.is-expanded) .stage {
-  filter: brightness(0.9);
-  transition: filter 0.3s ease;
+/* Phase 3 IA: assistant column lives in the grid's left cell.
+   No more position: fixed. It slots into grid-area: left via the
+   .column-left class on the AssistantPanel root. */
+.column-left {
+  grid-area: left;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-1);
+  border-right: 1px solid var(--line-strong);
+  overflow-y: auto;
+  padding: 14px;
+  align-self: stretch;
+  z-index: 2;
+  /* Higher than canvas z-index 1 so when both panels are 1/2,
+     they sit visually on top of the centered sphere. */
 }
+.column-left.is-expanded {
+  /* When expanded, the assistant takes over the left half of the
+     screen. The .app[data-assistant-expanded="true"] rule sets
+     the grid to "left left right" but grid items don't
+     automatically span multiple named areas — we have to
+     explicitly span 2 columns here. */
+  grid-column: 1 / span 2;
+  padding: 20px 28px;
+  max-width: 720px;
+}
+/* Minimize mode: collapse the assistant to a 52 px rail showing
+   only the brain icon + the title. The two toggle buttons move
+   into a vertical stack below the title. */
+.column-left.minimized {
+  padding: 14px 6px;
+  align-items: center;
+  width: 52px;
+  min-width: 52px;
+  overflow: hidden;
+}
+.column-left.minimized .assistant-title {
+  flex-direction: column;
+  margin: 0;
+  gap: 12px;
+}
+.column-left.minimized .assistant-header-actions {
+  flex-direction: column;
+  gap: 6px;
+}
+/* Hide the title text in minimized mode. The text is wrapped in
+   a <span class="assistant-title-text"> by AssistantPanel.tsx. */
+.column-left.minimized .assistant-title-text {
+  display: none !important;
+}
+.column-left.minimized .assistant-title > span:not(.assistant-header-actions) {
+  font-size: 0;
+  line-height: 0;
+  letter-spacing: 0;
+  display: none;
+}
+.column-left.minimized .assistant-brain {
+  margin-right: 0;
+  width: 24px; height: 24px;
+}
+.column-left.minimized .assistant-brain svg { width: 20px; height: 20px; }
+
+/* Stage no longer needs the brightness filter for the assistant-expanded
+   mode. Keep transition: filter so legacy interactions still feel
+   smooth, but the actual dim rule is removed. */
 .stage {
-  transition: filter 0.3s ease;
+  /* No brightness filter — the assistant column lives in its own
+     grid cell, so the canvas is never overlaid. */
 }
 
 /* Title row in the assistant panel — flex the title left and the
-   expand toggle to the right. */
+   expand/minimize toggles to the right. */
 .assistant-title {
   display: flex;
   align-items: center;
@@ -1700,26 +2069,59 @@ button { cursor: pointer; }
   gap: 12px;
   margin: -2px 0 14px 0;
 }
-.assistant-expand-btn {
-  background: transparent;
+.assistant-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+/* Segmented control — 3 buttons grouped together. Active button has
+   a filled background; inactive ones are outline-only. */
+.assistant-size-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  background: var(--bg-2);
   border: 1px solid var(--line);
-  color: var(--text-1);
-  width: 28px;
-  height: 28px;
   border-radius: var(--r-pill);
+  padding: 2px;
+}
+.assistant-size-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-2);
+  width: 26px;
+  height: 24px;
+  border-radius: calc(var(--r-pill) - 2px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
   cursor: pointer;
   line-height: 1;
   font-family: inherit;
-  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  transition: background var(--dur-instant) var(--ease-out-cubic),
+              color var(--dur-instant) var(--ease-out-cubic);
 }
-.assistant-expand-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
+.assistant-size-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
   color: var(--text-0);
-  border-color: rgba(255, 255, 255, 0.16);
+}
+.assistant-size-btn.active {
+  background: var(--accent);
+  color: var(--accent-on);
+}
+.assistant-size-btn svg { display: block; }
+/* In minimized (rail) mode, the segmented control stacks vertically
+   under the brain icon. Each button keeps the same width so the
+   icons stay readable. */
+.column-left.minimized .assistant-size-toggle {
+  flex-direction: column;
+  border-radius: var(--r-pill);
+  padding: 2px;
+  gap: 2px;
+}
+.column-left.minimized .assistant-size-btn {
+  width: 24px;
+  height: 22px;
 }
 
 /* Chat scroll area + input row. The body is a vertical flex

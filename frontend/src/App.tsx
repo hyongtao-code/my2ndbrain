@@ -30,10 +30,31 @@ function AppInner() {
     // assistant panel is expanded over the canvas, the FAB still
     // works because the panel sits on top of the sphere with its
     // own z-index).
-    const [assistantExpanded, setAssistantExpanded] = useState(false);
-    const toggleAssistantExpand = useCallback(() => {
-        setAssistantExpanded((v) => !v);
-    }, []);
+    // Layout mode for the left AI Assistant column.
+    // "default" = 280px (1/4); "minimized" = 52px rail; "half" = 50vw (1/2)
+    const [assistantMode, setAssistantMode] = useState<"default" | "minimized" | "half">("default");
+    // Layout mode for the right modal sheet (AddNode / NodeDetail).
+    // Derived from which modal is open + that modal's fullscreen flag —
+    // not stored, computed each render so it always matches reality.
+    //   closed      → "minimized" (column 0)
+    //   open        → "default"  (column 320px)
+    //   fullscreen  → "half"     (column 50vw)
+    // Per-modal size state. Each modal is independent (open with
+    // "default" = 1/4 or "half" = 1/2). The 4 booleans collapsed
+    // into 4 strings so the modal header can render two separate
+    // buttons (1/4 / 1/2) and highlight the active one.
+    const [addMode, setAddMode] = useState<"default" | "half">("default");
+    const [importMode, setImportMode] = useState<"default" | "half">("default");
+    const [exportMode, setExportMode] = useState<"default" | "half">("default");
+    const [detailMode, setDetailMode] = useState<"default" | "half">("default");
+    // Derived from which modal is open + that modal's mode flag.
+    const anyModalOpen = !!(selected || showAdd || showImport || showExport);
+    const anyModalFullscreen = !!((selected && detailMode === "half") || addMode === "half" || importMode === "half" || exportMode === "half");
+    const computedModalMode: "default" | "half" | "minimized" =
+        !anyModalOpen ? "minimized" :
+        anyModalFullscreen ? "half" : "default";
+    // Assistant uses a direct setAssistantMode so the user can pick any
+    // of the three sizes from the segmented control in the panel header.
     const refreshDrafts = useCallback(async () => {
         try {
             const list = await api.listDrafts(false);
@@ -160,7 +181,11 @@ function AppInner() {
     };
 
     return (
-        <div className="app">
+        <div
+            className="app"
+            data-assistant-mode={assistantMode}
+            data-modal-mode={computedModalMode}
+        >
             <div className="stage" ref={stageRef}>
                 {graph && graph.nodes.length > 0 && (
                     <KnowledgeSphere
@@ -174,14 +199,13 @@ function AppInner() {
                         autoSpin={autoSpin}
                     />
                 )}
+                {(!graph || graph.nodes.length === 0) && (
+                    <div className="empty">
+                        <h1>{t("empty.title")}</h1>
+                        <p>{t("empty.subtitle")}</p>
+                    </div>
+                )}
             </div>
-
-            {(!graph || graph.nodes.length === 0) && (
-                <div className="empty">
-                    <h1>{t("empty.title")}</h1>
-                    <p>{t("empty.subtitle")}</p>
-                </div>
-            )}
 
             <div className="topbar">
                 <div className="brand">
@@ -193,7 +217,7 @@ function AppInner() {
                 </div>
                 <div className="search-wrap">
                     <div className="search-input">
-                        <span className="search-icon">🔍</span>
+                        <span className="search-icon"><IconSearch /></span>
                         <input
                             type="search"
                             className="search-field"
@@ -233,7 +257,7 @@ function AppInner() {
                                 title="Clear"
                                 onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => { setSearchQuery(""); setSearchOpen(false); }}
-                            >✕</button>
+                            ><IconClose /></button>
                         )}
                     </div>
                     {searchOpen && searchMatches.length > 0 && (
@@ -286,6 +310,23 @@ function AppInner() {
                     <div className="stat">{t("stats.edges")} <b>{graph?.stats.edge_count ?? 0}</b></div>
                     <div className="stat">{t("stats.clusters")} <b>{graph?.stats.cluster_count ?? 0}</b></div>
                 </div>
+                <div className="action-bar">
+                    <button
+                        className="fab"
+                        title={t("fab.import")}
+                        onClick={() => setShowImport(true)}
+                    ><IconArrowUp /></button>
+                    <button
+                        className="fab"
+                        title={t("fab.export")}
+                        onClick={() => setShowExport(true)}
+                    ><IconArrowDown /></button>
+                    <button
+                        className="fab fab-primary"
+                        onClick={() => setShowAdd(true)}
+                        title={t("fab.add")}
+                    ><IconPlus /></button>
+                </div>
             </div>
 
             {tooltip && (
@@ -298,41 +339,107 @@ function AppInner() {
                     onJump={(id) => selectNode(id)}
                     onClose={closeDetail}
                     onMutated={refresh}
+                    modalMode={detailMode}
+                    onSetMode={setDetailMode}
                 />
             )}
 
-            <AssistantPanel onJump={(id) => selectNode(id)} drafts={drafts} refreshDrafts={refreshDrafts} expanded={assistantExpanded} onToggleExpand={toggleAssistantExpand} />
+            <AssistantPanel onJump={(id) => selectNode(id)} drafts={drafts} refreshDrafts={refreshDrafts} assistantMode={assistantMode} onSetMode={setAssistantMode} />
 
-            <div
-                className={
-                    "fab-cluster"
-                    + (selected || showAdd || showImport || showExport ? " is-hidden" : "")
-                }
-            >
-                <button
-                    className="fab fab-action"
-                    title={t("fab.import")}
-                    onClick={() => setShowImport(true)}
-                >⬆</button>
-                <button
-                    className="fab fab-action"
-                    title={t("fab.export")}
-                    onClick={() => setShowExport(true)}
-                >⬇</button>
-                <button className="fab" onClick={() => setShowAdd(true)} title={t("fab.add")}>＋</button>
-            </div>
+
 
             {showAdd && (
-                <AddNodeModal onClose={() => setShowAdd(false)} onCreated={handleCreated} />
+                <AddNodeModal onClose={() => setShowAdd(false)} onCreated={handleCreated} modalMode={addMode} onSetMode={setAddMode} />
             )}
             {showImport && (
-                <ImportModal onClose={() => setShowImport(false)} onCreated={handleCreated} />
+                <ImportModal onClose={() => setShowImport(false)} onCreated={handleCreated} modalMode={importMode} onSetMode={setImportMode} />
             )}
             {showExport && (
-                <ExportModal onClose={() => setShowExport(false)} />
+                <ExportModal onClose={() => setShowExport(false)} modalMode={exportMode} onSetMode={setExportMode} />
             )}
         </div>
     );
+}
+
+// ============================================================================
+// Inline SVG icons (DESIGN.md §6: no emoji as icon in chrome).
+// All icons are stroke 1 px, sized 14-16 px, currentColor.
+// ============================================================================
+function IconSearch({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         aria-hidden="true" style={{ display: "block" }}>
+      <circle cx={7} cy={7} r={4.5} />
+      <line x1={10.4} y1={10.4} x2={13.5} y2={13.5} />
+    </svg>
+  );
+}
+function IconClose({ size = 11 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         aria-hidden="true" style={{ display: "block" }}>
+      <line x1={3.5} y1={3.5} x2={12.5} y2={12.5} />
+      <line x1={12.5} y1={3.5} x2={3.5} y2={12.5} />
+    </svg>
+  );
+}
+function IconLang({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         aria-hidden="true" style={{ display: "block" }}>
+      <line x1={2.5} y1={5}   x2={13.5} y2={5} />
+      <line x1={2.5} y1={11}  x2={13.5} y2={11} />
+    </svg>
+  );
+}
+function IconBrain({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.2} strokeLinecap="round"
+         aria-hidden="true" style={{ display: "block" }}>
+      <path d="M5 4.5 C3.5 4.5 3 6 3 7.2 C3 8.2 3.5 9 4.2 9.3
+               C4.1 9.5 4.2 10.2 4 10.7 C4 12 5.3 12.6 6.4 12.3
+               L6.4 13 L8 12.5 L9.6 13 L9.6 12.3
+               C10.7 12.6 12 12 12 10.7 C11.8 10.2 11.9 9.5 12.8 9.3
+               C12.5 9 13 8.2 13 7.2 C13 6 12.5 4.5 11 4.5
+               C10.5 3.5 9.5 3.5 9 4.2 C8.5 3.5 7.5 3.5 7 4.2
+               C6.5 3.5 5.5 3.5 5 4.5 Z" />
+      <line x1={8} y1={5.5} x2={8} y2={12} />
+    </svg>
+  );
+}
+function IconArrowUp({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <line x1={8} y1={13} x2={8} y2={3} />
+      <polyline points="3.5,7.5 8,3 12.5,7.5" />
+    </svg>
+  );
+}
+function IconArrowDown({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <line x1={8} y1={3} x2={8} y2={13} />
+      <polyline points="3.5,8.5 8,13 12.5,8.5" />
+    </svg>
+  );
+}
+function IconPlus({ size = 18 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         aria-hidden="true" style={{ display: "block" }}>
+      <line x1={8} y1={3} x2={8} y2={13} />
+      <line x1={3} y1={8} x2={13} y2={8} />
+    </svg>
+  );
 }
 
 export function App() {

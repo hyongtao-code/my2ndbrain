@@ -53,7 +53,11 @@ fi
 
 # ---- 3. port 8000 -------------------------------------------------------
 if command -v ss >/dev/null 2>&1; then
-    if ss -tln 2>/dev/null | awk '{print $4}' | grep -E ':(8000|5173)$' >/dev/null; then
+    # Only check port 8000 (the app's main port). Port 5173 may be
+    # legitimately in use by a separate vite dev process started
+    # by './start.sh start', which is fine — ./start.sh and
+    # ./compose.sh should not block each other on 5173.
+    if ss -tln 2>/dev/null | awk '{print $4}' | grep -E ':8000$' >/dev/null; then
         echo "✗ port 8000 is in use"
         ss -tlnp 2>/dev/null | grep -E ':(8000|5173)' | sed 's/^/    /'
         echo "  Free port 8000 before starting (or change the port mapping in"

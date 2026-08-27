@@ -6,12 +6,16 @@ import { useI18n } from "../i18n";
 
 type Mode = "ask" | "suggest" | "settings" | "draft";
 
+type AssistantMode = "default" | "minimized" | "half";
+
 type Props = {
     onJump: (id: string) => void;
     drafts: import("../types").DraftOut[];
     refreshDrafts: () => void;
-    expanded: boolean;
-    onToggleExpand: () => void;
+    /** Three-state layout mode for the assistant column. */
+    assistantMode: AssistantMode;
+    /** Set the assistant mode to any of the three values. */
+    onSetMode: (m: AssistantMode) => void;
 };
 
 type ProviderInfo = {
@@ -50,56 +54,285 @@ type Suggestion = {
     provider?: string;
 };
 
-export default function AssistantPanel({ onJump, drafts, refreshDrafts, expanded, onToggleExpand }: Props) {
+// Inline SVG icons (DESIGN.md §6: no emoji as icon in chrome).
+// Stroke 1.4 px, 14 px, currentColor.
+function IconMinimize({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         aria-hidden="true" style={{ display: "block" }}>
+      <line x1={3} y1={11} x2={13} y2={11} />
+    </svg>
+  );
+}
+function IconSparkle({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.2} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <path d="M8 2 L9 6 L13 7 L9 8 L8 12 L7 8 L3 7 L7 6 Z" />
+      <line x1={12} y1={3} x2={12} y2={4.5} />
+      <line x1={12} y1={9.5} x2={12} y2={11} />
+      <line x1={13.25} y1={6.25} x2={11.75} y2={6.25} />
+      <line x1={13.25} y1={7.75} x2={11.75} y2={7.75} />
+    </svg>
+  );
+}
+function IconTrash({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <line x1={3} y1={5} x2={13} y2={5} />
+      <path d="M5 5 L5 12.5 C5 13 5.5 13.5 6 13.5 L10 13.5 C10.5 13.5 11 13 11 12.5 L11 5" />
+      <path d="M6 5 L6 3.5 C6 3 6.5 2.5 7 2.5 L9 2.5 C9.5 2.5 10 3 10 3.5 L10 5" />
+      <line x1={7} y1={7} x2={7} y2={12} />
+      <line x1={9} y1={7} x2={9} y2={12} />
+    </svg>
+  );
+}
+function IconCheck({ size = 12 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.6} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <polyline points="3.5,8 7,11.5 12.5,5" />
+    </svg>
+  );
+}
+function IconEye({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <path d="M1.5 8 C3.5 4.5 5.5 3 8 3 C10.5 3 12.5 4.5 14.5 8 C12.5 11.5 10.5 13 8 13 C5.5 13 3.5 11.5 1.5 8 Z" />
+      <circle cx={8} cy={8} r={2} />
+    </svg>
+  );
+}
+function IconEyeOff({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <line x1={2.5} y1={3.5} x2={13.5} y2={12.5} />
+      <path d="M4 5 C3 6 2 7 1.5 8 C3.5 11.5 5.5 13 8 13 C9.5 13 10.5 12.5 11.5 11.5" />
+      <path d="M6 4 C6.5 3.5 7.5 3 8 3 C10.5 3 12.5 4.5 14.5 8 C14 9 13.5 9.5 13 10" />
+      <circle cx={8} cy={8} r={2} />
+    </svg>
+  );
+}
+function IconChat({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <path d="M2.5 4 C2.5 3.2 3.2 2.5 4 2.5 L12 2.5 C12.8 2.5 13.5 3.2 13.5 4 L13.5 9.5 C13.5 10.3 12.8 11 12 11 L6 11 L3.5 13 L3.5 11 C3 10.7 2.5 10.2 2.5 9.5 Z" />
+    </svg>
+  );
+}
+function IconBulb({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <path d="M8 2 C5.5 2 4 4 4 6 C4 7.5 5 8.5 5.5 9.5 L5.5 10.5 L10.5 10.5 L10.5 9.5 C11 8.5 12 7.5 12 6 C12 4 10.5 2 8 2 Z" />
+      <line x1={6} y1={12} x2={10} y2={12} />
+      <line x1={6.5} y1={13.5} x2={9.5} y2={13.5} />
+    </svg>
+  );
+}
+function IconGear({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         aria-hidden="true" style={{ display: "block" }}>
+      <circle cx={8} cy={8} r={2.4} />
+      <line x1={8} y1={2.5} x2={8} y2={4.5} />
+      <line x1={8} y1={11.5} x2={8} y2={13.5} />
+      <line x1={2.5} y1={8} x2={4.5} y2={8} />
+      <line x1={11.5} y1={8} x2={13.5} y2={8} />
+      <line x1={4} y1={4} x2={5.5} y2={5.5} />
+      <line x1={10.5} y1={10.5} x2={12} y2={12} />
+      <line x1={12} y1={4} x2={10.5} y2={5.5} />
+      <line x1={5.5} y1={10.5} x2={4} y2={12} />
+    </svg>
+  );
+}
+function IconBrain({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.2} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <path d="M5 4.5 C3.5 4.5 3 6 3 7.2 C3 8.2 3.5 9 4.2 9.3
+               C4.1 9.5 4.2 10.2 4 10.7 C4 12 5.3 12.6 6.4 12.3
+               L6.4 13 L8 12.5 L9.6 13 L9.6 12.3
+               C10.7 12.6 12 12 12 10.7 C11.8 10.2 11.9 9.5 12.8 9.3
+               C12.5 9 13 8.2 13 7.2 C13 6 12.5 4.5 11 4.5
+               C10.5 3.5 9.5 3.5 9 4.2 C8.5 3.5 7.5 3.5 7 4.2
+               C6.5 3.5 5.5 3.5 5 4.5 Z" />
+      <line x1={8} y1={5.5} x2={8} y2={12} />
+    </svg>
+  );
+}
+function IconDraft({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <path d="M3.5 2.5 L10.5 2.5 L13 5 L13 13.5 L3.5 13.5 Z" />
+      <polyline points="10,2.5 10,5.5 13,5.5" />
+      <line x1={5.5} y1={7.5} x2={11} y2={7.5} />
+      <line x1={5.5} y1={10} x2={11} y2={10} />
+    </svg>
+  );
+}
+function IconExpand({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <polyline points="2,6 2,2 6,2" />
+      <polyline points="14,6 14,2 10,2" />
+      <polyline points="2,10 2,14 6,14" />
+      <polyline points="14,10 14,14 10,14" />
+    </svg>
+  );
+}
+function IconMerge({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <circle cx={4} cy={4} r={2} />
+      <circle cx={12} cy={4} r={2} />
+      <circle cx={8} cy={13} r={2} />
+      <line x1={4.5} y1={5.5} x2={7.5} y2={11} />
+      <line x1={11.5} y1={5.5} x2={8.5} y2={11} />
+      <line x1={6} y1={4} x2={10} y2={4} />
+    </svg>
+  );
+}
+function IconLink({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <path d="M7 9 C5.5 10.5 3.5 10.5 2.5 9.5 C1.5 8.5 1.5 6.5 2.5 5.5 L4 4" />
+      <path d="M9 7 C10.5 5.5 12.5 5.5 13.5 6.5 C14.5 7.5 14.5 9.5 13.5 10.5 L12 12" />
+      <line x1={6} y1={10} x2={10} y2={6} />
+    </svg>
+  );
+}
+function IconRefresh({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <path d="M3 8 C3 5.2 5.2 3 8 3 C10 5 11.5 6 12 7" />
+      <polyline points="12,4 12,7 9,7" />
+      <path d="M13 8 C13 10.8 10.8 13 8 13 C6 11 4.5 10 4 9" />
+      <polyline points="4,12 4,9 7,9" />
+    </svg>
+  );
+}
+
+export default function AssistantPanel({ onJump, drafts, refreshDrafts, assistantMode, onSetMode }: Props) {
     const t = useTranslations();
     const { locale } = useI18n();
     const [mode, setMode] = useState<Mode>("draft");
 
     return (
-        <div className={"panel panel-assistant" + (expanded ? " is-expanded" : "")}>
+        <div className={"column-left" + (assistantMode === "minimized" ? " minimized" : "")}>
             <div className="panel-title assistant-title">
-                <span>🧠 {t("assistant.title")}</span>
-                <button
-                    className="assistant-expand-btn"
-                    onClick={onToggleExpand}
-                    title={expanded ? t("assistant.collapse") : t("assistant.expand")}
-                    aria-label={expanded ? t("assistant.collapse") : t("assistant.expand")}
-                >
-                    {expanded ? "⤡" : "⤢"}
-                </button>
+                <div className="assistant-title-row">
+                    <span className="assistant-brain"><IconBrain /></span>
+                    <span className="assistant-title-text">{t("assistant.title")}</span>
+                </div>
+                <div className="assistant-header-actions">
+                    {/* Segmented control — 3 independent buttons so the user
+                       can jump straight to any size (minimized / 1/4 / 1/2)
+                       instead of cycling through them. The current mode is
+                       highlighted with the active class. */}
+                    <div className="assistant-size-toggle" role="group" aria-label={t("assistant.sizeGroup")}>
+                        <button
+                            className={"assistant-size-btn" + (assistantMode === "minimized" ? " active" : "")}
+                            onClick={() => onSetMode("minimized")}
+                            title={t("assistant.sizeMinimize")}
+                            aria-label={t("assistant.sizeMinimize")}
+                            aria-pressed={assistantMode === "minimized"}
+                        >
+                            <IconMinimize />
+                        </button>
+                        <button
+                            className={"assistant-size-btn" + (assistantMode === "default" ? " active" : "")}
+                            onClick={() => onSetMode("default")}
+                            title={t("assistant.sizeQuarter")}
+                            aria-label={t("assistant.sizeQuarter")}
+                            aria-pressed={assistantMode === "default"}
+                        >
+                            {/* 1/4 icon: a square occupying the leftmost quarter */}
+                            <svg width={14} height={14} viewBox="0 0 16 16" fill="none"
+                                 stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+                                 strokeLinejoin="round">
+                                <rect x="2.5" y="3.5" width="11" height="9" rx="1" />
+                                <rect x="2.5" y="3.5" width="2.75" height="9" fill="currentColor" stroke="none" />
+                            </svg>
+                        </button>
+                        <button
+                            className={"assistant-size-btn" + (assistantMode === "half" ? " active" : "")}
+                            onClick={() => onSetMode("half")}
+                            title={t("assistant.sizeHalf")}
+                            aria-label={t("assistant.sizeHalf")}
+                            aria-pressed={assistantMode === "half"}
+                        >
+                            {/* 1/2 icon: square split, left half filled */}
+                            <svg width={14} height={14} viewBox="0 0 16 16" fill="none"
+                                 stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+                                 strokeLinejoin="round">
+                                <rect x="2.5" y="3.5" width="11" height="9" rx="1" />
+                                <rect x="2.5" y="3.5" width="5.5" height="9" fill="currentColor" stroke="none" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
             </div>
 
+            {assistantMode !== "minimized" && (
+            <>
             <div className="assistant-tabs">
                 <button
                     className={`tab ${mode === "ask" ? "active" : ""}`}
                     onClick={() => setMode("ask")}
                 >
-                    💬 {t("assistant.tabAsk")}
+                    <IconChat /> {t("assistant.tabAsk")}
                 </button>
                 <button
                     className={`tab ${mode === "suggest" ? "active" : ""}`}
                     onClick={() => setMode("suggest")}
                 >
-                    💡 {t("assistant.tabSuggest")}
+                    <IconBulb /> {t("assistant.tabSuggest")}
                 </button>
                 <button
                     className={`tab ${mode === "settings" ? "active" : ""}`}
                     onClick={() => setMode("settings")}
                 >
-                    ⚙️ {t("assistant.tabSettings")}
+                    <IconGear /> {t("assistant.tabSettings")}
                 </button>
                 <button
                     className={`tab ${mode === "draft" ? "active" : ""}`}
                     onClick={() => setMode("draft")}
                 >
-                    📝 {t("assistant.tabDraft")}
+                    <IconDraft /> {t("assistant.tabDraft")}
                 </button>
             </div>
 
-            {mode === "ask" && <AskTab onJump={onJump} locale={locale} expanded={expanded} />}
+            {mode === "ask" && <AskTab onJump={onJump} locale={locale} />}
             {mode === "suggest" && <SuggestTab onJump={onJump} drafts={drafts} refreshDrafts={refreshDrafts} />}
             {mode === "settings" && <SettingsTab />}
             {mode === "draft" && <DraftTab onJump={onJump} />}
+            </>
+            )}
         </div>
     );
 }
@@ -120,10 +353,9 @@ type ChatMessage = {
     error?: boolean;       // true if the call failed
 };
 
-function AskTab({ onJump, locale, expanded }: {
+function AskTab({ onJump, locale }: {
     onJump: (id: string) => void;
     locale: string;
-    expanded: boolean;
 }) {
     const t = useTranslations();
     const [q, setQ] = useState("");
@@ -143,7 +375,7 @@ function AskTab({ onJump, locale, expanded }: {
         const el = scrollRef.current;
         if (!el) return;
         el.scrollTop = el.scrollHeight;
-    }, [messages, expanded]);
+    }, [messages]);
 
     const ask = async () => {
         if (!q.trim() || loading) return;
@@ -258,7 +490,7 @@ function AskTab({ onJump, locale, expanded }: {
     };
 
     return (
-        <div className={"assistant-tab-body" + (expanded ? " is-expanded" : "")}>
+        <div className="assistant-tab-body">
             <div className="chat-scroll" ref={scrollRef}>
                 {messages.length === 0 && (
                     <div className="chat-empty">
@@ -291,7 +523,7 @@ function AskTab({ onJump, locale, expanded }: {
                         disabled={loading || messages.length === 0}
                         title="清空对话"
                     >
-                        🗑
+                        <IconTrash />
                     </button>
                 </div>
             </div>
@@ -479,13 +711,13 @@ function SuggestTab({ onJump, drafts, refreshDrafts }: {
             <p className="assistant-hint">{t("assistant.suggestHint")}</p>
             <div className="assistant-actions" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <button className="btn-primary" onClick={doClean} disabled={busy !== null}>
-                    🧹 {busy === "clean" ? t("assistant.working") : t("assistant.suggestCleanDraft")}
+                    <IconSparkle /> {busy === "clean" ? t("assistant.working") : t("assistant.suggestCleanDraft")}
                 </button>
                 <button className="btn-primary" onClick={doMerge} disabled={busy !== null}>
-                    🔀 {busy === "merge" ? t("assistant.working") : t("assistant.suggestMerge")}
+                    <IconMerge /> {busy === "merge" ? t("assistant.working") : t("assistant.suggestMerge")}
                 </button>
                 <button className="btn-primary" onClick={doEdge} disabled={busy !== null}>
-                    🔗 {busy === "edge" ? t("assistant.working") : t("assistant.suggestEdge")}
+                    <IconLink /> {busy === "edge" ? t("assistant.working") : t("assistant.suggestEdge")}
                 </button>
             </div>
 
@@ -493,7 +725,7 @@ function SuggestTab({ onJump, drafts, refreshDrafts }: {
             {cleanResult && (
                 <div className="suggestion-card">
                     <div className="suggestion-action">
-                        🧹 cleaned-draft <span className="provider-tag">via {cleanResult.provider}</span>
+                        <IconSparkle /> cleaned-draft <span className="provider-tag">via {cleanResult.provider}</span>
                     </div>
                     <div className="suggestion-rationale">{cleanResult.rationale}</div>
                     <div style={{ marginTop: 8 }}>
@@ -545,7 +777,7 @@ function SuggestTab({ onJump, drafts, refreshDrafts }: {
             {mergeResult && (
                 <div className="suggestion-card">
                     <div className="suggestion-action">
-                        🔀 merge <b>{mergeResult.action}</b>{" "}
+                        <IconMerge /> merge <b>{mergeResult.action}</b>{" "}
                         <span className="provider-tag">via {mergeResult.provider}</span>
                     </div>
                     <div className="suggestion-rationale">{mergeResult.rationale}</div>
@@ -563,7 +795,7 @@ function SuggestTab({ onJump, drafts, refreshDrafts }: {
                     )}
                     {mergeResult.action === "noop" && (
                         <button className="btn-primary" onClick={doMerge} disabled={busy !== null}>
-                            🔄 {t("assistant.tryAgain")}
+                            <IconRefresh /> {t("assistant.tryAgain")}
                         </button>
                     )}
                 </div>
@@ -573,7 +805,7 @@ function SuggestTab({ onJump, drafts, refreshDrafts }: {
             {edgeResult && (
                 <div className="suggestion-card">
                     <div className="suggestion-action">
-                        🔗 edges <span className="provider-tag">via {edgeResult.provider}</span>
+                        <IconLink /> edges <span className="provider-tag">via {edgeResult.provider}</span>
                         {edgeResult.category && <span className="provider-tag">category: {edgeResult.category}</span>}
                     </div>
                     {edgeResult.rationale && <div className="suggestion-rationale">{edgeResult.rationale}</div>}
@@ -592,7 +824,7 @@ function SuggestTab({ onJump, drafts, refreshDrafts }: {
                                     <button className="node-link" onClick={() => onJump(s.source)}>view A</button>
                                     <button className="node-link" onClick={() => onJump(s.target)}>view B</button>
                                     <button className="btn-primary" onClick={() => applyEdge(s.source, s.target, s.relation)}>
-                                        🔗 {t("assistant.applyEdge")}
+                                        <IconLink /> {t("assistant.applyEdge")}
                                     </button>
                                 </div>
                             </div>
@@ -600,7 +832,7 @@ function SuggestTab({ onJump, drafts, refreshDrafts }: {
                     )}
                     {edgeResult.suggestions.length === 0 && (
                         <button className="btn-primary" onClick={doEdge} disabled={busy !== null}>
-                            🔄 {t("assistant.tryAgain")}
+                            <IconRefresh /> {t("assistant.tryAgain")}
                         </button>
                     )}
                 </div>
@@ -781,7 +1013,7 @@ function SettingsTab() {
                     title={showKey ? t("assistant.hideKey") : t("assistant.showKey")}
                     type="button"
                 >
-                    {showKey ? "🙈" : "👁"}
+                    {showKey ? <IconEyeOff /> : <IconEye />}
                 </button>
             </div>
 
@@ -939,14 +1171,14 @@ function DraftTab({ onJump }: { onJump: (id: string) => void }) {
                                 disabled={promoting.has(d.id)}
                                 title={t("drafts.promote")}
                             >
-                                ✨
+                                <IconSparkle />
                             </button>
                             <button
                                 className="btn-mini"
                                 onClick={() => remove(d.id)}
                                 title={t("drafts.delete")}
                             >
-                                🗑️
+                                <IconTrash />
                             </button>
                         </div>
                     </div>
@@ -968,7 +1200,7 @@ function DraftTab({ onJump }: { onJump: (id: string) => void }) {
                                                 onClick={() => onJump(d.promoted_to_node_id!)}
                                                 title={t("drafts.jumpToNode")}
                                             >
-                                                ✅ {d.promoted_to_node_id.slice(0, 8)}
+                                                <IconCheck /> {d.promoted_to_node_id.slice(0, 8)}
                                             </button>
                                         )}
                                     </div>

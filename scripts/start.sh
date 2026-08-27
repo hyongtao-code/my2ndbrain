@@ -26,7 +26,11 @@ set -euo pipefail
 # When this script lives at scripts/<name>.sh, the repo root is
 # the parent of this directory. We expose both names — SCRIPT_DIR
 # remains for back-compat, and REPO_ROOT is the anchor.
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# IMPORTANT: cache $SELF_PATH before any `cd`, so that the --help
+# handler below can read the help text from this exact file
+# regardless of how the script was invoked.
+SELF_PATH="$(realpath "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(dirname "$SELF_PATH")"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
@@ -37,7 +41,7 @@ for arg in "$@"; do
         --rebuild) REBUILD=1 ;;
         --pull)    PULL=1 ;;
         -h|--help)
-            sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'
+            sed -n '2,25p' "$SELF_PATH" | sed 's/^# \{0,1\}//'
             exit 0
             ;;
         *) echo "unknown arg: $arg" >&2; exit 2 ;;
@@ -46,7 +50,7 @@ done
 
 # ---- 1. prereq --------------------------------------------------------
 echo "==> checking prerequisites"
-./prereq.sh
+"$REPO_ROOT/scripts/prereq.sh"
 
 # ---- 2. .env ----------------------------------------------------------
 if [ ! -f .env ]; then
@@ -138,7 +142,7 @@ echo "  Swagger   : http://${HOST_IP}:8000/docs"
 echo "  Data      : stored in named volume 'my2ndbrain-data'"
 echo "             (postgres + pgvector — survives container rebuild)"
 echo
-echo "  Stop      : ./stop.sh"
+echo "  Stop      : ./compose.sh stop"
 echo "  Status    : ./status.sh"
 echo "  Backup    : ./backup.sh"
 echo "  Logs      : docker logs -f my2ndbrain-prod"

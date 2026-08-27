@@ -120,7 +120,13 @@
     "relatedSources": "引用来源",
     "expand": "展开（左半屏）",
     "collapse": "收起（恢复小角）",
-    "askWelcome": "👋 你好！问我关于你笔记里的任何问题。\n（提示：试试问\"什么是 harness？\"或\"harness 和张雪峰有什么联系？\"）"
+    "askWelcome": "👋 你好！问我关于你笔记里的任何问题。\n（提示：试试问\"什么是 harness？\"或\"harness 和张雪峰有什么联系？\"）",
+    "expandPanel": "展开面板",
+    "minimizePanel": "最小化面板",
+    "sizeGroup": "AI 助手尺寸",
+    "sizeMinimize": "收起为窄条",
+    "sizeQuarter": "1/4 宽度（默认）",
+    "sizeHalf": "1/2 宽度（左半屏）"
   },
   "lang": {
     "switch": "切换语言",
@@ -158,6 +164,11 @@
     "tabPreview": "预览",
     "placeholder": "支持 Markdown：**粗体** *斜体* `行内代码` [链接](url) 列表 等",
     "emptyPreview": "（预览为空 — 先在编辑模式写点东西）"
+  },
+  "modal": {
+    "sizeGroup": "面板尺寸",
+    "sizeQuarter": "1/4 宽度（默认）",
+    "sizeHalf": "1/2 宽度（右半屏）"
   },
   "panel": {
     "fullscreen": "全屏",
