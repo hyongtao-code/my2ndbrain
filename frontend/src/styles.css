@@ -475,35 +475,67 @@ button { cursor: pointer; }
 .btn-secondary:hover { color: var(--text-0); border-color: var(--accent); background: var(--bg-2); }
 
 /* ============================================================
-   Add bubble floating button — Apple FAB
+   Top-right action bar (Phase 3 IA — replaces the FAB cluster)
+   - Sits in the topbar, to the right of the stats pill
+   - 3 small icon buttons in a row: import / export / add
+   - Always visible (no hover-expand — that was a legacy
+     pattern from the floating-overlay era)
    ============================================================ */
-/* The main + button is now position: absolute; right: 0 so it
-   sits at the right edge of the cluster (the cluster is 248px
-   wide, + is 56px wide, so + is at x=1010..1066 in the cluster
-   frame, on the right side). The action buttons ⬆ ⬇ use
-   right: 66/132px relative to the cluster. Putting + at right: 0
-   aligns all three buttons on the same right-anchored axis. */
-.fab {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  width: 56px; height: 56px;
-  border-radius: 50%;
-  background: var(--accent);
-  border: none;
-  box-shadow:
-    0 0 0 1px rgba(255,255,255,0.10) inset,
-    0 10px 30px rgba(10, 132, 255, 0.45),
-    0 2px 8px rgba(0,0,0,0.4);
-  color: white;
-  font-size: 28px;
-  font-weight: 300;
-  line-height: 1;
-  display: flex; align-items: center; justify-content: center;
-  transition: background 0.12s ease, transform 0.1s ease;
+.action-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  pointer-events: auto;          /* topbar is pointer-events: none */
+  margin-left: 12px;
 }
-.fab:hover { background: var(--accent-hover); transform: scale(1.04); }
-.fab:active { background: var(--accent-press); transform: scale(0.97); }
+.action-bar .fab {
+  /* Smaller than the legacy 56 px floating version. Now it's a
+     quiet inline icon button in the topbar. */
+  width: 32px; height: 32px;
+  border-radius: var(--r-pill);
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--text-1);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: background var(--dur-instant) var(--ease-out-cubic),
+              color var(--dur-instant) var(--ease-out-cubic),
+              border-color var(--dur-instant) var(--ease-out-cubic);
+}
+.action-bar .fab:hover {
+  background: var(--bg-2);
+  color: var(--text-0);
+  border-color: var(--line-strong);
+}
+.action-bar .fab:active {
+  background: var(--bg-3);
+}
+/* The "+" button gets the only "filled" treatment — it's the
+   primary action. */
+.action-bar .fab.fab-primary {
+  background: var(--accent);
+  color: var(--accent-on);
+  border-color: var(--accent);
+}
+.action-bar .fab.fab-primary:hover {
+  background: var(--accent-press);
+  border-color: var(--accent-press);
+}
+/* LEGACY: .fab-cluster rules are kept temporarily for any
+   third-party code or regression tests that might still target
+   them. They are no longer used by App.tsx as of commit 4.
+   These will be removed in a later cleanup commit. */
+.fab-cluster {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  width: 248px;
+  min-width: 248px;
+  height: 56px;
+  z-index: 30;
+  pointer-events: auto;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
 
 /* ============================================================
    Modal overlay

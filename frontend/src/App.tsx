@@ -289,6 +289,23 @@ function AppInner() {
                     <div className="stat">{t("stats.edges")} <b>{graph?.stats.edge_count ?? 0}</b></div>
                     <div className="stat">{t("stats.clusters")} <b>{graph?.stats.cluster_count ?? 0}</b></div>
                 </div>
+                <div className="action-bar">
+                    <button
+                        className="fab"
+                        title={t("fab.import")}
+                        onClick={() => setShowImport(true)}
+                    ><IconArrowUp /></button>
+                    <button
+                        className="fab"
+                        title={t("fab.export")}
+                        onClick={() => setShowExport(true)}
+                    ><IconArrowDown /></button>
+                    <button
+                        className="fab fab-primary"
+                        onClick={() => setShowAdd(true)}
+                        title={t("fab.add")}
+                    ><IconPlus /></button>
+                </div>
             </div>
 
             {tooltip && (
@@ -306,24 +323,7 @@ function AppInner() {
 
             <AssistantPanel onJump={(id) => selectNode(id)} drafts={drafts} refreshDrafts={refreshDrafts} expanded={assistantExpanded} onToggleExpand={toggleAssistantExpand} />
 
-            <div
-                className={
-                    "fab-cluster"
-                    + (selected || showAdd || showImport || showExport ? " is-hidden" : "")
-                }
-            >
-                <button
-                    className="fab fab-action"
-                    title={t("fab.import")}
-                    onClick={() => setShowImport(true)}
-                ><IconArrowUp /></button>
-                <button
-                    className="fab fab-action"
-                    title={t("fab.export")}
-                    onClick={() => setShowExport(true)}
-                ><IconArrowDown /></button>
-                <button className="fab" onClick={() => setShowAdd(true)} title={t("fab.add")}><IconPlus /></button>
-            </div>
+
 
             {showAdd && (
                 <AddNodeModal onClose={() => setShowAdd(false)} onCreated={handleCreated} />
