@@ -57,24 +57,36 @@ RUN npm run build
 # to the runtime and uses absolute paths to the python binary.
 # We use python:3.11-bookworm so the venv is built against
 # the same python 3.11 that the runtime apt installs.
+#
+# Dependency management switched from `pip install -r requirements.txt`
+# to `uv pip install` driven by pyproject.toml + uv.lock (added in
+# the uv-migration commit). uv is ~10-50x faster than pip for cold
+# installs and the lockfile pins transitive deps so Docker builds
+# are reproducible. requirements.txt is kept as a fallback for
+# users who don't have uv installed locally.
 FROM python:3.11-bookworm AS backend-builder
 
 # System deps for psycopg2-binary (libpq5 only; psycopg2-binary
 # vendors its own libpq so we don't need build-essentials).
 # We DO need build-essential for sentence-transformers + numpy
 # compilation against the slim base if it falls back from wheels.
+# We also install uv itself for the dependency step below.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         gcc \
-    && rm -rf /var/lib/apt/lists/*
+        curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -LsSf https://astral.sh/uv/install.sh | sh \
+    && mv /root/.local/bin/uv /usr/local/bin/uv
 
 WORKDIR /app
-COPY backend/requirements.txt ./
+# Copy uv-managed files first so the install layer caches well
+# (lockfile rarely changes; code changes invalidate the next layer).
+COPY backend/pyproject.toml backend/uv.lock ./
 # Build into a target dir so the runtime stage can COPY it without
 # dragging the build tooling along.
-RUN python -m venv /app/venv \
-    && /app/venv/bin/pip install --no-cache-dir --upgrade pip \
-    && /app/venv/bin/pip install --no-cache-dir -r requirements.txt
+RUN uv venv --python 3.11 /app/venv \
+    && uv pip install --python /app/venv/bin/python --no-cache-dir .
 
 # Pre-download the sentence-transformers model so the runtime
 # container can run offline. The model is ~90MB and ends up in
@@ -170,7 +182,9 @@ RUN if [ -x /usr/bin/python3 ] && [ ! -e /usr/local/bin/python ]; then \
 # Backend code
 COPY backend/app ${APP_HOME}/app
 COPY backend/scripts ${APP_HOME}/scripts
-COPY backend/requirements.txt ${APP_HOME}/requirements.txt
+# uv-managed dependency manifest (kept alongside the app for any
+# in-container `uv pip install` work users might want to do).
+COPY backend/pyproject.toml backend/uv.lock ${APP_HOME}/
 
 # Frontend build (from stage 1)
 COPY --from=frontend-builder /src/dist ${FRONTEND_DIST}
