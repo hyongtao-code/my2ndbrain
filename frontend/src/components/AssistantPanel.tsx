@@ -50,22 +50,102 @@ type Suggestion = {
     provider?: string;
 };
 
+// Inline SVG icons (DESIGN.md §6: no emoji as icon in chrome).
+// Stroke 1.4 px, 14 px, currentColor.
+function IconChat({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <path d="M2.5 4 C2.5 3.2 3.2 2.5 4 2.5 L12 2.5 C12.8 2.5 13.5 3.2 13.5 4 L13.5 9.5 C13.5 10.3 12.8 11 12 11 L6 11 L3.5 13 L3.5 11 C3 10.7 2.5 10.2 2.5 9.5 Z" />
+    </svg>
+  );
+}
+function IconBulb({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <path d="M8 2 C5.5 2 4 4 4 6 C4 7.5 5 8.5 5.5 9.5 L5.5 10.5 L10.5 10.5 L10.5 9.5 C11 8.5 12 7.5 12 6 C12 4 10.5 2 8 2 Z" />
+      <line x1={6} y1={12} x2={10} y2={12} />
+      <line x1={6.5} y1={13.5} x2={9.5} y2={13.5} />
+    </svg>
+  );
+}
+function IconGear({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         aria-hidden="true" style={{ display: "block" }}>
+      <circle cx={8} cy={8} r={2.4} />
+      <line x1={8} y1={2.5} x2={8} y2={4.5} />
+      <line x1={8} y1={11.5} x2={8} y2={13.5} />
+      <line x1={2.5} y1={8} x2={4.5} y2={8} />
+      <line x1={11.5} y1={8} x2={13.5} y2={8} />
+      <line x1={4} y1={4} x2={5.5} y2={5.5} />
+      <line x1={10.5} y1={10.5} x2={12} y2={12} />
+      <line x1={12} y1={4} x2={10.5} y2={5.5} />
+      <line x1={5.5} y1={10.5} x2={4} y2={12} />
+    </svg>
+  );
+}
+function IconBrain({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.2} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <path d="M5 4.5 C3.5 4.5 3 6 3 7.2 C3 8.2 3.5 9 4.2 9.3
+               C4.1 9.5 4.2 10.2 4 10.7 C4 12 5.3 12.6 6.4 12.3
+               L6.4 13 L8 12.5 L9.6 13 L9.6 12.3
+               C10.7 12.6 12 12 12 10.7 C11.8 10.2 11.9 9.5 12.8 9.3
+               C12.5 9 13 8.2 13 7.2 C13 6 12.5 4.5 11 4.5
+               C10.5 3.5 9.5 3.5 9 4.2 C8.5 3.5 7.5 3.5 7 4.2
+               C6.5 3.5 5.5 3.5 5 4.5 Z" />
+      <line x1={8} y1={5.5} x2={8} y2={12} />
+    </svg>
+  );
+}
+function IconDraft({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <path d="M3.5 2.5 L10.5 2.5 L13 5 L13 13.5 L3.5 13.5 Z" />
+      <polyline points="10,2.5 10,5.5 13,5.5" />
+      <line x1={5.5} y1={7.5} x2={11} y2={7.5} />
+      <line x1={5.5} y1={10} x2={11} y2={10} />
+    </svg>
+  );
+}
+function IconExpand({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
+      <polyline points="2,6 2,2 6,2" />
+      <polyline points="14,6 14,2 10,2" />
+      <polyline points="2,10 2,14 6,14" />
+      <polyline points="14,10 14,14 10,14" />
+    </svg>
+  );
+}
+
 export default function AssistantPanel({ onJump, drafts, refreshDrafts, expanded, onToggleExpand }: Props) {
     const t = useTranslations();
     const { locale } = useI18n();
     const [mode, setMode] = useState<Mode>("draft");
 
     return (
-        <div className={"panel panel-assistant" + (expanded ? " is-expanded" : "")}>
+        <div className={"column-left" + (expanded ? " is-expanded" : "")}>
             <div className="panel-title assistant-title">
-                <span>🧠 {t("assistant.title")}</span>
+                <span className="assistant-brain"><IconBrain /></span>{t("assistant.title")}
                 <button
                     className="assistant-expand-btn"
                     onClick={onToggleExpand}
                     title={expanded ? t("assistant.collapse") : t("assistant.expand")}
                     aria-label={expanded ? t("assistant.collapse") : t("assistant.expand")}
                 >
-                    {expanded ? "⤡" : "⤢"}
+                    <IconExpand />
                 </button>
             </div>
 
@@ -74,25 +154,25 @@ export default function AssistantPanel({ onJump, drafts, refreshDrafts, expanded
                     className={`tab ${mode === "ask" ? "active" : ""}`}
                     onClick={() => setMode("ask")}
                 >
-                    💬 {t("assistant.tabAsk")}
+                    <IconChat /> {t("assistant.tabAsk")}
                 </button>
                 <button
                     className={`tab ${mode === "suggest" ? "active" : ""}`}
                     onClick={() => setMode("suggest")}
                 >
-                    💡 {t("assistant.tabSuggest")}
+                    <IconBulb /> {t("assistant.tabSuggest")}
                 </button>
                 <button
                     className={`tab ${mode === "settings" ? "active" : ""}`}
                     onClick={() => setMode("settings")}
                 >
-                    ⚙️ {t("assistant.tabSettings")}
+                    <IconGear /> {t("assistant.tabSettings")}
                 </button>
                 <button
                     className={`tab ${mode === "draft" ? "active" : ""}`}
                     onClick={() => setMode("draft")}
                 >
-                    📝 {t("assistant.tabDraft")}
+                    <IconDraft /> {t("assistant.tabDraft")}
                 </button>
             </div>
 

@@ -1743,31 +1743,23 @@ button { cursor: pointer; }
 /* ============================================================
    AI Assistant — chat history + expanded (left-half) mode
    ============================================================ */
-.panel-assistant.is-expanded {
-  /* Expanded: take the left 50vw, full height (below topbar). */
-  left: 0;
-  bottom: 0;
-  top: 60px;
-  width: 50vw;
-  max-width: 50vw;
-  max-height: calc(100vh - 60px);
-  border-radius: 0;
-  border-right: 1px solid var(--line);
-  border-top: 0;
-  border-bottom: 0;
-  border-left: 0;
+/* Phase 3 IA: when the user expands the assistant, it grows
+   across both the left column AND the canvas's column. The canvas
+   effectively disappears (its grid cell collapses). The dim-the-
+   canvas filter no longer applies — there IS no canvas visible in
+   expanded mode, so dimming is moot. */
+.column-left.is-expanded {
+  grid-column-end: span 2;
   padding: 20px 28px;
+  max-width: 720px;
 }
 
-/* When the AI panel is expanded, dim the canvas / sphere slightly
-   so the chat feels like a focused workspace. Pure visual polish;
-   no functional change. */
-.app:has(.panel-assistant.is-expanded) .stage {
-  filter: brightness(0.9);
-  transition: filter 0.3s ease;
-}
+/* Stage no longer needs the brightness filter for the assistant-expanded
+   mode. Keep transition: filter so legacy interactions still feel
+   smooth, but the actual dim rule is removed. */
 .stage {
-  transition: filter 0.3s ease;
+  /* No brightness filter — the assistant column lives in its own
+     grid cell, so the canvas is never overlaid. */
 }
 
 /* Title row in the assistant panel — flex the title left and the
