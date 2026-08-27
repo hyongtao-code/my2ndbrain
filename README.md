@@ -10,7 +10,7 @@
 
 ```bash
 git clone <你的 repo URL> my2ndbrain && cd my2ndbrain
-./compose-up.sh                       # Docker compose (推荐,生产/服务器)
+./compose.sh start                    # Docker compose (推荐,生产/服务器)
 # 或者:
 ./start.sh start                      # 本地直接 (开发模式, 需 Python + Node + postgres)
 ```
@@ -138,11 +138,11 @@ category_cluster(id, name, description, centroid vector(384), node_count)
 | 方式 | 脚本 | 实际位置 | 适合谁 | 数据存哪 |
 |---|---|---|---|---|
 | **A. 本地直接 (开发/调试/贡献代码)** | `./start.sh` | `scripts/dev.sh` (root 有 thin shim) | 开发者; 要看 Vite HMR / 改 Python 源码 | 你装的 postgres (host 或 docker) |
-| **B. Docker compose (产品/服务器/给朋友用)** | `./compose-up.sh` + `./compose-down.sh` | `scripts/start.sh` + `scripts/stop.sh` (root 有 thin shim) | 普通用户; 不想装 PostgreSQL/Node/Python | host 上的 named volume `my2ndbrain-data` |
+| **B. Docker compose (产品/服务器/给朋友用)** | `./compose.sh start` / `./compose.sh stop` | `scripts/start.sh` + `scripts/stop.sh` (root 有 thin shim) | 普通用户; 不想装 PostgreSQL/Node/Python | host 上的 named volume `my2ndbrain-data` |
 
-所有 user-facing 脚本 (`start` / `stop` / `status` / `backup` / `restore` / `prereq` / `dev`) 都在 `scripts/` 下, root 只有 thin shim 让 `./start.sh` `./compose-up.sh` `./compose-down.sh` 还能直接用 (与 `Dockerfile COPY docker-entrypoint.sh` 不冲突 — entrypoint 在 root, 没移动)。
+所有 user-facing 脚本 (`start` / `stop` / `status` / `backup` / `restore` / `prereq` / `dev`) 都在 `scripts/` 下, root 只有 thin shim 让 `./start.sh` (native 直接) 和 `./compose.sh` (docker compose: `start` / `stop`) 还能直接用 (与 `Dockerfile COPY docker-entrypoint.sh` 不冲突 — entrypoint 在 root, 没移动)。
 
-不要同时跑 `./start.sh start` 和 `./compose-up.sh` — 它们 都要占 8000 端口, 会 冲突!
+不要同时跑 `./start.sh start` 和 `./compose.sh start` — 它们 都要占 8000 端口, 会 冲突!
 
 ### 3.0 本地直接启动 (开发模式,推荐给开发者)
 
@@ -173,7 +173,7 @@ cd my2ndbrain
 
 ### 3.0a Docker compose 启动 (生产/服务器/给朋友用)
 
-> `./compose-up.sh` 是 Docker compose 启动 (postgres + pgvector + 后端 + 前端 全在一个 image 里)。
+> `./compose.sh start` 是 Docker compose 启动 (postgres + pgvector + 后端 + 前端 全在一个 image 里)。
 
 ```bash
 # 前置: 装好 Docker 20+
@@ -181,20 +181,21 @@ git clone <你的 repo URL> my2ndbrain
 cd my2ndbrain
 
 # 一条命令起 (首次会自动 build image, 5-10 min)
-./compose-up.sh                       # smart: 只有 image 不存在才 build
-./compose-up.sh --rebuild           # 强制重新 build
-./compose-up.sh --pull              # 拉最新 base image (之后再 build)
-./compose-up.sh --help              # 详细说明
+./compose.sh start                     # smart: 只有 image 不存在才 build
+./compose.sh start --rebuild          # 强制重新 build
+./compose.sh start --pull             # 拉最新 base image (之后再 build)
+./compose.sh start --help             # 详细说明
+./compose.sh stop                      # 停 container (数据保留)
+./compose.sh stop --rm                 # 停并删除 container (数据仍然保留)
+./compose.sh --help                    # 完整 help
 
 # 浏览器访问:
 #   http://localhost:8000/   (FastAPI + React build)
 ```
 
-停止 / 卸载:
+彻底清除数据 (慎用):
 ```bash
-./compose-down.sh             # 停 container (数据 保留)
-./compose-down.sh --rm        # 停并删除 container (数据仍然 保留)
-docker volume rm my2ndbrain-data   # 彻底清除数据 (慎用!)
+docker volume rm my2ndbrain-data
 ```### 3.0 一键启动 (推荐,普通用户用这个就行)
 
 ```bash

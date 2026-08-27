@@ -142,7 +142,7 @@ echo "  Swagger   : http://${HOST_IP}:8000/docs"
 echo "  Data      : stored in named volume 'my2ndbrain-data'"
 echo "             (postgres + pgvector — survives container rebuild)"
 echo
-echo "  Stop      : ./stop.sh"
+echo "  Stop      : ./compose.sh stop"
 echo "  Status    : ./status.sh"
 echo "  Backup    : ./backup.sh"
 echo "  Logs      : docker logs -f my2ndbrain-prod"
