@@ -122,10 +122,12 @@ category_cluster(id, name, description, centroid vector(384), node_count)
 
 本仓库**同**时** **提**供**两**种**启**动**方**式**, **二**选**一**:
 
-| 方**式** | **脚**本** | **适**合**谁** | **数**据**存**哪** |
-|---|---|---|---|
-| **A. Docker compose (推荐,产**品**/服务器/给朋**友**用**)** | `./start.sh` | **普**通**用**户**; **不**想**装** PostgreSQL/Node/Python | host **上**的** named volume `my2ndbrain-data` |
-| **B. 本**地**直**接** (开**发**/调试/贡献代**码**)** | `./dev.sh` | **开**发**者**; **要**看** Vite HMR / 改** Python **源**码** | 你**装**的** postgres (host **或** docker) |
+| 方**式** | **脚**本** | **实**际**位**置** | **适**合**谁** | **数**据**存**哪** |
+|---|---|---|---|---|
+| **A. Docker compose (推荐,产**品**/服务器/给朋**友**用**)** | `./start.sh` | `scripts/start.sh` (root 有 thin shim) | **普**通**用**户**; **不**想**装** PostgreSQL/Node/Python | host **上**的** named volume `my2ndbrain-data` |
+| **B. 本**地**直**接** (开**发**/调试/贡献代**码**)** | `./dev.sh` | `scripts/dev.sh` (root 有 thin shim) | **开**发**者**; **要**看** Vite HMR / 改** Python **源**码** | 你**装**的** postgres (host **或** docker) |
+
+**所**有** **user-facing **脚**本** (`start` / `stop` / `status` / `backup` / `restore` / `prereq` / `dev`) **都**在** **`scripts/`** **下**, root 只**有** 1 **行** shim **让** `./start.sh` `./dev.sh` **还**能**直**接**用** (与** **Dockerfile `COPY docker-entrypoint.sh` **不**冲**突** — entrypoint **在** root, **没**移**动**)**。** 你**可**以**用** `./scripts/start.sh` **或** `./start.sh` — 都**能**work。**
 
 **不**要**同**时**跑** `./start.sh` **和** `./dev.sh` — 它**们** **都**要**占** 8000 **端**口**, **会** **冲**突**!
 
@@ -140,6 +142,8 @@ cd my2ndbrain
 # 3. 一条命令起! (自动检测环境、自动 build image、自动等健康)
 ./start.sh
 ```
+
+> `start.sh` **在** `scripts/start.sh` (root **有** shim **转**发**)。** 你**可**以**用** `./start.sh` **或** `./scripts/start.sh`, **两**个** **都**一样**。**
 
 `start.sh` **会**自**动**:
 - 检**查** Docker daemon、port 8000 **是**否**空**、**足**够**磁**盘**/RAM
@@ -193,6 +197,8 @@ docker volume rm my2ndbrain-data   # 删**除** data volume
 #   http://localhost:8000/    (FastAPI + React dev build)
 #   http://localhost:5173/    (Vite dev server, HMR)
 ```
+
+> `dev.sh` **在** `scripts/dev.sh` (root **有** shim **转**发**)。** 你**可**以**用** `./dev.sh` **或** `./scripts/dev.sh`, **两**个** **都**一样**。**
 
 `dev.sh` **支**持**的**子**命**令**:
 ```bash

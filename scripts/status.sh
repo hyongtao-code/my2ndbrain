@@ -13,8 +13,12 @@
 
 set -euo pipefail
 
+# When this script lives at scripts/<name>.sh, the repo root is
+# the parent of this directory. We expose both names — SCRIPT_DIR
+# remains for back-compat, and REPO_ROOT is the anchor.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_ROOT"
 
 echo "==> container"
 # Find any container whose name starts with my2ndbrain (handles
