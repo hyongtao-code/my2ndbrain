@@ -12,15 +12,14 @@ from __future__ import annotations
 
 import re
 import threading
+from collections.abc import Iterable
 from functools import lru_cache
-from typing import Iterable
 
 import numpy as np
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 from app.core.config import get_settings
-
 
 _TOKEN_RE = re.compile(r"[A-Za-z0-9_]+|[一-鿿]+")
 

@@ -39,20 +39,19 @@ Design notes:
 from __future__ import annotations
 
 import json
+import math
 import re
 import secrets
-from typing import Iterable
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
 from app.db.session import get_db
 from app.models.knowledge import KnowledgeDraft, KnowledgeEdge, KnowledgeNode
 from app.services.embedding import embed_texts
-from app.services.llm import complete, complete_chat, resolve_provider
+from app.services.llm import complete_chat, resolve_provider
 
 router = APIRouter(prefix="/api/llm/curate", tags=["llm-curate"])
 
@@ -285,8 +284,6 @@ def curate_find_merges(payload: FindMergesIn, db: Session = Depends(get_db)):
         # cosine similarity among the sample.
         try:
             import numpy as np
-            from app.services.embedding import get_embedder
-            emb = get_embedder()
             embs: list[list[float]] = []
             for n in nodes:
                 emb_attr = getattr(n, "embedding", None)
@@ -407,8 +404,6 @@ def curate_find_edges(payload: FindEdgesIn, db: Session = Depends(get_db)):
         # category to propose top pairs.
         try:
             import numpy as np
-            from app.services.embedding import get_embedder
-            emb = get_embedder()
             embs: list[list[float]] = []
             for n in nodes:
                 emb_attr = getattr(n, "embedding", None)
@@ -509,7 +504,6 @@ def _retrieve_relevant_nodes(db: Session, question: str, top_k: int) -> list[dic
     # are old test-residue nodes whose embedding never got
     # populated and produce NaN distances. They never help with
     # RAG anyway.
-    import math
     def _is_finite(x: float) -> bool:
         return x is not None and not (isinstance(x, float) and (math.isnan(x) or math.isinf(x)))
     rows = [(n, d) for (n, d) in rows if _is_finite(d)]
@@ -524,7 +518,6 @@ def _retrieve_relevant_nodes(db: Session, question: str, top_k: int) -> list[dic
             sim = 1.0 - float(dist)
         except (TypeError, ValueError):
             sim = 0.0
-        import math
         if not math.isfinite(sim):
             sim = 0.0
         out.append({

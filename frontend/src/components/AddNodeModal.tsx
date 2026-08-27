@@ -4,6 +4,7 @@ import { api } from "../lib/api";
 import type { IngestResponse } from "../types";
 import MarkdownEditor from "./MarkdownEditor";
 import ModalSizeToggle from "./ModalSizeToggle";
+import { IconClose, IconDraft } from "./icons";
 
 type Props = {
     onClose: () => void;
@@ -14,35 +15,9 @@ type Props = {
     onSetMode: (m: "default" | "half") => void;
 };
 
-// Inline SVG icon (DESIGN.md §6: no emoji as icon in chrome).
-function IconClose({ size = 12 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
-         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
-         aria-hidden="true" style={{ display: "block" }}>
-      <line x1={3.5} y1={3.5} x2={12.5} y2={12.5} />
-      <line x1={12.5} y1={3.5} x2={3.5} y2={12.5} />
-    </svg>
-  );
-}
-
-// Inline SVG icon (DESIGN.md §6: no emoji as icon in chrome).
-function IconDraft({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
-         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
-         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
-      <path d="M3.5 2.5 L10.5 2.5 L13 5 L13 13.5 L3.5 13.5 Z" />
-      <polyline points="10,2.5 10,5.5 13,5.5" />
-      <line x1={5.5} y1={7.5} x2={11} y2={7.5} />
-      <line x1={5.5} y1={10} x2={11} y2={10} />
-    </svg>
-  );
-}
-
 export default function AddNodeModal({ onClose, onCreated, modalMode = "default", onSetMode }: Props) {
     const t = useTranslations();
-    
+
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
     const [category, setCategory] = useState("");

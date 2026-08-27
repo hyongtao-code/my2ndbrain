@@ -2,28 +2,27 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel, Field
 
+from pydantic import BaseModel, Field
 
 # -------- Node --------
 
 class NodeCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     content: str = Field(..., min_length=1)
-    category: Optional[str] = None
-    keywords: Optional[list[str]] = None
+    category: str | None = None
+    keywords: list[str] | None = None
     importance: float = Field(default=1.0, ge=0.0, le=10.0)
     source: str = "manual"
     auto_link: bool = True                 # run AI auto-link after insert
 
 
 class NodeUpdate(BaseModel):
-    title: Optional[str] = None
-    content: Optional[str] = None
-    category: Optional[str] = None
-    keywords: Optional[list[str]] = None
-    importance: Optional[float] = None
+    title: str | None = None
+    content: str | None = None
+    category: str | None = None
+    keywords: list[str] | None = None
+    importance: float | None = None
 
 
 class NodeOut(BaseModel):
@@ -35,8 +34,8 @@ class NodeOut(BaseModel):
     keywords: list[str]
     importance: float
     source: str
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
+    created_at: datetime | None
+    updated_at: datetime | None
 
 
 class NodeSummary(BaseModel):
@@ -119,7 +118,7 @@ class SkillOut(BaseModel):
     body: str
     trigger: str
     based_on_nodes: list[str]
-    created_at: Optional[datetime]
+    created_at: datetime | None
 
 # -------- Draft --------
 
@@ -130,8 +129,8 @@ class DraftCreate(BaseModel):
 
 
 class DraftUpdate(BaseModel):
-    content: Optional[str] = Field(default=None, min_length=1)
-    pinned: Optional[bool] = None
+    content: str | None = Field(default=None, min_length=1)
+    pinned: bool | None = None
 
 
 class DraftOut(BaseModel):
@@ -139,9 +138,9 @@ class DraftOut(BaseModel):
     content: str
     source: str
     pinned: bool
-    promoted_to_node_id: Optional[str] = None
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
+    promoted_to_node_id: str | None = None
+    created_at: datetime | None
+    updated_at: datetime | None
 
 
 # -------- Draft promotion (curation) --------
@@ -155,8 +154,8 @@ class PromoteRequest(BaseModel):
     importance: explicit importance override; else AI-picked.
     """
     draft_ids: list[str] = Field(..., min_length=1)
-    body_override: Optional[str] = None
-    importance: Optional[float] = None
+    body_override: str | None = None
+    importance: float | None = None
     auto_link: bool = True
 
 
@@ -164,8 +163,8 @@ class PromoteResult(BaseModel):
     """One row in the PromoteResponse.results list."""
     draft_id: str
     merged_with: list[str] = Field(default_factory=list)  # other draft ids merged into this one
-    node: Optional[dict] = None   # _node_to_dict() output, only on success
-    error: Optional[str] = None
+    node: dict | None = None   # _node_to_dict() output, only on success
+    error: str | None = None
 
 
 class PromoteResponse(BaseModel):

@@ -7,17 +7,22 @@ from __future__ import annotations
 import hashlib
 import uuid
 from collections import defaultdict
-from typing import Iterable
+from collections.abc import Iterable
 
 import numpy as np
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.models.knowledge import KnowledgeNode, KnowledgeEdge, CategoryCluster, AISkill, KnowledgeDraft
-from app.services.embedding import embed_texts, get_embedder
+from app.models.knowledge import (
+    AISkill,
+    CategoryCluster,
+    KnowledgeDraft,
+    KnowledgeEdge,
+    KnowledgeNode,
+)
+from app.services.embedding import embed_texts
 from app.services.llm import llm_call
-
 
 settings = get_settings()
 
@@ -126,7 +131,7 @@ def auto_link_new_node(db: Session, node: KnowledgeNode, threshold: float | None
     Combined score = emb_sim * 0.75 + jaccard(keywords) * 0.25
     — gives a small boost when two nodes share explicit domain keywords.
     """
-    from sqlalchemy import select, delete
+    from sqlalchemy import select
     threshold = threshold if threshold is not None else settings.auto_edge_threshold
 
     target_vec = list(node.embedding) if node.embedding is not None else []
@@ -615,11 +620,10 @@ def _group_short_drafts(drafts: list[KnowledgeDraft]) -> list[list[KnowledgeDraf
 
     Returns a list of groups (each group is one or more drafts).
     """
-    import time
     groups: list[list[KnowledgeDraft]] = []
     pending: list[KnowledgeDraft] = []
     # stable order: created_at asc within the same pinned bucket
-    for d in sorted(drafts, key=lambda x: (x.created_at or datetime.utcnow())):
+    for d in sorted(drafts, key=lambda x: x.created_at):
         if len(d.content or "") <= 200:
             if pending and (d.created_at - pending[-1].created_at).total_seconds() <= 60:
                 pending.append(d)

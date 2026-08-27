@@ -5,14 +5,15 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models.knowledge import KnowledgeNode, KnowledgeEdge
-from app.services.embedding import embed_texts
+from app.models.knowledge import KnowledgeEdge, KnowledgeNode
 from app.services.llm import (
-    PROVIDERS, resolve_provider, set_runtime_override, clear_runtime_overrides,
-    complete, test_connection, _runtime_overrides,
+    PROVIDERS,
+    clear_runtime_overrides,
+    complete,
+    resolve_provider,
+    set_runtime_override,
+    test_connection,
 )
-from app.services.knowledge import _node_to_dict
-
 
 router = APIRouter(prefix="/api/llm", tags=["llm"])
 
@@ -173,8 +174,6 @@ def suggest_improvements(db: Session = Depends(get_db)):
             return {**raw, "provider": cfg["provider"]}
         # Just compute the top pair
         import numpy as np
-        from app.services.embedding import get_embedder
-        emb = get_embedder()
         # Re-normalize all
         matrix = np.array([list(n.embedding) for n in nodes_with_emb], dtype="float32")
         matrix = matrix / np.linalg.norm(matrix, axis=1, keepdims=True)

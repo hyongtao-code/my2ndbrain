@@ -1,16 +1,17 @@
 """/api/clusters + /api/assistant + /api/skills"""
-from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models.knowledge import CategoryCluster, AISkill
+from app.models.knowledge import AISkill, CategoryCluster
 from app.services.knowledge import (
-    recompute_clusters, assistant_answer, generate_skill, organise_knowledge,
+    assistant_answer,
+    generate_skill,
+    organise_knowledge,
+    recompute_clusters,
 )
-
 
 clusters_router = APIRouter(prefix="/api/clusters", tags=["clusters"])
 assistant_router = APIRouter(prefix="/api/assistant", tags=["assistant"])

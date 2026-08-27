@@ -1,22 +1,24 @@
 """/api/nodes — knowledge node CRUD + ingest pipeline."""
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.schemas import NodeCreate, NodeUpdate, IngestResponse
+from app.schemas import IngestResponse, NodeCreate, NodeUpdate
 from app.services.knowledge import (
-    ingest_node, get_node, list_nodes, delete_node, _node_to_dict,
+    _node_to_dict,
+    delete_node,
+    get_node,
+    ingest_node,
+    list_nodes,
 )
-
 
 router = APIRouter(prefix="/api/nodes", tags=["nodes"])
 
 
 @router.get("", response_model=list[dict])
 def list_all_nodes(
-    category: Optional[str] = None,
+    category: str | None = None,
     limit: int = Query(200, le=1000),
     db: Session = Depends(get_db),
 ):

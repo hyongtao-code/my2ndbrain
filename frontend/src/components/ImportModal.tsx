@@ -11,6 +11,7 @@ import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "../lib/api";
 import ModalSizeToggle from "./ModalSizeToggle";
+import { IconClose, IconDownload, IconError, IconFile } from "./icons";
 
 type Props = {
     onClose: () => void;
@@ -33,54 +34,6 @@ type PendingFile = {
 function guessTitleFromFilename(filename: string): string {
     // Mirrors backend's _parse_md: title = filename without .md / .markdown
     return filename.replace(/\.(md|markdown)$/i, "").trim() || filename;
-}
-
-// Inline SVG icon (DESIGN.md §6: no emoji as icon in chrome).
-function IconClose({ size = 12 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
-         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
-         aria-hidden="true" style={{ display: "block" }}>
-      <line x1={3.5} y1={3.5} x2={12.5} y2={12.5} />
-      <line x1={12.5} y1={3.5} x2={3.5} y2={12.5} />
-    </svg>
-  );
-}
-
-// Inline SVG icon (DESIGN.md §6: no emoji as icon in chrome).
-function IconDownload({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
-         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
-         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
-      <line x1={8} y1={2.5} x2={8} y2={10.5} />
-      <polyline points="4,7 8,11 12,7" />
-      <line x1={3} y1={13.5} x2={13} y2={13.5} />
-    </svg>
-  );
-}
-
-// Inline SVG icons (DESIGN.md §6: no emoji as icon in chrome).
-function IconError({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
-         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
-         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
-      <circle cx={8} cy={8} r={6} />
-      <line x1={5.5} y1={5.5} x2={10.5} y2={10.5} />
-      <line x1={10.5} y1={5.5} x2={5.5} y2={10.5} />
-    </svg>
-  );
-}
-function IconFile({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
-         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
-         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
-      <path d="M3.5 2 L10.5 2 L13 4.5 L13 14 L3.5 14 Z" />
-      <polyline points="10,2 10,5 13,5" />
-    </svg>
-  );
 }
 
 export default function ImportModal({ onClose, onCreated , modalMode = "default", onSetMode}: Props) {

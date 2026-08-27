@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "../lib/api";
 import ModalSizeToggle from "./ModalSizeToggle";
+import { IconClose, IconUpload } from "./icons";
 
 type GraphNode = {
     id: string;
@@ -25,31 +26,6 @@ type Props = {
     /** Set the modal's layout mode. */
     onSetMode: (m: "default" | "half") => void;
 };
-
-// Inline SVG icon (DESIGN.md §6: no emoji as icon in chrome).
-function IconClose({ size = 12 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
-         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
-         aria-hidden="true" style={{ display: "block" }}>
-      <line x1={3.5} y1={3.5} x2={12.5} y2={12.5} />
-      <line x1={12.5} y1={3.5} x2={3.5} y2={12.5} />
-    </svg>
-  );
-}
-
-// Inline SVG icon (DESIGN.md §6: no emoji as icon in chrome).
-function IconUpload({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
-         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
-         strokeLinejoin="round" aria-hidden="true" style={{ display: "block" }}>
-      <line x1={8} y1={13.5} x2={8} y2={5.5} />
-      <polyline points="4,9 8,5 12,9" />
-      <line x1={3} y1={2.5} x2={13} y2={2.5} />
-    </svg>
-  );
-}
 
 export default function ExportModal({ onClose , modalMode = "default", onSetMode}: Props) {
     const t = useTranslations();

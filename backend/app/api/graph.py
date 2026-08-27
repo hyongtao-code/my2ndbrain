@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.services.knowledge import build_graph_payload
 
-
 router = APIRouter(prefix="/api/graph", tags=["graph"])
 
 

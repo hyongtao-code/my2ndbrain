@@ -43,3 +43,16 @@ managed = true
 # `uv sync` will refuse to run if lockfile is out of date; that's the
 # right default for a project, but we want CI/Docker to fail loudly
 # rather than silently re-resolving. `uv lock` (no args) refreshes.
+
+[tool.ruff.lint]
+# BLE001 (blind except) and S110 (try-except-pass) are intentional in
+# this codebase — many defensive excepts log + swallow because the
+# caller can't do anything useful with the inner exception (e.g.
+# embedding fallback, network retry). Per-line noqa would be noisy.
+# B008 (function call in default arg) is FastAPI's standard
+# `db: Session = Depends(get_db)` pattern — false positive here.
+select = ["E", "F", "I", "UP", "SIM", "PERF", "PLR", "RUF"]
+ignore = ["BLE001", "S110", "B008"]
+
+[tool.ruff]
+line-length = 110

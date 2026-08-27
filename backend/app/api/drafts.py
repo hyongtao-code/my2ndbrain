@@ -3,13 +3,15 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
-from app.models.knowledge import KnowledgeDraft
 from app.schemas import DraftCreate, DraftUpdate, PromoteRequest, PromoteResponse
 from app.services.knowledge import (
-    create_draft, list_drafts, get_draft, update_draft, delete_draft,
+    create_draft,
+    delete_draft,
+    get_draft,
+    list_drafts,
     promote_drafts,
+    update_draft,
 )
-
 
 router = APIRouter(prefix="/api/drafts", tags=["drafts"])
 
