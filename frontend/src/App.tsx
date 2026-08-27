@@ -30,9 +30,32 @@ function AppInner() {
     // assistant panel is expanded over the canvas, the FAB still
     // works because the panel sits on top of the sphere with its
     // own z-index).
-    const [assistantMinimized, setAssistantMinimized] = useState(false);
-const toggleAssistantMinimize = useCallback(() => {
-        setAssistantMinimized((v) => !v);
+    // Layout mode for the left AI Assistant column.
+    // "default" = 280px (1/4); "minimized" = 52px rail; "half" = 50vw (1/2)
+    const [assistantMode, setAssistantMode] = useState<"default" | "minimized" | "half">("default");
+    // Layout mode for the right modal sheet (AddNode / NodeDetail).
+    // Derived from which modal is open + that modal's fullscreen flag —
+    // not stored, computed each render so it always matches reality.
+    //   closed      → "minimized" (column 0)
+    //   open        → "default"  (column 320px)
+    //   fullscreen  → "half"     (column 50vw)
+    // Per-modal fullscreen state. Each modal calls setXxxFullscreen(true|false)
+    // when the user clicks the corners-out toggle in its header. The
+    // 50vw half-screen mode for the right column is gated on this.
+    const [addFullscreen, setAddFullscreen] = useState(false);
+    const [importFullscreen, setImportFullscreen] = useState(false);
+    const [exportFullscreen, setExportFullscreen] = useState(false);
+    const [detailFullscreen, setDetailFullscreen] = useState(false);
+    // Derived from which modal is open + that modal's fullscreen flag.
+    const anyModalOpen = !!(selected || showAdd || showImport || showExport);
+    const anyModalFullscreen = !!((selected && detailFullscreen) || addFullscreen || importFullscreen || exportFullscreen);
+    const computedModalMode: "default" | "half" | "minimized" =
+        !anyModalOpen ? "minimized" :
+        anyModalFullscreen ? "half" : "default";
+    const cycleAssistantMode = useCallback(() => {
+        setAssistantMode((m) =>
+            m === "default" ? "minimized" : m === "minimized" ? "half" : "default"
+        );
     }, []);
     const refreshDrafts = useCallback(async () => {
         try {
@@ -162,8 +185,8 @@ const toggleAssistantMinimize = useCallback(() => {
     return (
         <div
             className="app"
-            data-detail-open={(selected || showAdd || showImport || showExport) ? "true" : "false"}
-            data-assistant-minimized={assistantMinimized ? "true" : "false"}
+            data-assistant-mode={assistantMode}
+            data-modal-mode={computedModalMode}
         >
             <div className="stage" ref={stageRef}>
                 {graph && graph.nodes.length > 0 && (
@@ -318,21 +341,23 @@ const toggleAssistantMinimize = useCallback(() => {
                     onJump={(id) => selectNode(id)}
                     onClose={closeDetail}
                     onMutated={refresh}
+                    fullscreen={detailFullscreen}
+                    onFullscreenChange={setDetailFullscreen}
                 />
             )}
 
-            <AssistantPanel onJump={(id) => selectNode(id)} drafts={drafts} refreshDrafts={refreshDrafts} minimized={assistantMinimized} onToggleMinimize={toggleAssistantMinimize} />
+            <AssistantPanel onJump={(id) => selectNode(id)} drafts={drafts} refreshDrafts={refreshDrafts} assistantMode={assistantMode} onCycleMode={cycleAssistantMode} />
 
 
 
             {showAdd && (
-                <AddNodeModal onClose={() => setShowAdd(false)} onCreated={handleCreated} />
+                <AddNodeModal onClose={() => setShowAdd(false)} onCreated={handleCreated} fullscreen={addFullscreen} onFullscreenChange={setAddFullscreen} />
             )}
             {showImport && (
-                <ImportModal onClose={() => setShowImport(false)} onCreated={handleCreated} />
+                <ImportModal onClose={() => setShowImport(false)} onCreated={handleCreated} fullscreen={importFullscreen} onFullscreenChange={setImportFullscreen} />
             )}
             {showExport && (
-                <ExportModal onClose={() => setShowExport(false)} />
+                <ExportModal onClose={() => setShowExport(false)} fullscreen={exportFullscreen} onFullscreenChange={setExportFullscreen} />
             )}
         </div>
     );

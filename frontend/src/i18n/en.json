@@ -122,7 +122,10 @@
     "collapse": "Collapse (back to corner)",
     "askWelcome": "👋 Hi! Ask me anything about your notes.\n(e.g. \"What is harness?\" or \"How does harness connect to 张雪峰?\")",
     "expandPanel": "Expand panel",
-    "minimizePanel": "Minimize panel"
+    "minimizePanel": "Minimize panel",
+    "cycleToMinimize": "Minimize",
+    "cycleToHalf": "Expand (left half)",
+    "cycleToDefault": "Collapse (back to 1/4)"
   },
   "lang": {
     "switch": "Switch language",

@@ -11,6 +11,10 @@ type Props = {
     onClose: () => void;
     /** called after a successful edit or delete so App can refresh the graph */
     onMutated: () => void;
+    /** Whether the panel is in 1/2 (50vw) fullscreen mode. Driven by App. */
+    fullscreen?: boolean;
+    /** Notifies App when the user toggles the fullscreen icon. */
+    onFullscreenChange?: (v: boolean) => void;
 };
 
 type EditState = {
@@ -74,14 +78,14 @@ function IconExpand({ size = 14 }: { size?: number }) {
   );
 }
 
-export default function NodeDetail({ node, onJump, onClose, onMutated }: Props) {
+export default function NodeDetail({ node, onJump, onClose, onMutated, fullscreen = false, onFullscreenChange }: Props) {
     const t = useTranslations();
     const { locale } = useI18n();
     const [full, setFull] = useState<NodeOut | null>(null);
     const [editing, setEditing] = useState(false);
     const [draft, setDraft] = useState<EditState>(EMPTY_EDIT);
     const [confirmDelete, setConfirmDelete] = useState(false);
-    const [fullscreen, setFullscreen] = useState(false);
+    
     const [showLinkPicker, setShowLinkPicker] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [banner, setBanner] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -176,7 +180,7 @@ export default function NodeDetail({ node, onJump, onClose, onMutated }: Props) 
                     <button
                         className="panel-full-toggle"
                         title={fullscreen ? t("panel.restore") : t("panel.fullscreen")}
-                        onClick={() => setFullscreen((f) => !f)}
+                        onClick={() => onFullscreenChange?.(!fullscreen)}
                     >
                         <IconExpand />
                     </button>

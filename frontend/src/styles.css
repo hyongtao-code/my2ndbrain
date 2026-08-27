@@ -144,6 +144,7 @@ button { cursor: pointer; }
   height: 100vh;
   overflow: hidden;
   display: grid;
+  /* Default: assistant 1/4 (280px) + canvas 1fr + modal 1/4 (320px) */
   grid-template-columns: var(--col-left) 1fr var(--col-right);
   grid-template-rows: var(--topbar-h) 1fr;
   grid-template-areas:
@@ -151,43 +152,82 @@ button { cursor: pointer; }
     "left   canvas right";
   transition: grid-template-columns var(--dur-base) var(--ease-out-cubic);
 }
-/* When the assistant is minimized, the grid column shrinks to
-   the rail width (52 px) so the canvas expands. */
-.app[data-assistant-minimized="true"] {
+/* ========================================================================
+   Layout states — driven by data-assistant-mode and data-modal-mode.
+
+   Both attributes can be "default", "minimized", or "half":
+     default   → 1/4 width (assistant=280, modal=320, canvas=1fr)
+     minimized → 52 px rail / 0 px (canvas=1fr)
+     half      → 50vw (canvas=0)
+
+   Layout grid (track widths):
+                              assistant  canvas  modal
+     both default             280        1fr     320
+     assistant minimized      52         1fr     320
+     assistant half           50vw       0       320
+     modal minimized          280        1fr     0
+     modal half               280        0       50vw
+     both minimized           52         1fr     0
+     assist-min, modal-half   52         0       50vw
+     assist-half, modal-min   50vw       0       0      (modal closed + assistant half)
+     both half                50vw       1fr     50vw   (canvas centered, z-index below panels)
+
+   Canvas position: ALWAYS centered in its grid cell. When
+   both-half, canvas (1fr) is sandwiched between two 50vw panels,
+   so it shrinks toward 0 but stays in the middle. z-index is
+   below both panels so the panels visually "float" on top of it.
+   ======================================================================== */
+
+/* assistant = minimized, modal = default */
+.app[data-assistant-mode="minimized"][data-modal-mode="default"],
+.app[data-assistant-mode="minimized"]:not([data-modal-mode]) {
   grid-template-columns: 52px 1fr var(--col-right);
 }
-/* When the user expands the assistant panel via the corners-out
-   toggle, take over the left half of the screen — the canvas and
-   the right column both collapse to give the chat more breathing
-   room. The assistant column itself uses `50vw` so it tracks the
-   viewport, and the chat body inside grows accordingly. */
-/* When the user expands the assistant, the grid becomes a simple
-   two-column layout: left half = assistant, right half = right
-   column. The canvas is fully hidden by setting its track to 0
-   width. We DO NOT redefine grid-template-areas here (it would
-   conflict with the base 3-row/3-area definition). Instead the
-   .column-left.is-expanded rule uses grid-column to span the
-   full left half (50vw), and the .stage / .column-right fall
-   into the remaining 1fr (or 0 / 1fr in detail-open=false). */
-.app[data-assistant-expanded="true"] {
-  /* !important is required: the base .app rule's
-     grid-template-columns comes from a higher-specificity source
-     order in the bundled CSS, and the grid is silently falling
-     back to it. */
-  grid-template-columns: 50vw 1fr 0 !important;
+/* assistant = half, modal = default */
+.app[data-assistant-mode="half"][data-modal-mode="default"],
+.app[data-assistant-mode="half"]:not([data-modal-mode]) {
+  grid-template-columns: 50vw 0 var(--col-right);
 }
-/* When nothing is selected, the right column collapses. App.tsx
-  sets data-detail-open="false" on .app to control this. */
-.app[data-detail-open="false"] {
+/* assistant = default, modal = minimized */
+.app[data-assistant-mode="default"][data-modal-mode="minimized"] {
   grid-template-columns: var(--col-left) 1fr 0px;
 }
+/* assistant = minimized, modal = minimized (both collapsed) */
+.app[data-assistant-mode="minimized"][data-modal-mode="minimized"] {
+  grid-template-columns: 52px 1fr 0px;
+}
+/* assistant = half, modal = minimized */
+.app[data-assistant-mode="half"][data-modal-mode="minimized"] {
+  grid-template-columns: 50vw 1fr 0px;
+}
+/* assistant = default, modal = half */
+.app[data-assistant-mode="default"][data-modal-mode="half"] {
+  grid-template-columns: var(--col-left) 0 50vw;
+}
+/* assistant = minimized, modal = half */
+.app[data-assistant-mode="minimized"][data-modal-mode="half"] {
+  grid-template-columns: 52px 0 50vw;
+}
+/* both = half (THE KEY STATE): 50vw + 1fr + 50vw — canvas is 1fr in
+   the middle column. Since 50vw+50vw = 100vw, the 1fr track is
+   effectively 0 width, but we keep it present so the canvas DOM
+   stays in the grid and we can paint the sphere behind both panels.
+   The .stage rule below then gives it z-index lower than the panels. */
+.app[data-assistant-mode="half"][data-modal-mode="half"] {
+  grid-template-columns: 50vw 1fr 50vw;
+}
+/* helper selectors are NOT used — we keep the old data-detail-open
+   fallback for backward compat with anything that still toggles it. */
 .stage {
   /* Now a grid item, not a positioned overlay. */
   position: relative;
   grid-area: canvas;
   overflow: hidden;
-  /* The sphere draws its own background via <color attach="background">
-     so this is mostly empty; the canvas div itself sits behind. */
+  z-index: 1;
+  /* Below .column-left / .column-right z-index 2 so that when both
+     panels are in 1/2-half mode the panels visually "float" on
+     top of the centered sphere. The sphere is still in the DOM and
+     animating, just covered by the panels. */
 }
 
 /* ============================================================
@@ -1134,6 +1174,9 @@ button { cursor: pointer; }
   padding: 18px;
   overflow-y: auto;
   align-self: stretch;
+  z-index: 2;
+  /* Higher than canvas z-index 1 so when both panels are 1/2,
+     they sit visually on top of the centered sphere. */
   transition: grid-column-start var(--dur-base) var(--ease-out-cubic),
               grid-column-end var(--dur-base) var(--ease-out-cubic);
   /* No more box-shadow — the panel lives in its own column. */
@@ -1917,6 +1960,9 @@ button { cursor: pointer; }
   overflow-y: auto;
   padding: 14px;
   align-self: stretch;
+  z-index: 2;
+  /* Higher than canvas z-index 1 so when both panels are 1/2,
+     they sit visually on top of the centered sphere. */
 }
 .column-left.is-expanded {
   /* When expanded, the assistant takes over the left half of the

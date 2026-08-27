@@ -4,7 +4,12 @@ import { api } from "../lib/api";
 import type { IngestResponse } from "../types";
 import MarkdownEditor from "./MarkdownEditor";
 
-type Props = { onClose: () => void; onCreated: (r: IngestResponse) => void; };
+type Props = {
+    onClose: () => void;
+    onCreated: (r: IngestResponse) => void;
+    fullscreen?: boolean;
+    onFullscreenChange?: (v: boolean) => void;
+};
 
 // Inline SVG icon (DESIGN.md §6: no emoji as icon in chrome).
 function IconClose({ size = 12 }: { size?: number }) {
@@ -32,9 +37,9 @@ function IconDraft({ size = 14 }: { size?: number }) {
   );
 }
 
-export default function AddNodeModal({ onClose, onCreated }: Props) {
+export default function AddNodeModal({ onClose, onCreated, fullscreen = false, onFullscreenChange }: Props) {
     const t = useTranslations();
-    const [fullscreen, setFullscreen] = useState(false);
+    
     const [title, setTitle] = useState("");
     const [content, setContent] = useState("");
     const [category, setCategory] = useState("");
@@ -76,7 +81,7 @@ export default function AddNodeModal({ onClose, onCreated }: Props) {
                         title={fullscreen ? t("panel.restore") : t("panel.fullscreen")}
                         onClick={(e) => {
                             e.stopPropagation();
-                            setFullscreen((f) => !f);
+                            onFullscreenChange?.(!fullscreen);
                         }}
                     >
                         {fullscreen ? "⤡" : "⤢"}

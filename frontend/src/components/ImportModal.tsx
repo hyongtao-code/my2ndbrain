@@ -14,6 +14,8 @@ import { api } from "../lib/api";
 type Props = {
     onClose: () => void;
     onCreated: (...args: any[]) => void;
+    fullscreen?: boolean;
+    onFullscreenChange?: (v: boolean) => void;
 };
 
 type PendingFile = {
@@ -55,6 +57,18 @@ function IconDownload({ size = 14 }: { size?: number }) {
   );
 }
 
+
+function IconExpand({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none"
+         stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
+         strokeLinejoin="round">
+      <path d="M3 9 V13 H13 V9" />
+      <path d="M5 5 L8 2 L11 5" />
+      <path d="M8 2 V10" />
+    </svg>
+  );
+}
 // Inline SVG icons (DESIGN.md §6: no emoji as icon in chrome).
 function IconError({ size = 14 }: { size?: number }) {
   return (
@@ -78,7 +92,7 @@ function IconFile({ size = 14 }: { size?: number }) {
   );
 }
 
-export default function ImportModal({ onClose, onCreated }: Props) {
+export default function ImportModal({ onClose, onCreated , fullscreen = false, onFullscreenChange}: Props) {
     const t = useTranslations();
     const inputRef = useRef<HTMLInputElement>(null);
     const [items, setItems] = useState<PendingFile[]>([]);
@@ -136,10 +150,22 @@ export default function ImportModal({ onClose, onCreated }: Props) {
 
     return (
         <div className="modal-sheet-wrap" onClick={busy ? undefined : onClose}>
-            <div className="column-right modal-sheet import-export-modal" onClick={(e) => e.stopPropagation()}>
+            <div className={"column-right modal-sheet import-export-modal" + (fullscreen ? " is-fullscreen" : "")} onClick={(e) => e.stopPropagation()}>
                 <div className="panel-title">
                     <span><IconDownload /> {t("import.title")}</span>
-                    <button className="btn-icon" onClick={onClose} disabled={busy}><IconClose /></button>
+                    <div style={{ display: "flex", gap: 4 }}>
+                        <button
+                            className="panel-full-toggle"
+                            title={fullscreen ? t("panel.restore") : t("panel.fullscreen")}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onFullscreenChange?.(!fullscreen);
+                            }}
+                        >
+                            <IconExpand />
+                        </button>
+                        <button className="btn-icon" onClick={onClose} disabled={busy}><IconClose /></button>
+                    </div>
                 </div>
 
                 <p className="assistant-hint">{t("import.hint")}</p>

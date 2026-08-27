@@ -10,8 +10,10 @@ type Props = {
     onJump: (id: string) => void;
     drafts: import("../types").DraftOut[];
     refreshDrafts: () => void;
-    minimized?: boolean;
-    onToggleMinimize?: () => void;
+    /** Three-state layout mode for the assistant column. */
+    assistantMode: "default" | "minimized" | "half";
+    /** Cycles default → minimized → half → default */
+    onCycleMode: () => void;
 };
 
 type ProviderInfo = {
@@ -233,37 +235,51 @@ function IconRefresh({ size = 14 }: { size?: number }) {
   );
 }
 
-export default function AssistantPanel({ onJump, drafts, refreshDrafts, minimized, onToggleMinimize }: Props) {
+export default function AssistantPanel({ onJump, drafts, refreshDrafts, assistantMode, onCycleMode }: Props) {
     const t = useTranslations();
     const { locale } = useI18n();
     const [mode, setMode] = useState<Mode>("draft");
 
     return (
-        <div className={"column-left" + (minimized ? " minimized" : "")}>
+        <div className={"column-left" + (assistantMode === "minimized" ? " minimized" : "")}>
             <div className="panel-title assistant-title">
                 <div className="assistant-title-row">
                     <span className="assistant-brain"><IconBrain /></span>
                     <span className="assistant-title-text">{t("assistant.title")}</span>
                 </div>
                 <div className="assistant-header-actions">
-                    {/* Minimize button — collapses the assistant to a
-                       narrow rail showing only the brain icon + icon
-                       strip. Optional: only rendered if onToggleMinimize
-                       is provided. */}
-                    {onToggleMinimize && (
-                        <button
-                            className="assistant-toggle-btn"
-                            onClick={onToggleMinimize}
-                            title={minimized ? t("assistant.expandPanel") : t("assistant.minimizePanel")}
-                            aria-label={minimized ? t("assistant.expandPanel") : t("assistant.minimizePanel")}
-                        >
-                            {minimized ? <IconExpand /> : <IconMinimize />}
-                        </button>
-                    )}
+                    {/* Cycle-mode button — default (1/4) → minimized (rail)
+                       → half (50vw) → default. Same icon for the cycle;
+                       title tooltip describes the next state. */}
+                    <button
+                        className="assistant-toggle-btn"
+                        onClick={onCycleMode}
+                        title={
+                            assistantMode === "default"
+                                ? t("assistant.cycleToMinimize")
+                                : assistantMode === "minimized"
+                                    ? t("assistant.cycleToHalf")
+                                    : t("assistant.cycleToDefault")
+                        }
+                        aria-label={
+                            assistantMode === "default"
+                                ? t("assistant.cycleToMinimize")
+                                : assistantMode === "minimized"
+                                    ? t("assistant.cycleToHalf")
+                                    : t("assistant.cycleToDefault")
+                        }
+                    >
+                        {assistantMode === "default"
+                            ? <IconMinimize />
+                            : assistantMode === "minimized"
+                                ? <IconExpand />
+                                : <IconExpand />
+                        }
+                    </button>
                 </div>
             </div>
 
-            {!minimized && (
+            {assistantMode !== "minimized" && (
             <>
             <div className="assistant-tabs">
                 <button
