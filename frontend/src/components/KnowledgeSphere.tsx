@@ -201,7 +201,12 @@ export default function KnowledgeSphere(props: Props) {
       {/* Ambient: extremely weak, just enough to keep shadow side readable. */}
       <ambientLight intensity={0.10} color="#0B0C10" />
 
-      <CameraParallax />
+      {/* CameraParallax removed — see git history. It fought with
+         OrbitControls' update() which rewrites camera.position
+         every frame from spherical coordinates, so any mouse
+         parallax drift was getting amplified into a permanent
+         camera offset that the user perceived as "sphere grows
+         every drag". */}
 
       {/* ─── Planet body (DESIGN.md §4.2) ─────────────────────────────── */}
       <SpherePlanet />
