@@ -597,6 +597,19 @@ button { cursor: pointer; }
   padding: 18px;
   overflow-y: auto;
   animation: modal-slide-in var(--dur-base) var(--ease-out-cubic);
+  transition: width var(--dur-base) var(--ease-out-cubic);
+}
+/* Phase 3 IA: when the user toggles the fullscreen icon in the
+   modal header, expand the sheet to the right HALF of the
+   viewport (50vw) so the markdown editor has room to breathe
+   without obscuring the sphere. The user reported that
+   fullscreen-mode did nothing on AddNodeModal because this
+   rule was missing — only the icon flipped from ⤢ → ⤡ but the
+   sheet width stayed at 480px (≈ 1/4 of viewport). Now it goes
+   to 50vw (= right half). */
+.modal-sheet.is-fullscreen {
+  width: 50vw;
+  padding: 24px;
 }
 @keyframes modal-slide-in {
   from { transform: translateX(40px); opacity: 0; }
@@ -1121,11 +1134,26 @@ button { cursor: pointer; }
   padding: 18px;
   overflow-y: auto;
   align-self: stretch;
+  transition: grid-column-start var(--dur-base) var(--ease-out-cubic),
+              grid-column-end var(--dur-base) var(--ease-out-cubic);
   /* No more box-shadow — the panel lives in its own column. */
 }
 .column-right .panel-title { margin: -2px 0 14px 0; }
 .column-right.is-fullscreen {
-  grid-column-start: left;
+  /* User requested fullscreen = right HALF (50vw). grid-column-start:
+     canvas; grid-column-end: right spans canvas + right = right half
+     of the viewport. The assistant column on the left stays visible.
+     We MUST also pin the row to the content row (row 2) by index
+     because the base .column-right rule sets grid-area: right, which
+     resolves the row line to a NAMED line "right" — that line
+     doesn't exist in the .app grid template (which only has named
+     lines for left/canvas/right columns, not rows). Without pinning
+     the row, the resolved gridArea becomes "right / canvas / right /
+     right" and CSS Grid auto-places the sheet into a non-existent
+     row, making it invisible. */
+  grid-row-start: 2;
+  grid-row-end: 3;
+  grid-column-start: canvas;
   grid-column-end: right;
   padding: 24px;
 }

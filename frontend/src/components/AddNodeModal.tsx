@@ -67,14 +67,17 @@ export default function AddNodeModal({ onClose, onCreated }: Props) {
     };
 
     return (
-        <div className={"column-right modal-sheet add-modal"} role="dialog" aria-modal="true">
+        <div className={"column-right modal-sheet add-modal" + (fullscreen ? " is-fullscreen" : "")} role="dialog" aria-modal="true">
             <div className="panel-title">
                 <span>{preview ? t("addModal.titleDone") : t("addModal.title")}</span>
                 <div style={{ display: "flex", gap: 4 }}>
                     <button
                         className="panel-full-toggle"
                         title={fullscreen ? t("panel.restore") : t("panel.fullscreen")}
-                        onClick={() => setFullscreen((f) => !f)}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setFullscreen((f) => !f);
+                        }}
                     >
                         {fullscreen ? "⤡" : "⤢"}
                     </button>

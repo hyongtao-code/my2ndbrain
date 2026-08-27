@@ -166,7 +166,7 @@ function AppInner() {
     return (
         <div
             className="app"
-            data-detail-open={selected ? "true" : "false"}
+            data-detail-open={(selected || showAdd || showImport || showExport) ? "true" : "false"}
             data-assistant-expanded={assistantExpanded ? "true" : "false"}
             data-assistant-minimized={assistantMinimized ? "true" : "false"}
         >
