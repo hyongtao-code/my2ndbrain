@@ -160,7 +160,11 @@ function AppInner() {
     };
 
     return (
-        <div className="app">
+        <div
+            className="app"
+            data-detail-open={selected ? "true" : "false"}
+            data-assistant-expanded={assistantExpanded ? "true" : "false"}
+        >
             <div className="stage" ref={stageRef}>
                 {graph && graph.nodes.length > 0 && (
                     <KnowledgeSphere
@@ -174,14 +178,13 @@ function AppInner() {
                         autoSpin={autoSpin}
                     />
                 )}
+                {(!graph || graph.nodes.length === 0) && (
+                    <div className="empty">
+                        <h1>{t("empty.title")}</h1>
+                        <p>{t("empty.subtitle")}</p>
+                    </div>
+                )}
             </div>
-
-            {(!graph || graph.nodes.length === 0) && (
-                <div className="empty">
-                    <h1>{t("empty.title")}</h1>
-                    <p>{t("empty.subtitle")}</p>
-                </div>
-            )}
 
             <div className="topbar">
                 <div className="brand">

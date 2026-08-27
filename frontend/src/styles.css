@@ -59,6 +59,11 @@
   --space-7: 48px;
   --space-8: 64px;
   --space-9: 96px;
+  /* —— Column widths (Phase 3 IA: left-assistant / canvas / right-detail) —— */
+  --col-left:  280px;
+  --col-right: 320px;
+  --topbar-h:   52px;
+
   /* legacy names kept for the existing JS that reads --xxs / --xs etc. */
   --xxs:  4px;
   --xs:   8px;
@@ -119,15 +124,45 @@ button { cursor: pointer; }
 /* ============================================================
    App layout
    ============================================================ */
+/* ============================================================
+   Phase 3 IA — CSS Grid layout (DESIGN.md §2.1 + §3.10).
+   ┌─────────────────────────────────────────────────────────┐
+   │  Topbar (52px, full width)                              │
+   ├──────────┬─────────────────────────┬────────────────────┤
+   │          │                         │                    │
+   │ Left     │    Knowledge Sphere     │   Right detail     │
+   │ column   │       (canvas)          │   (when selected,  │
+   │ (assnt)  │                         │   else hidden)     │
+   │          │                         │                    │
+   ├──────────┴─────────────────────────┴────────────────────┤
+   │  Action bar (top-right, inside topbar)                  │
+   └─────────────────────────────────────────────────────────┘
+   ============================================================ */
 .app {
   position: relative;
   width: 100vw;
   height: 100vh;
   overflow: hidden;
+  display: grid;
+  grid-template-columns: var(--col-left) 1fr var(--col-right);
+  grid-template-rows: var(--topbar-h) 1fr;
+  grid-template-areas:
+    "topbar topbar topbar"
+    "left   canvas right";
+  transition: grid-template-columns var(--dur-base) var(--ease-out-cubic);
+}
+/* When nothing is selected, the right column collapses. App.tsx
+  sets data-detail-open="false" on .app to control this. */
+.app[data-detail-open="false"] {
+  grid-template-columns: var(--col-left) 1fr 0px;
 }
 .stage {
-  position: absolute;
-  inset: 0;
+  /* Now a grid item, not a positioned overlay. */
+  position: relative;
+  grid-area: canvas;
+  overflow: hidden;
+  /* The sphere draws its own background via <color attach="background">
+     so this is mostly empty; the canvas div itself sits behind. */
 }
 
 /* ============================================================
@@ -136,19 +171,14 @@ button { cursor: pointer; }
    - SF Pro Display uppercase, tight letter-spacing
    ============================================================ */
 .topbar {
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 52px;
+  grid-area: topbar;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 22px;
   background: var(--bg-0);
-  /* DESIGN.md §3.4: blur is allowed without colour tint. Keep
-     saturate for vibrancy but drop blur to 4px — at this radius
-     it just smooths subpixel edges, no glassmorphism wash. */
   backdrop-filter: saturate(180%) blur(4px);
   -webkit-backdrop-filter: saturate(180%) blur(4px);
   border-bottom: 1px solid var(--hairline);
-  pointer-events: none;
+  pointer-events: none;       /* children opt back in */
   z-index: 5;
 }
 .brand {
@@ -583,6 +613,8 @@ button { cursor: pointer; }
 /* ============================================================
    Empty state
    ============================================================ */
+/* Phase 3: .empty is now a child of .stage (the canvas grid cell),
+   so it positions relative to the canvas — not the whole window. */
 .empty {
   position: absolute;
   top: 50%; left: 50%;
