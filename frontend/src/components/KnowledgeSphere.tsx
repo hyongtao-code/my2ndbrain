@@ -238,12 +238,19 @@ export default function KnowledgeSphere(props: Props) {
       </SphereGroup>
 
       <OrbitControls
-        enablePan={false}
         /* DESIGN.md §2.1 "central sphere first": the sphere is the
-           centerpiece and its scale is intentional. Disable wheel
-           zoom so the user doesn't accidentally zoom in. They can
-           still rotate (left mouse drag) and the camera is
-           auto-framed. */
+           centerpiece and its scale is intentional. Disable EVERY
+           form of camera manipulation except left-drag rotation
+           so the user can't accidentally zoom in or pan out. The
+           earlier `enableZoom={false}` was not enough: when the
+           user dragged with the *middle* mouse button (or a
+           touchpad gesture that the browser maps to MIDDLE), the
+           mouseButtons default has MIDDLE → DOLLY (zoom), and the
+           camera crept closer to the sphere every drag. Same for
+           RIGHT → PAN, which we already disabled via enablePan. By
+           remapping MIDDLE and RIGHT to -1 (no action), the only
+           active interaction is left-drag = rotate. */
+        enablePan={false}
         enableZoom={false}
         enableDamping
         dampingFactor={0.12}
@@ -254,6 +261,14 @@ export default function KnowledgeSphere(props: Props) {
            (which would invert the texture + look weird). */
         minPolarAngle={Math.PI * 0.2}
         maxPolarAngle={Math.PI * 0.8}
+        mouseButtons={{
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          LEFT: 0 as any,    // THREE.MOUSE.ROTATE
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          MIDDLE: -1 as any, // no action — was DOLLY (zoom)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          RIGHT: -1 as any,  // no action — was PAN
+        }}
       />
     </Canvas>
   );
