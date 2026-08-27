@@ -1,11 +1,10 @@
 """SQLAlchemy engine + session factory."""
-from sqlalchemy import create_engine, event
-from sqlalchemy.orm import sessionmaker, declarative_base, Session
 from pgvector.psycopg2 import register_vector
 from pgvector.sqlalchemy import Vector  # re-exported for ORM models
+from sqlalchemy import create_engine, event
+from sqlalchemy.orm import Session, declarative_base, sessionmaker
 
 from app.core.config import get_settings
-
 
 settings = get_settings()
 
@@ -29,7 +28,7 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expi
 Base = declarative_base()
 
 # Re-export Vector so models don't need to import pgvector directly
-__all__ = ["engine", "SessionLocal", "Base", "Session", "Vector", "get_db"]
+__all__ = ["Base", "Session", "SessionLocal", "Vector", "engine", "get_db"]
 
 
 def get_db():

@@ -9,7 +9,7 @@
  */
 import { useTranslations } from "next-intl";
 
-export type SizeMode = "default" | "half";
+type SizeMode = "default" | "half";
 
 export default function ModalSizeToggle({
     mode,

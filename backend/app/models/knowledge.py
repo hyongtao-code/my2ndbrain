@@ -3,10 +3,18 @@ from __future__ import annotations
 
 import uuid as _uuid
 from datetime import datetime
+
 from sqlalchemy import (
-    Column, String, Text, DateTime, Integer, Float, ForeignKey, Index,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
 from app.db.session import Base, Vector

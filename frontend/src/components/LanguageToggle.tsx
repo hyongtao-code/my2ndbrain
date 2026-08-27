@@ -1,4 +1,4 @@
-import { useI18n, LOCALES, Locale } from "../i18n";
+import { useI18n, Locale } from "../i18n";
 
 /**
  * Tiny language toggle: ZH ⇄ EN. Persists in localStorage via I18nProvider.

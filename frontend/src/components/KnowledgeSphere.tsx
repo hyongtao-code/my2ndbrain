@@ -267,12 +267,13 @@ export default function KnowledgeSphere(props: Props) {
         minPolarAngle={Math.PI * 0.2}
         maxPolarAngle={Math.PI * 0.8}
         mouseButtons={{
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          LEFT: 0 as any,    // THREE.MOUSE.ROTATE
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          MIDDLE: -1 as any, // no action — was DOLLY (zoom)
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          RIGHT: -1 as any,  // no action — was PAN
+          // -1 disables the button in three-stdlib OrbitControls
+          // (see the `mouseAction = -1; switch (...) default:` branch in
+          // OrbitControls.js). The TS type only allows MOUSE | null but
+          // the runtime accepts -1, so cast through MOUSE.
+          LEFT: THREE.MOUSE.ROTATE,
+          MIDDLE: -1 as unknown as THREE.MOUSE,
+          RIGHT: -1 as unknown as THREE.MOUSE,
         }}
       />
     </Canvas>

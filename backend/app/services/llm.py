@@ -12,11 +12,6 @@ Provider + api_key resolution order:
 from __future__ import annotations
 
 import json
-import re
-from typing import Any, Optional
-
-from app.core.config import get_settings
-
 
 # --------- defensive proxy env sanitisation ---------
 # Some shell environments (and some launch wrappers like nohup
@@ -32,6 +27,11 @@ from app.core.config import get_settings
 # backend always works. Users who need SOCKS should set
 # HTTPS_PROXY=http://... to a local SOCKS-to-HTTP gateway.
 import os as _os_sanitise
+import re
+from typing import Any
+
+from app.core.config import get_settings
+
 for _proxy_var in ("all_proxy", "ALL_PROXY"):
     _proxy_val = _os_sanitise.environ.get(_proxy_var, "")
     if _proxy_val.startswith("socks://"):
@@ -159,7 +159,7 @@ def set_runtime_override(key: str, value: str) -> None:
         _runtime_overrides[key] = value
 
 
-def get_runtime_override(key: str) -> Optional[str]:
+def get_runtime_override(key: str) -> str | None:
     return _runtime_overrides.get(key)
 
 
@@ -194,11 +194,7 @@ def resolve_provider() -> dict[str, Any]:
 
 # --------- heuristic implementation ---------
 
-_STOPWORDS = set("""a an and are as at be by for from has have he her his i if in is it its
-of on or our she that the they this to was we were what when which who why will with
-you your not no but do does did done been being am is are was were so than then there
-here these those some any all most more less much many very can could should would may
-might shall will """.split())
+_STOPWORDS = set(["a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "has", "have", "he", "her", "his", "i", "if", "in", "is", "it", "its", "of", "on", "or", "our", "she", "that", "the", "they", "this", "to", "was", "we", "were", "what", "when", "which", "who", "why", "will", "with", "you", "your", "not", "no", "but", "do", "does", "did", "done", "been", "being", "am", "is", "are", "was", "were", "so", "than", "then", "there", "here", "these", "those", "some", "any", "all", "most", "more", "less", "much", "many", "very", "can", "could", "should", "would", "may", "might", "shall", "will"])
 
 # 简单的术语优先级字典 — 命中后会被识别为更"有意义"
 _DOMAIN_HINTS = {
@@ -240,7 +236,6 @@ def _jaccard(a: list[str], b: list[str]) -> float:
 
 def heuristic_complete(prompt: str, json_schema: dict | None) -> dict:
     """Pure local heuristic used as the default LLM. No network call."""
-    s = get_settings()
     # JSON shape for suggest-improvements
     if json_schema and "action" in json_schema.get("properties", {}):
         return _heuristic_suggest(prompt)
@@ -321,7 +316,6 @@ def _heuristic_suggest(prompt: str) -> dict:
     linked, and recommends either 'link' or 'merge' depending on the
     similarity score.
     """
-    s = get_settings()
     # The prompt is built by the route; this fallback just returns a
     # placeholder so the API contract is honoured. The real AI path
     # (when an openai key is configured) is in `_openai_suggest`.

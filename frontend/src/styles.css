@@ -188,7 +188,8 @@ button { cursor: pointer; }
    below both panels so the panels visually "float" on top of it.
    ======================================================================== */
 
-/* assistant = minimized, modal = default */
+/* 8 grid state combos (assistant × modal). The selector encodes
+   the state pair; the body encodes the resulting column widths. */
 .app[data-assistant-mode="minimized"][data-modal-mode="default"],
 .app[data-assistant-mode="minimized"]:not([data-modal-mode]) {
   grid-template-columns: var(--rail-w) 1fr var(--col-right);
@@ -200,15 +201,12 @@ button { cursor: pointer; }
 .app[data-assistant-mode="half"]:not([data-modal-mode]) {
   grid-template-columns: 50vw 1fr var(--col-right);
 }
-/* assistant = default, modal = minimized */
 .app[data-assistant-mode="default"][data-modal-mode="minimized"] {
   grid-template-columns: var(--col-left) 1fr 0px;
 }
-/* assistant = minimized, modal = minimized (both collapsed) */
 .app[data-assistant-mode="minimized"][data-modal-mode="minimized"] {
   grid-template-columns: var(--rail-w) 1fr 0px;
 }
-/* assistant = half, modal = minimized */
 .app[data-assistant-mode="half"][data-modal-mode="minimized"] {
   grid-template-columns: 50vw 1fr 0px;
 }
