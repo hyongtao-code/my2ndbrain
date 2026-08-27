@@ -1202,22 +1202,27 @@ button { cursor: pointer; }
   /* No more box-shadow — the panel lives in its own column. */
 }
 .column-right .panel-title { margin: -2px 0 14px 0; }
+/* When the right modal is at 1/2 (50vw), the parent .app grid template
+   already places the right column at 50vw via the
+   .app[data-modal-mode="half"] rules. We MUST NOT override grid-column
+   here — the previous version used grid-column-start: canvas /
+   grid-column-end: right which forced the sheet to span the canvas
+   AND right columns, making the sheet ~960px wide (320px canvas +
+   640px 50vw) and pushed it to the MIDDLE of the viewport instead of
+   the right edge.
+
+   What this rule still does:
+   1. Pin the row to the content row (row 2). The base .column-right
+      rule sets grid-area: right which resolves the row line to a NAMED
+      line "right" that doesn't exist in the .app grid template (which
+      only has named lines for left/canvas/right columns, not rows).
+      Without pinning the row, CSS Grid auto-places the sheet into a
+      non-existent row, making it invisible.
+   2. Bump the padding from 18px (1/4 default) to 24px so the wider
+      sheet doesn't feel cramped. */
 .column-right.is-fullscreen {
-  /* User requested fullscreen = right HALF (50vw). grid-column-start:
-     canvas; grid-column-end: right spans canvas + right = right half
-     of the viewport. The assistant column on the left stays visible.
-     We MUST also pin the row to the content row (row 2) by index
-     because the base .column-right rule sets grid-area: right, which
-     resolves the row line to a NAMED line "right" — that line
-     doesn't exist in the .app grid template (which only has named
-     lines for left/canvas/right columns, not rows). Without pinning
-     the row, the resolved gridArea becomes "right / canvas / right /
-     right" and CSS Grid auto-places the sheet into a non-existent
-     row, making it invisible. */
   grid-row-start: 2;
   grid-row-end: 3;
-  grid-column-start: canvas;
-  grid-column-end: right;
   padding: 24px;
 }
 
