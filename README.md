@@ -298,15 +298,3 @@ sudo -u postgres psql -d my2ndbrain -c "\dx"
 > ⏳ 视频制作中,占位待上传
 
 ---
-
-## 附 — 故障速查
-
-| 症状 | 原因 | 解 |
-|---|---|---|
-| `ModuleNotFoundError: No module named 'uvicorn'` | Dockerfile builder / runtime Python 版本不匹配 | `git pull` 重 build |
-| `Could not import module "app.main"` | entrypoint 没 `cd $APP_HOME` | `git pull` 拉 ffb78e4 |
-| `Connection refused` to 127.0.0.1:5432 | postgres 没起 / 5432 端口冲突 | `docker logs` 看 entrypoint 报错 |
-| `value too long for type character varying(50)` | node title 太长 | 后端 schema 已扩到 200,重 build |
-| 浏览器加载白屏 | 前端 dist 没 build | `cd frontend && npm run build` |
-| Docker Hub 拉镜像 429 Too Many Requests | 配置的 mirror 限速 | 改用 `mirror.gcr.io` |
-| `/api/health` 返回 500 | embedding 模型加载失败 | 用 `--build-arg HF_HUB_OFFLINE=1` 重 build (走 TF-IDF fallback) |
