@@ -120,14 +120,16 @@ category_cluster(id, name, description, centroid vector(384), node_count)
 
 ## 3. 使用方法
 
-本仓库**同**时** **提**供**两**种**启**动**方**式**, **二**选**一**:
+本仓库同时提供两种启动方式,  二选一:
 
-| 方**式** | **脚**本** | **适**合**谁** | **数**据**存**哪** |
-|---|---|---|---|
-| **A. Docker compose (推荐,产**品**/服务器/给朋**友**用**)** | `./start.sh` | **普**通**用**户**; **不**想**装** PostgreSQL/Node/Python | host **上**的** named volume `my2ndbrain-data` |
-| **B. 本**地**直**接** (开**发**/调试/贡献代**码**)** | `./dev.sh` | **开**发**者**; **要**看** Vite HMR / 改** Python **源**码** | 你**装**的** postgres (host **或** docker) |
+| 方式 | 脚本 | 实际位置 | 适合谁 | 数据存哪 |
+|---|---|---|---|---|
+| **A. Docker compose (推荐,产品/服务器/给朋友用)** | `./start.sh` | `scripts/start.sh` (root 有 thin shim) | 普通用户; 不想装 PostgreSQL/Node/Python | host 上的 named volume `my2ndbrain-data` |
+| **B. 本地直接 (开发/调试/贡献代码)** | `./dev.sh` | `scripts/dev.sh` (root 有 thin shim) | 开发者; 要看 Vite HMR / 改 Python 源码 | 你装的 postgres (host 或 docker) |
 
-**不**要**同**时**跑** `./start.sh` **和** `./dev.sh` — 它**们** **都**要**占** 8000 **端**口**, **会** **冲**突**!
+所有 user-facing 脚本 (`start` / `stop` / `status` / `backup` / `restore` / `prereq` / `dev`) 都在 `scripts/` 下, root 只有 1 行 shim 让 `./start.sh` 和 `./dev.sh` 还能直接用 (与 `Dockerfile COPY docker-entrypoint.sh` 不冲突 — entrypoint 在 root, 没移动)。 你可以用 `./scripts/start.sh` 或 `./start.sh` — 都能 work。
+
+不要同时跑 `./start.sh` 和 `./dev.sh` — 它们 都要占 8000 端口, 会 冲突!
 
 ### 3.0 一键启动 (推荐,普通用户用这个就行)
 
@@ -141,15 +143,17 @@ cd my2ndbrain
 ./start.sh
 ```
 
-`start.sh` **会**自**动**:
-- 检**查** Docker daemon、port 8000 **是**否**空**、**足**够**磁**盘**/RAM
-- 如**果**没**有** `.env` 就**从** `.env.example` **复**制** (默认 `DB_PASSWORD=*** ***)**
-- 如**果**没**有** `my2ndbrain:latest` image **就** build (~1GB, **首**次** 5-10 min, **后**续** 1-2 min)
-- `docker compose up -d`
-- **等** `/api/health` 返**回** 200 (最**多** 120s)
-- 打**印**访**问** URL **和**管**理**命令
+> `start.sh` 在 `scripts/start.sh` (root 有 shim 转发)。 你可以用 `./start.sh` 或 `./scripts/start.sh`, 两个一样。
 
-启**动**完**成**后**会**显**示**:
+`start.sh` 会自动:
+- 检查 Docker daemon、port 8000 是否空、足够磁盘/RAM
+- 如果没有 `.env` 就从 `.env.example` 复制 (默认 `DB_PASSWORD=my2ndbrain`, 适合本地 only)`)
+- 如果没有 `my2ndbrain:latest` image 就 build (~1GB, 首次 5-10 min, 后续 1-2 min)
+- `docker compose up -d`
+- 等 `/api/health` 返回 200 (最多 120s)
+- 打印访问 URL 和管理命令
+
+启动完成后会显示:
 ```
 Web UI    : http://<host>:8000/
 Health    : http://<host>:8000/api/health
@@ -157,51 +161,53 @@ Swagger   : http://<host>:8000/docs
 Data      : stored in named volume 'my2ndbrain-data'
 ```
 
-**日**常**管**理** (数**据** **全**部**保**留**):
+日常管理 (数据 全部保留):
 ```bash
-./start.sh    # 启**动** (如**果**已**经**起**了**就**没**事)
-./stop.sh     # **停**止** (数**据** **保**留**)
-./status.sh   # **查**看**状**态** + last logs
-./backup.sh   # 备**份**到** ./backups/*.sql
-./restore.sh  # 从**备**份**恢**复** (**会** **清**空**当**前**数**据**)
-docker logs -f my2ndbrain    # 实时看**日**志
+./start.sh    # 启动 (如果已经起了就没事)
+./stop.sh     # 停止 (数据 保留)
+./status.sh   # 查看状态 + last logs
+./backup.sh   # 备份到 ./backups/*.sql
+./restore.sh  # 从备份恢复 (会 清空当前数据)
+docker logs -f my2ndbrain    # 实时看日志
 ```
 
-**彻**底**清**理** (会** **丢**数**据**):
+彻底清理 (会 丢数据):
 ```bash
-./stop.sh --rm            # 删**除** container
-docker volume rm my2ndbrain-data   # 删**除** data volume
+./stop.sh --rm            # 删除 container
+docker volume rm my2ndbrain-data   # 删除 data volume
 ```
 
 ### 3.0b 本地直接启动 (开发模式,开发者用这个)
 
-> **如**果**你**要**改** Python **源**码**、**改**前**端** component、**看** Vite HMR **热**重**载**, **用** `./dev.sh` **代**替** `./start.sh`。 **它**启**动**的**是** host **上**的** `uvicorn` + `vite dev` (热**重**载), **不**是** Docker **容**器**。
+> 如果你要改 Python 源码、改前端 component、看 Vite HMR 热重载, 用 `./dev.sh` 代替 `./start.sh`。 它启动的是 host 上的 `uvicorn` + `vite dev` (热重载), 不是 Docker 容器。
 >
-> **前**置**:
+> 前置:
 > - Python 3.11+ (`apt install python3.11-venv`)
 > - Node 20+ (`apt install nodejs npm`)
-> - PostgreSQL 16 + pgvector (见 § 3.2 手工安装) **或** 跑**完** `docker run -d postgres:16-pgvector` **后**让** host **上**的** backend **连**它
+> - PostgreSQL 16 + pgvector (见 § 3.2 手工安装) 或 跑完 `docker run -d postgres:16-pgvector` 后让 host 上的 backend 连它
 
 ```bash
-./dev.sh status    # 看**看** PostgreSQL / port 8000 / port 5173 **状**态**
-./dev.sh start     # **启**动**后**端** (uvicorn) + 前**端** (Vite dev)
-./dev.sh logs      # tail -20 **后**端**+前**端** log
-./dev.sh status    # 再**查**状**态** (start **后**)
+./dev.sh status    # 看看 PostgreSQL / port 8000 / port 5173 状态
+./dev.sh start     # 启动后端 (uvicorn) + 前端 (Vite dev)
+./dev.sh logs      # tail -20 后端+前端 log
+./dev.sh status    # 再查状态 (start 后)
 ./dev.sh stop      # 停
 
-# 浏**览**器**访**问**:
+# 浏览器访问:
 #   http://localhost:8000/    (FastAPI + React dev build)
 #   http://localhost:5173/    (Vite dev server, HMR)
 ```
 
-`dev.sh` **支**持**的**子**命**令**:
+> `dev.sh` 在 `scripts/dev.sh` (root 有 shim 转发)。 你可以用 `./dev.sh` 或 `./scripts/dev.sh`, 两个一样。
+
+`dev.sh` 支持的子命令:
 ```bash
-./dev.sh start      # **启**动**后**端** + 前**端** (idempotent: 已**经** **在**跑**就**不**会**重**启**)
-./dev.sh stop       # **停**两**个**
-./dev.sh status     # **查**看**状**态** + 端**口**占**用**
-./dev.sh logs       # tail -20 **后**端**+前**端** log
-./dev.sh reset      # stop + 清**数**据** (会** **丢** **所**有** nodes/drafts/edges, **不**要** **轻**易**跑**)
-./dev.sh help       # **详**细**说**明**
+./dev.sh start      # 启动后端 + 前端 (idempotent: 已经 在跑就不会重启)
+./dev.sh stop       # 停两个
+./dev.sh status     # 查看状态 + 端口占用
+./dev.sh logs       # tail -20 后端+前端 log
+./dev.sh reset      # stop + 清数据 (会 丢 所有 nodes/drafts/edges, 不要 轻易跑)
+./dev.sh help       # 详细说明
 ```
 
 ### 3.1 Docker 深入:启动顺序 (entrypoint 内部)
@@ -292,15 +298,3 @@ sudo -u postgres psql -d my2ndbrain -c "\dx"
 > ⏳ 视频制作中,占位待上传
 
 ---
-
-## 附 — 故障速查
-
-| 症状 | 原因 | 解 |
-|---|---|---|
-| `ModuleNotFoundError: No module named 'uvicorn'` | Dockerfile builder / runtime Python 版本不匹配 | `git pull` 重 build |
-| `Could not import module "app.main"` | entrypoint 没 `cd $APP_HOME` | `git pull` 拉 ffb78e4 |
-| `Connection refused` to 127.0.0.1:5432 | postgres 没起 / 5432 端口冲突 | `docker logs` 看 entrypoint 报错 |
-| `value too long for type character varying(50)` | node title 太长 | 后端 schema 已扩到 200,重 build |
-| 浏览器加载白屏 | 前端 dist 没 build | `cd frontend && npm run build` |
-| Docker Hub 拉镜像 429 Too Many Requests | 配置的 mirror 限速 | 改用 `mirror.gcr.io` |
-| `/api/health` 返回 500 | embedding 模型加载失败 | 用 `--build-arg HF_HUB_OFFLINE=1` 重 build (走 TF-IDF fallback) |
