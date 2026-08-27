@@ -1,41 +1,65 @@
 /* ============================================================
    MySecondBrain — design tokens
-   Style: Apple (typography, pill buttons, negative letter-spacing,
-   surface hierarchy) + tech feel (deep dark canvas, accent neon)
+   Art direction: editorial celestial (DESIGN.md §2.1).
+   No purple, no Apple systemBlue, no glow, no tinted glassmorphism.
+   Cool white is the primary accent. Warm tone is reserved for the
+   3D sphere and is forbidden in chrome.
    ============================================================ */
 
 :root {
   color-scheme: dark;
-  /* —— colour tokens (Apple-derived with tech twist) —— */
-  --bg-0: #000000;            /* surface-black: page background */
-  --bg-1: #0b0b0e;            /* deepest panel background */
-  --bg-2: #1d1d1f;            /* ink: primary text + chrome surface */
-  --bg-3: #2c2c2e;            /* raised surface (hover, selected) */
-  --line: rgba(255, 255, 255, 0.10);
-  --line-strong: rgba(255, 255, 255, 0.20);
-  --hairline: rgba(235, 235, 245, 0.10);
 
-  --text-0: #f5f5f7;          /* primary text (paper-on-ink) */
-  --text-1: #a1a1a6;          /* secondary */
-  --text-2: #6e6e73;          /* tertiary / placeholder */
+  /* —— Surface (Layered deep-space black, slightly cool) —— */
+  --bg-void:       #050608;   /* canvas clear colour */
+  --bg-0:          #08090C;   /* page background */
+  --bg-1:          #0E1015;   /* raised surface (panels, sheets) */
+  --bg-2:          #161922;   /* hover / selected panel */
+  --bg-3:          #1E2230;   /* input / chip surface */
 
-  /* Apple Action Blue + tech violet for the data sphere */
-  --accent:        #0a84ff;   /* Apple systemBlue (dark mode) */
-  --accent-hover:  #409cff;
-  --accent-press:  #0066cc;
-  --accent-on:     #ffffff;
-  --violet:        #7c5cff;   /* tech accent for the 3D sphere */
-  --violet-soft:   #9d7bff;
-  --cyan:          #64d2ff;   /* secondary tech accent */
-  --warn:    #ffd60a;          /* Apple systemYellow */
-  --danger:  #ff453a;          /* Apple systemRed */
+  /* —— Hairline —— */
+  --line:          rgba(232, 234, 246, 0.06);
+  --line-strong:   rgba(232, 234, 246, 0.10);
+  --hairline:      rgba(232, 234, 246, 0.04);
 
-  /* —— typography (SF Pro stack with safe fallbacks) —— */
+  /* —— Type —— */
+  --text-0:        #ECEEF5;   /* primary, paper-on-ink, cool */
+  --text-1:        #9DA0AC;   /* secondary */
+  --text-2:        #5C606E;   /* tertiary / placeholder */
+  --text-inverse:  #0B0C10;   /* text on light surfaces (parity only) */
+
+  /* —— Accent (cool white primary; warm amber is sphere-only) —— */
+  --accent:        #E5E7EE;
+  --accent-soft:   rgba(229, 231, 238, 0.65);
+  --accent-faint:  rgba(229, 231, 238, 0.18);
+  --accent-press:   #C9CCD6;
+  --accent-on:     #08090C;
+
+  /* —— Warm key light (sphere only) —— */
+  --warm-key:      #F3C892;
+  --warm-key-soft: rgba(243, 200, 146, 0.30);
+
+  /* —— Semantic (rare) —— */
+  --warn:    #E0B341;
+  --danger:  #C0524C;
+  --ok:      #6B9A78;
+
+  /* —— Typography (SF Pro stack) —— */
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
                "Helvetica Neue", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --font-mono: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
 
-  /* —— spacing scale (Apple 8-px grid) —— */
+  /* —— Spacing scale —— */
+  --space-0:  2px;
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+  --space-9: 96px;
+  /* legacy names kept for the existing JS that reads --xxs / --xs etc. */
   --xxs:  4px;
   --xs:   8px;
   --sm:  12px;
@@ -45,15 +69,23 @@
   --xxl: 48px;
   --section: 80px;
 
-  /* —— radii (Apple loves pill) —— */
+  /* —— Radii —— */
   --r-xs:  5px;
   --r-sm:  8px;
   --r-md: 11px;
   --r-lg: 18px;
   --r-pill: 9999px;
 
-  /* —— elevation (Apple flat, but we add subtle hairlines) —— */
-  --shadow-pop: 0 1px 0 rgba(255,255,255,0.04) inset, 0 20px 40px -20px rgba(0,0,0,0.6);
+  /* —— Motion (DESIGN.md §3.7) —— */
+  --dur-instant:    120ms;
+  --dur-quick:      240ms;
+  --dur-base:       420ms;
+  --dur-deliberate: 800ms;
+  --ease-out-cubic: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
+
+  /* —— Shadow (rare, physical only) —— */
+  --shadow-pop: 0 1px 0 rgba(0, 0, 0, 0.6) inset;
 
   font-family: var(--font-sans);
   font-synthesis: none;
@@ -65,13 +97,20 @@
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
 body {
+  /* Layered deep-near-black. Cool white bloom at the top (where the
+     sphere sits) + slightly cooler pool at the bottom (where the
+     floor disc shadow lands). No purple, no blue, no saturated
+     radial. Subtle enough to read as "deep space" rather than
+     "wallpaper". */
   background:
-    radial-gradient(ellipse at 50% -20%, rgba(10, 132, 255, 0.15), transparent 60%),
-    radial-gradient(ellipse at 50% 120%, rgba(124, 92, 255, 0.10), transparent 55%),
+    radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.03), transparent 70%),
+    radial-gradient(ellipse at 50% 100%, rgba(20, 30, 45, 0.50), transparent 60%),
     var(--bg-0);
   color: var(--text-0);
   overflow: hidden;
   font-feature-settings: "ss01", "cv11";  /* SF Pro stylistic alternates */
+  /* Respect reduced-motion: stop auto-spin / parallax in
+     KnowledgeSphere (handled in TS via useEffect listener). */
 }
 
 button, input, textarea, select { font: inherit; color: inherit; }
@@ -102,9 +141,12 @@ button { cursor: pointer; }
   height: 52px;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 22px;
-  background: rgba(11, 11, 14, 0.72);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  background: var(--bg-0);
+  /* DESIGN.md §3.4: blur is allowed without colour tint. Keep
+     saturate for vibrancy but drop blur to 4px — at this radius
+     it just smooths subpixel edges, no glassmorphism wash. */
+  backdrop-filter: saturate(180%) blur(4px);
+  -webkit-backdrop-filter: saturate(180%) blur(4px);
   border-bottom: 1px solid var(--hairline);
   pointer-events: none;
   z-index: 5;
@@ -118,14 +160,17 @@ button { cursor: pointer; }
   pointer-events: auto;
 }
 .brand-dot {
+  /* DESIGN.md §6: no glow. Just a cool-white dot, slightly warm
+     accent on the dot to read as "alive" without breaking the
+     "no glow" rule (a single subtle inner ring, no outer shadow). */
   width: 8px; height: 8px; border-radius: 50%;
-  background: var(--violet);
-  box-shadow: 0 0 8px var(--violet-soft);
+  background: var(--text-0);
+  border: 1px solid var(--line-strong);
 }
 .brand-title {
   color: var(--text-0);
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.18em;
 }
 .brand-sep { color: var(--text-2); }
 .brand-sub { color: var(--text-1); }
@@ -200,16 +245,16 @@ button { cursor: pointer; }
 }
 
 .stats .stat {
-  background: rgba(28, 28, 30, 0.72);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  /* DESIGN.md §3.4: no tinted blur. Just a hairline + tabular nums. */
+  background: transparent;
   border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  padding: 6px 14px;
-  font-size: 12px;
+  border-radius: var(--r-pill);
+  padding: 4px 12px;
+  font-size: 11px;
   color: var(--text-1);
   font-weight: 500;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 .stats .stat b {
   color: var(--text-0);
@@ -222,13 +267,12 @@ button { cursor: pointer; }
    Floating panels — Apple surface hierarchy
    ============================================================ */
 .panel {
-  background: rgba(28, 28, 30, 0.78);
-  backdrop-filter: saturate(180%) blur(30px);
-  -webkit-backdrop-filter: saturate(180%) blur(30px);
-  border: 1px solid var(--line);
+  /* DESIGN.md §3.4: solid surface + 1px physical edge, no outer
+     shadow, no tinted blur. The panel feels attached, not lifted. */
+  background: var(--bg-1);
+  border: 1px solid var(--line-strong);
   border-radius: var(--r-lg);
   padding: 18px;
-  box-shadow: var(--shadow-pop);
 }
 
 .panel-right {
@@ -290,12 +334,12 @@ button { cursor: pointer; }
   display: inline-block;
   padding: 3px 10px;
   border-radius: var(--r-pill);
-  background: rgba(10, 132, 255, 0.18);
-  color: #93c5fd;
-  border: 1px solid rgba(10, 132, 255, 0.32);
+  background: var(--bg-2);
+  color: var(--text-0);
+  border: 1px solid var(--line);
   font-size: 11px;
   font-weight: 500;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.04em;
 }
 .tag.gray {
   background: var(--bg-3);
@@ -358,7 +402,7 @@ button { cursor: pointer; }
 }
 .add-form input:focus, .add-form textarea:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.20);
+  box-shadow: 0 0 0 3px var(--accent-faint);
 }
 .add-form textarea { min-height: 120px; resize: vertical; font-family: inherit; }
 .add-form .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px;}
@@ -369,11 +413,12 @@ button { cursor: pointer; }
   border: none;
   border-radius: var(--r-pill);
   padding: 9px 18px;
-  color: var(--accent-on);
+  color: var(--accent-on);   /* dark text on light accent */
   font-weight: 500;
   font-size: 13px;
   letter-spacing: -0.01em;
-  transition: background 0.12s ease, transform 0.06s ease;
+  transition: background var(--dur-instant) var(--ease-out-cubic),
+              transform 60ms var(--ease-out-cubic);
 }
 .btn-primary:hover  { background: var(--accent-hover); }
 .btn-primary:active { background: var(--accent-press); transform: scale(0.98); }
@@ -389,7 +434,7 @@ button { cursor: pointer; }
   letter-spacing: -0.01em;
   transition: all 0.15s ease;
 }
-.btn-secondary:hover { color: var(--text-0); border-color: var(--accent); background: rgba(10, 132, 255, 0.08); }
+.btn-secondary:hover { color: var(--text-0); border-color: var(--accent); background: var(--bg-2); }
 
 /* ============================================================
    Add bubble floating button — Apple FAB
@@ -426,11 +471,11 @@ button { cursor: pointer; }
    Modal overlay
    ============================================================ */
 .modal-overlay {
+  /* DESIGN.md §3.4 + §6: no tinted blur. rgba(5,6,8,0.72) is the
+     overlay tint — no glassmorphism wash on top. */
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: rgba(5, 6, 8, 0.72);
   z-index: 20;
   display: flex;
   align-items: center;
@@ -482,7 +527,7 @@ button { cursor: pointer; }
 }
 .assistant .ask input:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.20);
+  box-shadow: 0 0 0 3px var(--accent-faint);
 }
 .assistant .answer {
   font-size: 12px;
@@ -515,9 +560,7 @@ button { cursor: pointer; }
 .tooltip-3d {
   position: absolute;
   pointer-events: none;
-  background: rgba(11, 11, 14, 0.92);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: var(--bg-1);
   border: 1px solid var(--line-strong);
   border-radius: var(--r-sm);
   padding: 5px 10px;
@@ -525,9 +568,8 @@ button { cursor: pointer; }
   font-weight: 500;
   white-space: nowrap;
   z-index: 10;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
   transform: translate(12px, -50%);
-  letter-spacing: -0.01em;
+  letter-spacing: 0.01em;
 }
 
 /* ============================================================
@@ -581,15 +623,14 @@ button { cursor: pointer; }
   pointer-events: auto;
   width: 36px; height: 36px;
   border-radius: var(--r-pill);
-  background: rgba(28, 28, 30, 0.72);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: var(--bg-1);
   border: 1px solid var(--line);
   color: var(--text-0);
   font-size: 16px;
   cursor: pointer;
   margin-right: 12px;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: border-color var(--dur-instant) var(--ease-out-cubic),
+              background var(--dur-instant) var(--ease-out-cubic);
 }
 .draft-toggle:hover { border-color: var(--accent); background: rgba(58, 58, 60, 0.72); }
 
@@ -1280,24 +1321,25 @@ button { cursor: pointer; }
   width: 56px; height: 56px;
   border-radius: 50%;
   background: var(--accent);
-  color: white;
+  color: var(--accent-on);
   font-size: 22px;
-  border: none;
-  box-shadow: 0 6px 20px rgba(10, 132, 255, 0.4);
+  border: 1px solid var(--line-strong);
+  /* DESIGN.md §3.4 + §6: no blue glow. Cool white solid + hairline. */
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  transition: transform var(--dur-quick) var(--ease-out-cubic),
+              background var(--dur-instant) var(--ease-out-cubic);
   pointer-events: auto;
 }
 .fab-cluster .fab-action {
   position: absolute;
   bottom: 0;
   /* default stack to the LEFT of +, each one 10px further left */
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--bg-1);
   color: var(--text-0);
   border: 1px solid var(--line);
   font-size: 18px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  /* DESIGN.md §6: no box-shadow on chrome. */
   /* Invisible padding around the button gives the cursor a few px of
      slack so the user can drift slightly off the visible circle
      without losing pointer-events. */
@@ -1593,7 +1635,7 @@ button { cursor: pointer; }
 }
 .cat-combo-row:focus-within {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.20);
+  box-shadow: 0 0 0 3px var(--accent-faint);
 }
 .cat-combo-input {
   flex: 1;
