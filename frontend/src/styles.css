@@ -201,9 +201,8 @@ button { cursor: pointer; }
 .category-filter {
   display: flex; align-items: center; gap: 8px;
   pointer-events: auto;
-  background: rgba(28, 28, 30, 0.72);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  /* DESIGN.md §3.4: no tinted blur. Solid bg-1, 1 px hairline. */
+  background: var(--bg-1);
   border: 1px solid var(--line);
   border-radius: var(--r-pill);
   padding: 4px 6px 4px 14px;
@@ -211,7 +210,7 @@ button { cursor: pointer; }
   color: var(--text-1);
   font-weight: 500;
   letter-spacing: 0.02em;
-  transition: border-color 0.15s ease;
+  transition: border-color var(--dur-instant) var(--ease-out-cubic);
 }
 .category-filter:focus-within { border-color: var(--accent); }
 .category-filter-label {
