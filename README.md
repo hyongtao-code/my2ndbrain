@@ -2,7 +2,7 @@
 
 > AI 驱动的个人知识图谱 + 长期记忆系统 —— 把零散的笔记、学习、经验、灵感,自动长成一个可探索、可生长、可理解的三维个人知识宇宙。
 
-![screenshot](docs/screenshot.png)
+![screenshot](assets/My2ndBrain.png)
 
 ---
 
@@ -40,7 +40,7 @@ git clone https://github.com/hyongtao-code/my2ndbrain.git && cd my2ndbrain
 
 ## 2. 功能架构
 
-### 2.1 顶层架构(单进程,3 层)
+### 2.1 顶层架构
 
 ```
 ┌──────────────────────────────────────────────────┐
@@ -65,7 +65,6 @@ git clone https://github.com/hyongtao-code/my2ndbrain.git && cd my2ndbrain
 │  - knowledge_node  │ ◄──────│  (or TF-IDF 离线)     │
 │  - knowledge_edge  │         └─────────────────────┘
 │  - knowledge_draft │
-│  - ai_skill        │
 │  - category_cluster│
 │  port 5432 (内部)  │
 └────────────────────┘
@@ -173,6 +172,12 @@ cd my2ndbrain
 # 浏览器访问:
 # http://localhost:8000/   (FastAPI + React build)
 
+# 数据持久化:
+#   -v my2ndbrain-data:/var/lib/postgresql/data
+# 将容器内的 PGDATA 挂载到名为 my2ndbrain-data 的 Docker managed volume,
+# 该 volume 与宿主机 docker storage 保持一致 —— container 重建/重启/换镜像均不会丢失
+# 数据;跨主机迁移需先导出该 volume 再在新机上恢复。
+
 # 彻底清除数据 (慎用):
 docker volume rm my2ndbrain-data
 ```
@@ -185,11 +190,11 @@ Swagger   : http://<host>:8000/docs
 Data      : stored in named volume 'my2ndbrain-data'
 ```
 
-## 4. 视频
+## 4. 📹 视频展示
 
-> 📹 **视频位置** 
+[![Demo Video — click to play](assets/My2ndBrain.png)](assets/My2ndBrain.mp4 "Click to play the demo video")
 
 ---
 
 ## 5. 致谢
-所有的代码是hermes智能体和Minimax-M3生成的，使用了ui-ux-pro-max-skill来丰富UI效果。
+所有的代码是[hermes](https://github.com/NousResearch/hermes-agent)智能体和[Minimax-M3](https://github.com/MiniMax-AI/MiniMax-M3.git)生成的，其中界面部分使用了[ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)来丰富UI效果。
