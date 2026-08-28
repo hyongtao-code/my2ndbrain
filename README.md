@@ -192,7 +192,7 @@ Data      : stored in named volume 'my2ndbrain-data'
 
 ## 4. 📹 视频展示
 
-<video src="assets/My2ndBrain.mp4" controls style="max-width:100%;"></video>
+[![Demo Video — click to play](assets/My2ndBrain.png)](assets/My2ndBrain.mp4 "Click to play the demo video")
 
 ---
 
