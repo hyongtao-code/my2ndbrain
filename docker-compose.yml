@@ -35,11 +35,12 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        # Set HF_HUB_OFFLINE=1 if you want to skip the embedding-model
-        # download at build time (the image will fall back to TF-IDF
-        # embeddings on first run, which is lower quality but works
-        # fully offline).
-        HF_HUB_OFFLINE: "0"
+        # HF_HUB_OFFLINE=1 skips the embedding-model download at build
+        # time. The image falls back to a deterministic TF-IDF/SVD
+        # embedder on first run — works fully offline. Set to "0"
+        # (and ensure your build host can reach huggingface.co) for
+        # the full sentence-transformers semantic embeddings.
+        HF_HUB_OFFLINE: "1"
     image: my2ndbrain:latest
     container_name: my2ndbrain
     restart: unless-stopped

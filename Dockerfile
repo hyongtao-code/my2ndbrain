@@ -112,8 +112,16 @@ ENV HF_HUB_OFFLINE=${HF_HUB_OFFLINE} \
 # cached.
 RUN mkdir -p /app/models && touch /app/models/.keep
 
+# When HF_HUB_OFFLINE=0 (the compose default), pre-install the
+# sentence-transformers package and download its default model
+# (~90 MB) into /app/models so the runtime container can serve
+# embeddings offline on first request. uv's venv doesn't ship a
+# `pip` binary, so we use `uv pip install` directly. When
+# HF_HUB_OFFLINE=1 we skip this block entirely — the runtime
+# embedding service auto-falls back to a deterministic TF-IDF/SVD
+# embedder that needs no extra downloads.
 RUN if [ "$HF_HUB_OFFLINE" != "1" ]; then \
-       /app/venv/bin/pip install --no-cache-dir sentence-transformers && \
+       uv pip install --python /app/venv/bin/python --no-cache-dir sentence-transformers && \
        /app/venv/bin/python -c "from sentence_transformers import SentenceTransformer; \
          SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2', device='cpu')"; \
     fi
