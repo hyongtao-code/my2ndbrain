@@ -81,3 +81,7 @@ scripts/  # see history before 2026-08-26 for the (removed) git-hooks
 
 # Local backup dumps (created by ./backup.sh)
 backups/
+
+
+# Skill
+DESIGN.md
