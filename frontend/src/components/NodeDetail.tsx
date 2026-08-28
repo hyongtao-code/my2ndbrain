@@ -126,9 +126,13 @@ export default function NodeDetail({ node, onJump, onClose, onMutated, modalMode
         }
     };
 
-    // Remove a directed edge from `node.id` → `targetId`. Idempotent
-    // (the backend returns deleted=0 if no edge existed). On success
-    // we refresh the detail so the neighbor list shrinks immediately.
+    // Remove a directed edge between `node.id` and `targetId`. The
+    // backend (POST /api/llm/unlink) accepts the two ids as an
+    // unordered pair and deletes whichever directed edge exists in
+    // either direction, so callers don't have to figure out which
+    // side they're on. Idempotent. After a successful delete we
+    // re-fetch the node detail so the neighbor list shrinks without
+    // the user having to close and reopen the panel.
     const doUnlink = async (targetId: string) => {
         try {
             const r = await fetch(
@@ -139,7 +143,27 @@ export default function NodeDetail({ node, onJump, onClose, onMutated, modalMode
                 const body = await r.json().catch(() => ({}));
                 throw new Error(body?.detail || `HTTP ${r.status}`);
             }
+            const body = await r.json().catch(() => ({}));
+            if (body?.deleted === 0) {
+                // Edge was already absent (shouldn't normally happen
+                // if the row was visible, but guard against it).
+                setBanner({
+                    kind: "err",
+                    text: t("detail.unlinkFailed", { message: "edge already absent" }),
+                });
+                return;
+            }
             setBanner({ kind: "ok", text: t("detail.unlinkSuccess") });
+            // Re-fetch this node's full detail so the neighbor row
+            // disappears immediately, and ask the parent to refresh
+            // the sphere graph (which re-draws the edges).
+            try {
+                const refresh = await fetch(`/api/nodes/${node.id}`);
+                if (refresh.ok) {
+                    const fresh = await refresh.json();
+                    setFull(fresh);
+                }
+            } catch { /* non-fatal */ }
             onMutated();
         } catch (e: any) {
             const msg = e?.message || String(e);

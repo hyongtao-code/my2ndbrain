@@ -277,11 +277,17 @@ def unlink_two_nodes(
     db: Session = Depends(get_db),
 ):
     """Remove an edge between two nodes (idempotent — if no edge
-    exists between source and target, just return deleted=0).
+    exists in either direction, just return deleted=0).
 
-    Direction matters: we look for the directed edge from
-    source → target (matching what POST /api/llm/link creates).
-    If you want to remove the reverse direction, swap the two ids.
+    The original implementation only looked at the directed edge
+    source → target, but the NodeDetail UI shows neighbors from
+    BOTH edges_from and edges_to, so when the user clicks the
+    "remove link" button on a row whose underlying edge actually
+    points the OTHER way, the request was silently a no-op. Now
+    we accept the (source_id, target_id) pair as an UNORDERED set
+    of node ids and delete whichever directed edge exists between
+    them (there can be at most one in the current schema, since
+    the /link endpoint is also idempotent — see link_two_nodes).
 
     This is the /api/llm/unlink endpoint that the NodeDetail
     neighbor-row "remove" UI button hits.
@@ -294,19 +300,44 @@ def unlink_two_nodes(
         raise HTTPException(400, "invalid uuid")
     if sid == tid:
         raise HTTPException(400, "source and target must differ")
-    # Find the directed edge source → target
-    edge = next(
-        (
-            e for e in (getattr(
-                db.get(KnowledgeNode, sid), "edges_from", []
-            ) or []) if e.target_node_id == tid
-        ),
-        None,
-    )
-    if not edge:
-        return {"deleted": 0, "source": source_id, "target": target_id,
-                "already_absent": True}
-    db.delete(edge)
-    db.commit()
-    return {"deleted": 1, "source": source_id, "target": target_id,
-            "edge_id": str(edge.id), "already_absent": False}
+    # The two ids are unordered — the edge can be either direction.
+    # Look in both sets; the first hit is the one to delete.
+    src_node = db.get(KnowledgeNode, sid)
+    if src_node:
+        edge = next(
+            (
+                e for e in (getattr(src_node, "edges_from", []) or [])
+                if e.target_node_id == tid
+            ),
+            None,
+        )
+        if edge:
+            edge_id = str(edge.id)
+            db.delete(edge)
+            db.commit()
+            return {"deleted": 1,
+                    "source": source_id, "target": target_id,
+                    "edge_id": edge_id,
+                    "direction": "forward",
+                    "already_absent": False}
+    tgt_node = db.get(KnowledgeNode, tid)
+    if tgt_node:
+        edge = next(
+            (
+                e for e in (getattr(tgt_node, "edges_from", []) or [])
+                if e.target_node_id == sid
+            ),
+            None,
+        )
+        if edge:
+            edge_id = str(edge.id)
+            db.delete(edge)
+            db.commit()
+            return {"deleted": 1,
+                    "source": source_id, "target": target_id,
+                    "edge_id": edge_id,
+                    "direction": "reverse",
+                    "already_absent": False}
+    return {"deleted": 0,
+            "source": source_id, "target": target_id,
+            "already_absent": True}
