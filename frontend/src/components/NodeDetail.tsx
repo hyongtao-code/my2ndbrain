@@ -5,7 +5,7 @@ import { useI18n } from "../i18n";
 import { api } from "../lib/api";
 import MarkdownEditor from "./MarkdownEditor";
 import ModalSizeToggle from "./ModalSizeToggle";
-import { IconEdit, IconLink, IconTrash } from "./icons";
+import { IconEdit, IconClose, IconLink, IconTrash } from "./icons";
 
 type Props = {
     node: NodeOut;
@@ -126,6 +126,27 @@ export default function NodeDetail({ node, onJump, onClose, onMutated, modalMode
         }
     };
 
+    // Remove a directed edge from `node.id` → `targetId`. Idempotent
+    // (the backend returns deleted=0 if no edge existed). On success
+    // we refresh the detail so the neighbor list shrinks immediately.
+    const doUnlink = async (targetId: string) => {
+        try {
+            const r = await fetch(
+                `/api/llm/unlink?source_id=${node.id}&target_id=${targetId}`,
+                { method: "POST" },
+            );
+            if (!r.ok) {
+                const body = await r.json().catch(() => ({}));
+                throw new Error(body?.detail || `HTTP ${r.status}`);
+            }
+            setBanner({ kind: "ok", text: t("detail.unlinkSuccess") });
+            onMutated();
+        } catch (e: any) {
+            const msg = e?.message || String(e);
+            setBanner({ kind: "err", text: t("detail.unlinkFailed", { message: msg }) });
+        }
+    };
+
     return (
         <div className={"column-right detail" + (modalMode === "half" ? " is-fullscreen" : "")}>
             <div className="panel-title">
@@ -186,7 +207,20 @@ export default function NodeDetail({ node, onJump, onClose, onMutated, modalMode
                             {n.neighbors.slice(0, 12).map((nb) => (
                                 <div key={nb.id} className="row" onClick={() => onJump(nb.id)}>
                                     <span>{nb.title || nb.id.slice(0, 8)}</span>
-                                    <span className="sim">{(nb.score * 100).toFixed(0)}%</span>
+                                    <span className="row-right">
+                                        <span className="sim">{(nb.score * 100).toFixed(0)}%</span>
+                                        <button
+                                            className="btn-icon btn-icon-sm row-remove"
+                                            title={t("detail.removeLink")}
+                                            aria-label={t("detail.removeLink")}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                void doUnlink(nb.id);
+                                            }}
+                                        >
+                                            <IconClose size={11} />
+                                        </button>
+                                    </span>
                                 </div>
                             ))}
                         </div>

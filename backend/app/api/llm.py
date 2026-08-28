@@ -268,3 +268,45 @@ def link_two_nodes(
         "similarity_score": float(edge.similarity_score or 0.0),
         "already_existed": False,
     }
+
+
+@router.post("/unlink")
+def unlink_two_nodes(
+    source_id: str,
+    target_id: str,
+    db: Session = Depends(get_db),
+):
+    """Remove an edge between two nodes (idempotent — if no edge
+    exists between source and target, just return deleted=0).
+
+    Direction matters: we look for the directed edge from
+    source → target (matching what POST /api/llm/link creates).
+    If you want to remove the reverse direction, swap the two ids.
+
+    This is the /api/llm/unlink endpoint that the NodeDetail
+    neighbor-row "remove" UI button hits.
+    """
+    from uuid import UUID
+    try:
+        sid = UUID(source_id)
+        tid = UUID(target_id)
+    except ValueError:
+        raise HTTPException(400, "invalid uuid")
+    if sid == tid:
+        raise HTTPException(400, "source and target must differ")
+    # Find the directed edge source → target
+    edge = next(
+        (
+            e for e in (getattr(
+                db.get(KnowledgeNode, sid), "edges_from", []
+            ) or []) if e.target_node_id == tid
+        ),
+        None,
+    )
+    if not edge:
+        return {"deleted": 0, "source": source_id, "target": target_id,
+                "already_absent": True}
+    db.delete(edge)
+    db.commit()
+    return {"deleted": 1, "source": source_id, "target": target_id,
+            "edge_id": str(edge.id), "already_absent": False}
