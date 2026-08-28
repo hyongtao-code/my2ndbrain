@@ -185,8 +185,11 @@ Swagger   : http://<host>:8000/docs
 Data      : stored in named volume 'my2ndbrain-data'
 ```
 
-## 4. 视频教程
+## 4. 视频
 
-> 📹 **视频教程位置** 
+> 📹 **视频位置** 
 
 ---
+
+## 5. 致谢
+所有的代码是hermes智能体和Minimax-M3生成的，使用了ui-ux-pro-max-skill来丰富UI效果。
