@@ -69,6 +69,9 @@
     "deleteFailed": "Delete failed: {message}",
     "addLink": "🔗 Add link",
     "addLinkHint": "Pick a node to link with \"{title}\"",
+    "removeLink": "Remove link",
+    "unlinkSuccess": "Link removed",
+    "unlinkFailed": "Remove link failed: {message}",
     "searchNode": "Search by title or category...",
     "noMatches": "No matches"
   },

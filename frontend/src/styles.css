@@ -500,6 +500,26 @@ button { cursor: pointer; }
   font-variant-numeric: tabular-nums;
   font-weight: 500;
 }
+/* Right side of a neighbor row: similarity + remove-link button.
+   `gap` keeps them apart; `align-items` baselines the percentage
+   with the icon button. */
+.neighbors .row .row-right {
+  display: inline-flex; align-items: center; gap: 8px;
+}
+/* Small icon button used for "remove link" inline in a neighbor row.
+   Inherits the .btn-icon base style but is slightly smaller so it
+   stays visually quiet next to the row text. */
+.neighbors .row .row-remove {
+  width: 22px; height: 22px;
+  border-radius: var(--r-sm);
+  opacity: 0.55;
+  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.neighbors .row:hover .row-remove { opacity: 1; }
+.neighbors .row .row-remove:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--danger, #e76f51);
+}
 
 /* ============================================================
    Add-node modal

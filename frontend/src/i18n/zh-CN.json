@@ -69,6 +69,9 @@
     "deleteFailed": "删除失败：{message}",
     "addLink": "🔗 加关联",
     "addLinkHint": "为 \"{title}\" 选一个节点建立关联",
+    "removeLink": "取消关联",
+    "unlinkSuccess": "已取消关联",
+    "unlinkFailed": "取消关联失败：{message}",
     "searchNode": "按标题或分类搜索...",
     "noMatches": "没有匹配项"
   },

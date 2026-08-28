@@ -44,20 +44,34 @@ def create_node(payload: NodeCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/{node_id}", response_model=dict)
-def read_node(node_id: str, db: Session = Depends(get_db)):
+def read_node(node_id: str, db: Session = Depends(get_db)) -> dict:
     node = get_node(db, node_id)
     if not node:
         raise HTTPException(404, "node not found")
     d = _node_to_dict(node)
-    d["neighbors"] = [
-        {"id": str(e.target_node_id), "score": float(e.similarity_score or 0.0),
-         "relation": e.relation_type, "title": e.target.title if e.target else None}
-        for e in node.edges_from
-    ] + [
-        {"id": str(e.source_node_id), "score": float(e.similarity_score or 0.0),
-         "relation": e.relation_type, "title": e.source.title if e.source else None}
-        for e in node.edges_to
-    ]
+    # Neighbors from BOTH directions (edges_from and edges_to). If
+    # a bidirectional pair exists (A→B AND B→A), dedup by target
+    # id so the UI doesn't render the same neighbor twice with
+    # different similarity scores. We keep the higher score.
+    raw_neighbors = (
+        [{"id": str(e.target_node_id),
+          "score": float(e.similarity_score or 0.0),
+          "relation": e.relation_type,
+          "title": e.target.title if e.target else None}
+         for e in node.edges_from]
+        + [{"id": str(e.source_node_id),
+            "score": float(e.similarity_score or 0.0),
+            "relation": e.relation_type,
+            "title": e.source.title if e.source else None}
+           for e in node.edges_to]
+    )
+    by_id: dict[str, dict] = {}
+    for nb in raw_neighbors:
+        prev = by_id.get(nb["id"])
+        if prev is None or nb["score"] > prev["score"]:
+            by_id[nb["id"]] = nb
+    d["neighbors"] = list(by_id.values())
+    d["neighbor_count"] = len(d["neighbors"])
     return d
 
 
