@@ -195,84 +195,48 @@ button { cursor: pointer; }
    below both panels so the panels visually "float" on top of it.
    ======================================================================== */
 
-/* 8 grid state combos (assistant × modal). The selector encodes
-   the state pair; the body encodes the resulting column widths. */
+/* Grid templates per (assistant, modal, add) state combo. The
+   base .app rule is 3 columns; [data-add-open="true"] grows it
+   to 4 by appending a far-right track for the AddNodeModal.
+   The 4th column is var(--col-right) (default 1/4) or 50vw (half),
+   or 0 when data-modal-mode="minimized" (right column empty — drop
+   the dead space so canvas can fill it). */
 .app[data-assistant-mode="minimized"][data-modal-mode="default"],
 .app[data-assistant-mode="minimized"]:not([data-modal-mode]) {
   grid-template-columns: var(--rail-w) 1fr var(--col-right);
 }
-/* assistant = half, modal = default — 1/2 + 1/4 mixed (left panel half,
-   right closed). Same idea as default+half but mirrored: 50vw for
-   assistant, 1fr for canvas, var(--col-right) for modal-when-open. */
 .app[data-assistant-mode="half"][data-modal-mode="default"],
 .app[data-assistant-mode="half"]:not([data-modal-mode]) {
   grid-template-columns: 50vw 1fr var(--col-right);
 }
-.app[data-assistant-mode="default"][data-modal-mode="minimized"] {
-  grid-template-columns: var(--col-left) 1fr 0px;
-}
-.app[data-assistant-mode="minimized"][data-modal-mode="minimized"] {
-  grid-template-columns: var(--rail-w) 1fr 0px;
-}
-.app[data-assistant-mode="half"][data-modal-mode="minimized"] {
-  grid-template-columns: 50vw 1fr 0px;
-}
-/* assistant = default, modal = half — both 1/4 + 1/2 mixed.
-   var(--col-left) for assistant (1/4), 1fr for the canvas (so the
-   sphere stays visible in the gap between panels), 50vw for modal.
-   At 1280 viewport: 320 + 1fr + 640 → 1fr = 320 (sphere visible
-   in a 320px middle column). At 1920 viewport: 480 + 1fr + 960
-   → 1fr = 480. At 3440 ultrawide viewport: 480 + 1fr + 1720
-   → 1fr = 1240. */
-.app[data-assistant-mode="default"][data-modal-mode="half"] {
-  grid-template-columns: var(--col-left) 1fr 50vw;
-}
-/* assistant = minimized, modal = half — rail + 1/2 mixed. Rail +
-   1fr canvas gap + 50vw modal panel. At 1280 viewport: 51 + 1fr +
-   640 → 1fr = 589 (sphere has a wide center slot to breathe). */
-.app[data-assistant-mode="minimized"][data-modal-mode="half"] {
-  grid-template-columns: var(--rail-w) 1fr 50vw;
-}
-/* both = half (THE KEY STATE): 50vw + 1fr + 50vw — canvas is 1fr in
-   the middle column. Since 50vw+50vw = 100vw, the 1fr track is
-   effectively 0 width, but we keep it present so the canvas DOM
-   stays in the grid and we can paint the sphere behind both panels.
-   The .stage rule below then gives it z-index lower than the panels. */
-.app[data-assistant-mode="half"][data-modal-mode="half"] {
-  grid-template-columns: 50vw 1fr 50vw;
-}
-/* ============================================================
-   Far-right column (AddNodeModal)
-   - When data-add-open="true", the AddNodeModal occupies a 4th
-     grid column called `far-right`, sitting to the RIGHT of the
-     existing right column. This is what lets users have Add +
-     Detail open at the same time without one covering the other.
-   - The 4th column width is driven by data-add-mode:
-       "default"  -> 320px (1/4 width, matches .col-right)
-       "half"     -> 50vw   (right half, matches a half-width modal)
-   - When data-add-open="false" (or missing), the base 3-column
-     rule applies (the trailing 0px in the base template).
-   - The rules below override grid-template-columns from the base
-     to the 4-column shape. We only need 4 cases per data-add-mode
-     because the assistant/modal combo is already encoded in the
-     3-column shape and we just append the far-right width.
+.app[data-assistant-mode="default"][data-modal-mode="minimized"] { grid-template-columns: var(--col-left) 1fr 0px; }
+.app[data-assistant-mode="minimized"][data-modal-mode="minimized"] { grid-template-columns: var(--rail-w) 1fr 0px; }
+.app[data-assistant-mode="half"][data-modal-mode="minimized"]     { grid-template-columns: 50vw 1fr 0px; }
+.app[data-assistant-mode="default"][data-modal-mode="half"]        { grid-template-columns: var(--col-left) 1fr 50vw; }
+.app[data-assistant-mode="minimized"][data-modal-mode="half"]     { grid-template-columns: var(--rail-w) 1fr 50vw; }
+.app[data-assistant-mode="half"][data-modal-mode="half"]           { grid-template-columns: 50vw 1fr 50vw; }
 
-   NOTE: these selectors intentionally REPLACE rather than append
-   to the 3-column rules above, because CSS Grid can't add a
-   column without re-stating the full template.
-   ============================================================ */
+/* Add open, default size (1/4). The 4th column is var(--col-right).
+   When data-modal-mode="minimized" the right column collapses to 0
+   so the canvas takes its space instead of leaving a gray strip. */
 .app[data-add-open="true"][data-add-mode="default"] {
-  /* 4-column template: [3-column base] + 320px far-right.
-     We collapse the 3-column base into a single 1fr canvas so
-     the canvas shrinks but stays in its column. */
   grid-template-columns: var(--col-left) 1fr var(--col-right) 320px;
 }
-/* When Add is open but the right column is empty
-   (data-modal-mode="minimized" means no detail/import/export),
-   the trailing 320px on the right column is wasted space. The
-   user reported this as "Add is 1/2 but the left 1/4 of that 1/2
-   is just gray empty area". Drop the right column entirely so
-   the canvas can take the space Add is currently hovering over. */
+.app[data-add-open="true"][data-add-mode="default"][data-assistant-mode="minimized"] {
+  grid-template-columns: var(--rail-w) 1fr var(--col-right) 320px;
+}
+.app[data-add-open="true"][data-add-mode="default"][data-assistant-mode="half"] {
+  grid-template-columns: 50vw 1fr var(--col-right) 320px;
+}
+.app[data-add-open="true"][data-add-mode="default"][data-modal-mode="half"] {
+  grid-template-columns: var(--col-left) 1fr 50vw 320px;
+}
+.app[data-add-open="true"][data-add-mode="default"][data-assistant-mode="minimized"][data-modal-mode="half"] {
+  grid-template-columns: var(--rail-w) 1fr 50vw 320px;
+}
+.app[data-add-open="true"][data-add-mode="default"][data-assistant-mode="half"][data-modal-mode="half"] {
+  grid-template-columns: 50vw 1fr 50vw 320px;
+}
 .app[data-add-open="true"][data-add-mode="default"][data-modal-mode="minimized"] {
   grid-template-columns: var(--col-left) 1fr 0px var(--col-right);
 }
@@ -282,52 +246,29 @@ button { cursor: pointer; }
 .app[data-add-open="true"][data-add-mode="default"][data-assistant-mode="half"][data-modal-mode="minimized"] {
   grid-template-columns: 50vw 1fr 0px var(--col-right);
 }
-.app[data-add-open="true"][data-add-mode="default"][data-modal-mode="half"] {
-  grid-template-columns: var(--col-left) 1fr 50vw 320px;
-}
-.app[data-add-open="true"][data-add-mode="default"][data-assistant-mode="minimized"] {
-  grid-template-columns: var(--rail-w) 1fr var(--col-right) 320px;
-}
-.app[data-add-open="true"][data-add-mode="default"][data-assistant-mode="half"] {
-  grid-template-columns: 50vw 1fr var(--col-right) 320px;
-}
-.app[data-add-open="true"][data-add-mode="default"][data-assistant-mode="minimized"][data-modal-mode="half"] {
-  grid-template-columns: var(--rail-w) 1fr 50vw 320px;
-}
-.app[data-add-open="true"][data-add-mode="default"][data-assistant-mode="half"][data-modal-mode="half"] {
-  grid-template-columns: 50vw 1fr 50vw 320px;
-}
+
+/* Add open, half size (1/2). Same right-column-empty optimization. */
 .app[data-add-open="true"][data-add-mode="half"] {
   grid-template-columns: var(--col-left) 1fr var(--col-right) 50vw;
-}
-/* Same "right column is empty" optimization for the 1/2 mode:
-   when Add is 1/2 but no detail is open, drop the right column
-   entirely so the canvas takes the 320px that would otherwise
-   be a wasted grey area between assistant and Add. */
-.app[data-add-open="true"][data-add-mode="half"][data-modal-mode="minimized"] {
-  grid-template-columns: var(--col-left) 1fr 0px 50vw;
 }
 .app[data-add-open="true"][data-add-mode="half"][data-assistant-mode="minimized"] {
   grid-template-columns: var(--rail-w) 1fr var(--col-right) 50vw;
 }
-.app[data-add-open="true"][data-add-mode="half"][data-assistant-mode="minimized"][data-modal-mode="minimized"] {
-  grid-template-columns: var(--rail-w) 1fr 0px 50vw;
-}
 .app[data-add-open="true"][data-add-mode="half"][data-assistant-mode="half"] {
   grid-template-columns: 50vw 1fr var(--col-right) 50vw;
+}
+.app[data-add-open="true"][data-add-mode="half"][data-modal-mode="minimized"] {
+  grid-template-columns: var(--col-left) 1fr 0px 50vw;
+}
+.app[data-add-open="true"][data-add-mode="half"][data-assistant-mode="minimized"][data-modal-mode="minimized"] {
+  grid-template-columns: var(--rail-w) 1fr 0px 50vw;
 }
 .app[data-add-open="true"][data-add-mode="half"][data-assistant-mode="half"][data-modal-mode="minimized"] {
   grid-template-columns: 50vw 1fr 0px 50vw;
 }
-/* When both detail (right) and add (far-right) are in half mode,
-   the 4th column also needs 50vw — but total = 50+50+50vw > 100vw
-   on most screens, so canvas (1fr) collapses to 0. The canvas is
-   still rendered behind both panels (z-index: 1 vs panels' z: 2).
-   To avoid the far-right overflowing past the right edge of the
-   viewport, we cap each half-mode column at 25vw (= a quarter of
-   the viewport) when both are simultaneously in half mode. This
-   keeps total width at 25vw + 25vw = 50vw + assistant + canvas,
-   so the canvas gets at least 1fr to breathe. */
+/* When BOTH detail (right) and Add (far-right) are in half mode,
+   50+50+50vw > 100vw, so cap each half-mode column at 25vw to
+   keep the canvas visible. */
 .app[data-add-open="true"][data-add-mode="half"][data-modal-mode="half"] {
   grid-template-columns: var(--col-left) 1fr 25vw 25vw;
 }
@@ -335,13 +276,11 @@ button { cursor: pointer; }
   grid-template-columns: var(--rail-w) 1fr 25vw 25vw;
 }
 .app[data-add-open="true"][data-add-mode="half"][data-assistant-mode="half"][data-modal-mode="half"] {
-  /* assistant=50vw, right=25vw, far-right=25vw. Total = 50+25+25
-     = 100vw exactly, so canvas (1fr) collapses to 0. */
   grid-template-columns: 50vw 1fr 25vw 25vw;
 }
 
-/* helper selectors are NOT used — we keep the old data-detail-open
-   fallback for backward compat with anything that still toggles it. */
+/* Kept for backward compat — anything that still toggles the
+   legacy data-detail-open attribute. */
 .stage {
   /* Now a grid item, not a positioned overlay. */
   position: relative;
@@ -1326,55 +1265,21 @@ button { cursor: pointer; }
   /* No more box-shadow — the panel lives in its own column. */
 }
 .column-right .panel-title { margin: -2px 0 14px 0; }
-/* When the right modal is at 1/2 (50vw), the parent .app grid template
-   already places the right column at 50vw via the
-   .app[data-modal-mode="half"] rules. We MUST NOT override grid-column
-   here — the previous version used grid-column-start: canvas /
-   grid-column-end: right which forced the sheet to span the canvas
-   AND right columns, making the sheet ~960px wide (320px canvas +
-   640px 50vw) and pushed it to the MIDDLE of the viewport instead of
-   the right edge.
-
-   What this rule still does:
-   1. Pin the row to the content row (row 2). The base .column-right
-      rule sets grid-area: right which resolves the row line to a NAMED
-      line "right" that doesn't exist in the .app grid template (which
-      only has named lines for left/canvas/right columns, not rows).
-      Without pinning the row, CSS Grid auto-places the sheet into a
-      non-existent row, making it invisible.
-   2. Bump the padding from 18px (1/4 default) to 24px so the wider
-      sheet doesn't feel cramped. */
+/* Pin the right column to the content row. The base rule sets
+   grid-area: right which only names a column, not a row, so
+   without this CSS Grid would auto-place the sheet into a
+   phantom row. Bumped padding makes the half-width sheet feel
+   less cramped. */
 .column-right.is-fullscreen {
-  /* When NodeDetail (or any modal in this column) is in "half" mode,
-     expand to occupy the right HALF of the viewport. The parent
-     .app grid already places the right column at 50vw via the
-     .app[data-modal-mode="half"] rules — we just need to (a) pin
-     the row to the content row (2) so the sheet doesn't auto-place
-     into a non-existent row, (b) bump padding for the wider sheet,
-     and (c) NOT override grid-column — earlier versions forced
-     grid-column-start: 2 / grid-column-end: 4 here, which spanned
-     the canvas AND right columns and pushed the sheet into the
-     MIDDLE of the viewport (x ≈ col-left) instead of the right
-     edge. Just letting it stay in the right column (the grid-area
-     already says "right" in the base rule) is the correct fix. */
   grid-row: 2 / 3;
   padding: 24px;
   width: 100%;
   max-width: 100%;
 }
 
-/* ============================================================
-   Far-right column (AddNodeModal)
-   - Sibling column to .column-right. Lives in grid-area: far-right
-     so it can sit to the RIGHT of NodeDetail when both are open.
-   - Width is driven entirely by the parent .app grid template
-     (the [data-add-open="true"][data-add-mode="..."] rules above),
-     so we don't need any explicit width here — just pin to the
-     content row and inherit the column-right look.
-   - Without this column, opening AddNodeModal while NodeDetail is
-     already open would stack them on top of each other (both have
-     className column-right, both resolve to grid-area: right).
-   ============================================================ */
+/* Far-right column for AddNodeModal — sibling of .column-right.
+   Width is fully driven by the parent .app grid template's
+   [data-add-open="true"][data-add-mode="..."] selectors above. */
 .column-far-right {
   grid-area: far-right;
   display: flex;
@@ -1755,21 +1660,14 @@ button { cursor: pointer; }
 .fab-cluster::before {
   content: "";
   position: absolute;
-  /* Match the cluster width (248px). See the comment in
-     .fab-cluster for the math. We use this ::before as a
-     pointer-events:none hit-area for hover; the cluster
-     itself is what actually catches mouse events. */
+  /* Invisible 248×56 hit-area extension to keep :hover active
+     when the cursor sweeps left over the action buttons. Must
+     be pointer-events:none or it would catch clicks before they
+     reach the underlying <button>. */
   right: 0;
   bottom: 0;
   width: 248px;
   height: 56px;
-  /* IMPORTANT: pointer-events: none. The ::before is a transparent
-     hit-area extension to keep :hover active when the cursor
-     sweeps left over the action buttons. If we left this as
-     `auto`, it would *catch* clicks before they reach the
-     underlying <button>, and clicks on + would silently
-     bubble to the <div> parent (which has no onClick handler)
-     instead of firing React's onClick. */
   pointer-events: none;
 }
 .fab-cluster .fab {
@@ -1795,43 +1693,21 @@ button { cursor: pointer; }
   border: 1px solid var(--line);
   font-size: 18px;
   /* DESIGN.md §6: no box-shadow on chrome. */
-  /* Invisible padding around the button gives the cursor a few px of
-     slack so the user can drift slightly off the visible circle
-     without losing pointer-events. */
   padding: 6px;
-  /* Default: hidden - slide in FROM the left, ending at the
-     natural position to the LEFT of +. We translate -60px in
-     the default state so the button starts ENTIRELY to the
-     left of + (off-screen left edge). On hover, it slides
-     rightward 60px to its natural position (66px from cluster
-     right). The rightward slide never crosses +'s clickable
-     rect because + sits at right: 0 (right edge of cluster)
-     and the button never goes there.
-
-     pointer-events has a 0.18s transition-delay so the button
-     stays click-through during the slide animation and only
-     becomes clickable once it has reached its final position.
-     This is defense-in-depth: even if the trajectory ever
-     crossed +, a click during transition would land on +.
-
-     Note on visual direction: this is a rightward slide-in.
-     The user described it as "leftward slide-out" (从 + 向左
-     滑出), which we interpret as "the buttons appear to the
-     left of +", i.e. emerge from the LEFT side. A button
-     that starts off-screen left and slides rightward to land
-     next to + does exactly that visually. */
+  /* Hidden off-screen left, slide rightward into place on hover.
+     pointer-events has a 0.18s delay so the button stays click-through
+     during the slide and only becomes clickable at its final position
+     (defense-in-depth: even if the trajectory crossed +, a click
+     mid-transition would land on +). */
   opacity: 0;
   transform: translateX(-60px) scale(0.85);
   pointer-events: none;
   transition: transform 0.18s ease 0s, opacity 0.18s ease 0s, background 0.18s ease 0s, border-color 0.18s ease 0s, pointer-events 0s 0.18s;
 }
-/* The action buttons sit to the LEFT of +. We position them with
-   `right:` so they don't depend on the cluster width, and we slide
-   them in from the LEFT (i.e. further left than their final position)
-   so the slide-in animation never overlaps with +'s clickable
-   target. The default transform translateX(-60px) moves them
-   60px further left (off-screen); hover transitions them to
-   translateX(0) at their natural position. */
+/* Action buttons sit to the LEFT of +. Position with `right:` so
+   they don't depend on the cluster width. Default transform moves
+   them 60px further left (off-screen); hover transitions to natural
+   position. The rightward slide-in never crosses +'s clickable rect. */
 .fab-cluster .fab-action:nth-of-type(1) {
   right: 66px; /* 56 (main +) + 10 gap */
   transition-delay: 0ms;

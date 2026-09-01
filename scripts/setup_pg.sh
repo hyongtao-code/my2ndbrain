@@ -1,29 +1,16 @@
 #!/usr/bin/env bash
-# setup_pg.sh — diagnose / verify the PostgreSQL setup that
-# MySecondBrain's dev workflow (./start.sh) needs.
+# setup_pg.sh — diagnose the PostgreSQL setup that MySecondBrain needs.
+# Read-only: never installs, modifies, creates, drops, or changes
+# anything. Just tells you the exact command to run when something
+# is missing.
 #
-# What this script does:
-#   ./scripts/setup_pg.sh check     -> just verify, exit non-zero on failure
-#   ./scripts/setup_pg.sh doctor    -> human-friendly walkthrough
-#   ./scripts/setup_pg.sh help      -> show usage
+# Subcommands:
+#   check    verify and exit 0/non-0 (used by start.sh preflight)
+#   doctor   verbose walkthrough for humans
+#   help     this message
 #
-# This script is INTENTIONALLY non-destructive. It will never:
-#   - install system packages
-#   - modify your .env
-#   - create / drop users, databases, or roles
-#   - change passwords
-# It only reads state and tells you the exact command you need to
-# run if something is missing. This avoids any "magic" behavior that
-# would surprise a developer who's debugging their own setup.
-#
-# What it verifies (in `check` mode):
-#   1. psql + pg_isready are on PATH
-#   2. A PostgreSQL server is reachable at $DB_HOST:$DB_PORT
-#   3. We can authenticate as $DB_USER against $DB_NAME
-#   4. The pgvector extension is available (installable) on this server
-#
-# Reads DB_HOST / DB_PORT / DB_USER / DB_NAME / DB_PASSWORD from .env
-# at the repo root (same file ./start.sh reads).
+# check verifies: psql on PATH → PG reachable at $DB_HOST:$DB_PORT →
+# auth as $DB_USER against $DB_NAME → pgvector extension installed.
 
 set -euo pipefail
 

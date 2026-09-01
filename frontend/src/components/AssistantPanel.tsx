@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "../lib/api";
-import type { AssistantResponse, DraftOut } from "../types";
+import type { DraftOut } from "../types";
 import { useI18n } from "../i18n";
 import {
     IconBrain, IconBulb, IconChat, IconCheck, IconDraft,

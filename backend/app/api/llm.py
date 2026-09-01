@@ -276,21 +276,11 @@ def unlink_two_nodes(
     target_id: str,
     db: Session = Depends(get_db),
 ):
-    """Remove an edge between two nodes (idempotent — if no edge
-    exists in either direction, just return deleted=0).
-
-    The original implementation only looked at the directed edge
-    source → target, but the NodeDetail UI shows neighbors from
-    BOTH edges_from and edges_to, so when the user clicks the
-    "remove link" button on a row whose underlying edge actually
-    points the OTHER way, the request was silently a no-op. Now
-    we accept the (source_id, target_id) pair as an UNORDERED set
-    of node ids and delete whichever directed edge exists between
-    them (there can be at most one in the current schema, since
-    the /link endpoint is also idempotent — see link_two_nodes).
-
-    This is the /api/llm/unlink endpoint that the NodeDetail
-    neighbor-row "remove" UI button hits.
+    """Remove an edge between two nodes (idempotent — returns deleted=0
+    if no edge exists). The (source_id, target_id) pair is treated as
+    unordered: if a directed edge exists in either direction, it is
+    removed. (NodeDetail shows neighbors from both edges_from and
+    edges_to, so the UI may pass the pair in either order.)
     """
     from uuid import UUID
     try:
