@@ -2,6 +2,11 @@
 
 > AI 驱动的个人知识图谱 + 长期记忆系统 —— 把零散的笔记、学习、经验、灵感,自动长成一个可探索、可生长、可理解的三维个人知识宇宙。
 
+<p align="right">
+  <a href="./README.md">🇨🇳 中文</a> ·
+  <a href="./README.en.md">🇺🇸 English</a>
+</p>
+
 ![screenshot](assets/My2ndBrain.png)
 
 ---
