@@ -1,26 +1,29 @@
-# MySecondBrain · 我的第二大脑
+# MySecondBrain · Your Second Brain
 
-> AI 驱动的个人知识图谱 + 长期记忆系统 —— 把零散的笔记、学习、经验、灵感,自动长成一个可探索、可生长、可理解的三维个人知识宇宙。
+> An AI-driven personal knowledge graph + long-term memory system — turn scattered notes, learnings, experiences, and ideas into an explorable, growing, comprehensible 3D personal knowledge universe.
 
 <div align="center">
-  <a href="./README.md"><b>🇨🇳 中文</b></a> &nbsp;
-  <a href="./README.en.md"><b>🇺🇸 English</b></a>
+  <a href="./README.cn.md"><b>🇨🇳 中文</b></a> &nbsp;
+  <a href="./README.md"><b>🇺🇸 English</b></a>
 </div>
 
 ![screenshot](assets/My2ndBrain.png)
 
 ---
 
-## 0. 预备环境与启动
+## 0. Prerequisites & Start
 
-1. 安装 PG + pgvector + node20 + uv:
+**1. Install PG + pgvector + node20 + uv** (one-time, on Ubuntu/Debian):
+
 ```bash
 sudo apt-get install -y postgresql-16 postgresql-16-pgvector curl git
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
-2. 启动 PG，创建 user/db:
+
+**2. Start PG and create the user/db**:
+
 ```bash
 sudo pg_ctlcluster 16 main start
 sudo -u postgres psql <<'SQL'
@@ -32,44 +35,49 @@ CREATE EXTENSION IF NOT EXISTS vector;
 SQL
 ```
 
+**3. Clone and start**:
+
 ```bash
 git clone https://github.com/hyongtao-code/my2ndbrain.git && cd my2ndbrain
-./compose.sh start                    # Docker compose
-# 或者:
-./start.sh start                      # 本地直接启动，自动npm install和uv sync
+./compose.sh start                    # Docker compose path
+# or:
+./start.sh start                      # Native path — auto-runs uv sync + npm install
 ```
 
-打开 `http://localhost:8000/`。
+Open `http://localhost:8000/`.
+
+> If `./start.sh start` fails on a brand-new box, see [`detail.md`](./detail.md) for the full step-by-step manual (Ubuntu apt commands, SQL, troubleshooting, recovery from `git clean -xdf`).
+> The `./compose.sh` (Docker) path is zero-config — first run auto-builds the image and starts PG alongside, with database/extension/role all provisioned by the entrypoint.
 
 ---
 
-## 1. 软件简介
+## 1. Overview
 
-**MySecondBrain** 是一个 100% 本地运行、开箱即用的「**第二大脑**」应用 —— 你的所有零散知识(笔记、问题、灵感、读书摘录、聊天对话)在三维球面上以节点的形式**自动**组织起来,系统会:
+**MySecondBrain** is a 100% local, ready-to-use "**Second Brain**" application — all your scattered knowledge (notes, questions, ideas, book excerpts, chat conversations) is **automatically** organized as nodes on a 3D sphere. The system will:
 
-- 存你输入的任何东西
-- LLM辅助识别关键词、推断分类
-- LLM辅助建关联(谁和谁相关)
-- LLM辅助归类聚类(像 "AI" / "日本战国" / "Python" 这种)
-- 用 RAG 检索问答
-- 把粗糙的草稿**清洗**成结构化的知识节点
+- Store anything you input
+- LLM-assisted keyword extraction and category inference
+- LLM-assisted edge creation (who is related to whom)
+- LLM-assisted category clustering (like "AI" / "Japanese Sengoku" / "Python")
+- RAG-based retrieval and Q&A
+- Clean up rough drafts into structured knowledge nodes
 
-> 和 Notion / Obsidian / Logseq 相比,MySecondBrain 强调:
+> Compared to Notion / Obsidian / Logseq, MySecondBrain emphasizes:
 >
-> - **LLM主动参与**(自动关联、自动归类、自动回答问题)
-> - **三维可视化**(球面 + 自动旋转 + 拖拽 + 关联线)
-> - **不联网也能用**(本地 LLM + 本地 embedding)
+> - **LLM actively participates** (auto-linking, auto-categorization, auto Q&A)
+> - **3D visualization** (sphere + auto-rotation + drag + relation lines)
+> - **Works offline** (local LLM + local embeddings)
 
 ---
 
-## 2. 功能架构
+## 2. Architecture
 
-### 2.1 顶层架构
+### 2.1 Top-level architecture
 
 ```
 ┌──────────────────────────────────────────────────┐
-│  浏览器 (任何设备)                                 │
-│  React SPA → 3D 球面 + 节点 + 关联线               │
+│  Browser (any device)                            │
+│  React SPA → 3D sphere + nodes + relation lines  │
 │  HTTPS/HTTP over port 8000                       │
 └────────────────────┬─────────────────────────────┘
                      │
@@ -77,8 +85,8 @@ git clone https://github.com/hyongtao-code/my2ndbrain.git && cd my2ndbrain
 ┌──────────────────────────────────────────────────┐
 │  FastAPI (Python 3.11)                           │
 │  - /api/nodes, /api/drafts, /api/graph           │
-│  - /api/llm/* (设置 / 草稿整理 / RAG 问答)          │
-│  - 静态 serve 前端 dist/                          │
+│  - /api/llm/* (settings / draft curation / RAG)  │
+│  - serves the frontend dist/ statically          │
 │  uvicorn 0.27  ·  port 0.0.0.0:8000              │
 └────┬───────────────────────────────────┬─────────┘
      │                                   │
@@ -86,127 +94,131 @@ git clone https://github.com/hyongtao-code/my2ndbrain.git && cd my2ndbrain
 ┌────────────────────┐         ┌─────────────────────┐
 │  PostgreSQL 16     │         │  Embedding model    │
 │  + pgvector ext    │         │  sentence-transform │
-│  - knowledge_node  │ ◄──────│  (or TF-IDF 离线)     │
+│  - knowledge_node  │ ◄──────│  (or TF-IDF offline)│
 │  - knowledge_edge  │         └─────────────────────┘
 │  - knowledge_draft │
 │  - category_cluster│
-│  port 5432 (内部)  │
+│  port 5432 (local) │
 └────────────────────┘
 ```
 
-### 2.2 前端核心模块
+### 2.2 Frontend modules
 
-| 模块 | 文件 | 职责 |
+| Module | File | Responsibility |
 |---|---|---|
-| 3D 球面 | `KnowledgeSphere.tsx` | three.js + R3F 渲染节点、关联线、自动旋转、鼠标拖拽 |
-| AI 助手面板 | `AssistantPanel.tsx` | Ask / Suggest / Settings / Draft 四 tab,可放大占左半屏 |
-| 节点详情 | `NodeDetail.tsx` | 查看 / 编辑标题、内容、分类、关联 |
-| 草稿 | `DraftPanel.tsx` | 快速记 → 调 AI 整理 → 入库 |
-| 导入 | `ImportModal.tsx` | .md 批量上传(可多选) |
-| 导出 | `ExportModal.tsx` | 多选节点 → 下载 zip / 单个 .md |
-| FAB | `App.tsx` 右下角 + | 浮动操作按钮(加节点 / 上下传) |
-| 搜索 | `App.tsx` 顶部 | 实时下拉(按标题 / 内容 / 关键词,top 5) |
-| i18n | `i18n/` | 中英双语切换 |
+| 3D sphere | `KnowledgeSphere.tsx` | three.js + R3F renders nodes, relation lines, auto-rotation, mouse drag |
+| AI assistant panel | `AssistantPanel.tsx` | Ask / Suggest / Settings / Draft — 4 tabs, expandable to the left half |
+| Node detail | `NodeDetail.tsx` | View / edit title, content, category, relations |
+| Draft | `DraftPanel.tsx` | Quick capture → AI curation → promote to node |
+| Import | `ImportModal.tsx` | Bulk-upload `.md` files (multi-select) |
+| Export | `ExportModal.tsx` | Multi-select nodes → zip / single `.md` download |
+| FAB | `App.tsx` bottom-right | Floating action buttons (add node / import / export) |
+| Search | `App.tsx` top | Real-time dropdown (title / content / keywords, top 5) |
+| i18n | `i18n/` | Switch between zh-CN (default) and English |
 
-### 2.3 后端核心 API
+### 2.3 Backend core API
 
-| 路径 | 用途 |
+| Path | Purpose |
 |---|---|
-| `GET /api/health` | 健康检查(返回 embedding 后端) |
-| `GET /api/nodes` | 列出所有节点 |
-| `POST /api/nodes` | 创建新节点 |
-| `PATCH /api/nodes/{id}` | 编辑节点 |
-| `DELETE /api/nodes/{id}` | 删除节点 |
-| `GET /api/drafts` | 列出草稿 |
-| `POST /api/drafts` | 创建草稿(快速记) |
-| `POST /api/llm/curate/clean-draft` | **AI 整理草稿** → 标准节点 |
-| `POST /api/llm/curate/find-merges` | **AI 建议合并** (相似节点) |
-| `POST /api/llm/curate/find-edges` | **AI 建议新关联** (同类节点) |
-| `POST /api/llm/curate/ask` | **RAG 问答**(基于你的知识库) |
-| `POST /api/llm/config` | 配置 LLM provider / key / model |
-| `POST /api/llm/test` | 测试 LLM 连接 |
-| `GET /api/graph` | 返回节点 + 关联(给 3D 球面用) |
-| `POST /api/nodes/import-md` | 批量上传 .md |
-| `GET /api/nodes/{id}/export-md` | 单节点导出 .md |
-| `POST /api/nodes/export-md-batch` | 多节点打包导出 zip |
+| `GET /api/health` | Health check (returns the active embedding backend) |
+| `GET /api/nodes` | List all nodes |
+| `POST /api/nodes` | Create a node |
+| `PATCH /api/nodes/{id}` | Edit a node |
+| `DELETE /api/nodes/{id}` | Delete a node |
+| `GET /api/drafts` | List drafts |
+| `POST /api/drafts` | Create a draft (quick capture) |
+| `POST /api/llm/curate/clean-draft` | **AI clean up a draft** → standard node |
+| `POST /api/llm/curate/find-merges` | **AI suggest merges** (similar nodes) |
+| `POST /api/llm/curate/find-edges` | **AI suggest new relations** (same-category nodes) |
+| `POST /api/llm/curate/ask` | **RAG Q&A** (based on your knowledge base) |
+| `POST /api/llm/config` | Configure LLM provider / key / model |
+| `POST /api/llm/test` | Test LLM connection |
+| `GET /api/graph` | Return nodes + edges (for the 3D sphere) |
+| `POST /api/nodes/import-md` | Bulk-upload `.md` files |
+| `GET /api/nodes/{id}/export-md` | Export a single node as `.md` |
+| `POST /api/nodes/export-md-batch` | Multi-node export as a zip |
 
-### 2.4 数据模型
+### 2.4 Data model
 
 ```sql
--- 节点 = 一条知识
+-- A node = one piece of knowledge
 knowledge_node(id, title, content, source, category,
                importance, keywords, embedding vector(384), created_at, updated_at)
 -- source: 'manual' | 'md-import' | 'llm-clean' | 'llm-merge'
 -- embedding: sentence-transformers/all-MiniLM-L6-v2 (or TF-IDF fallback)
 
--- 关联 = 节点 A 跟 节点 B 有关系
+-- An edge = relation between two nodes
 knowledge_edge(id, source_id, target_id, relation, weight, created_at)
 
--- 草稿 = 粗糙的还没整理的笔记
+-- A draft = a rough, uncurated note
 knowledge_draft(id, content, source, promoted_to_node_id, created_at)
 
--- 分类
+-- A category cluster
 category_cluster(id, name, description, centroid vector(384), node_count)
 ```
 
 ---
 
-## 3. 使用方法
+## 3. Usage
 
-本仓库同时提供两种启动方式, 二选一:
+This repo provides two startup paths. Pick one:
 
-> 不要同时跑 `./start.sh start` 和 `./compose.sh start` — 它们 都要占 8000 端口, 会 冲突!
+> Do NOT run `./start.sh start` and `./compose.sh start` at the same time — both want port 8000, and will conflict!
 
-### 3.1 本地直接启动 (开发模式,推荐给开发者)
+### 3.1 Native dev startup (recommended for developers)
 
-> `./start.sh` 是 直接本地启动 (uvicorn + vite dev), 不用 docker。
+> `./start.sh` runs uvicorn + vite dev directly, no Docker.
 
 ```bash
 git clone https://github.com/hyongtao-code/my2ndbrain.git
 cd my2ndbrain
 
-# 一条命令起 (前置: PostgreSQL 16 + pgvector + Python 3.11 + Node 20)
-./start.sh start      # 启动后端 + 前端
-./start.sh stop       # 停两个
-./start.sh status     # 查看状态 + 端口占用
-./start.sh logs       # tail -20 后端+前端 log
-./start.sh reset      # stop + 清数据 (会 丢 所有 nodes/drafts/edges, 不要 轻易跑)
-./start.sh help       # 详细说明
+# One command to start. Prereqs: PostgreSQL 16 + pgvector + Python 3.11 + Node 20 (see detail.md).
+./start.sh start      # start backend + frontend
+./start.sh stop       # stop both
+./start.sh status     # show status + port usage
+./start.sh logs       # tail the last 20 lines of backend + frontend logs
+./start.sh reset      # restart only — does NOT touch the database (see cmd_reset comment)
+./start.sh help       # full help
+
+./scripts/setup_pg.sh check    # silently check DB + pgvector, prints fix on failure
+./scripts/setup_pg.sh doctor   # verbose walkthrough
 ```
 
+### 3.2 Docker compose startup
 
-### 3.2 Docker compose 启动
-
-> `./compose.sh start` 是 Docker compose 启动 (postgres + pgvector + 后端 + 前端 全在一个 image 里)。
+> `./compose.sh start` is the Docker compose path — Postgres + pgvector + backend + frontend all bundled in one image.
 
 ```bash
-# 前置: 装好 Docker 20+
+# Prereq: Docker 20+ installed
 git clone https://github.com/hyongtao-code/my2ndbrain.git
 cd my2ndbrain
 
-# 一条命令起 (首次会自动 build image, 5-10 min)
-./compose.sh start                     # smart: 只有 image 不存在才 build
-./compose.sh start --rebuild          # 强制重新 build
-./compose.sh start --pull             # 拉最新 base image (之后再 build)
-./compose.sh start --help             # 详细说明
-./compose.sh stop                      # 停 container (数据保留)
-./compose.sh stop --rm                 # 停并删除 container (数据仍然保留)
-./compose.sh --help                    # 完整 help
+# One command to start (first run auto-builds the image, 5-10 min)
+./compose.sh start                     # smart: build only if image is missing
+./compose.sh start --rebuild          # force a fresh build
+./compose.sh start --pull             # pull the latest base image before building
+./compose.sh start --help             # full help
+./compose.sh stop                      # stop the container (data kept)
+./compose.sh stop --rm                 # stop and remove the container (data still kept)
+./compose.sh --help                    # full help
 
-# 浏览器访问:
+# Browser access:
 # http://localhost:8000/   (FastAPI + React build)
 
-# 数据持久化:
+# Data persistence:
 #   -v my2ndbrain-data:/var/lib/postgresql/data
-# 将容器内的 PGDATA 挂载到名为 my2ndbrain-data 的 Docker managed volume,
-# 该 volume 与宿主机 docker storage 保持一致 —— container 重建/重启/换镜像均不会丢失
-# 数据;跨主机迁移需先导出该 volume 再在新机上恢复。
+# The container's PGDATA is mounted to a Docker managed volume named
+# `my2ndbrain-data`. The volume persists across container rebuilds /
+# restarts / image swaps. To migrate to a new host, export the
+# volume first, then restore it on the new host.
 
-# 彻底清除数据 (慎用):
+# Wipe all data (destructive):
 docker volume rm my2ndbrain-data
 ```
 
-启动完成后会显示:
+After startup, you'll see:
+
 ```
 Web UI    : http://<host>:8000/
 Health    : http://<host>:8000/api/health
@@ -214,11 +226,12 @@ Swagger   : http://<host>:8000/docs
 Data      : stored in named volume 'my2ndbrain-data'
 ```
 
-## 4. 📹 视频展示
+## 4. 📹 Demo video
 
 [![Demo Video — click to play](assets/My2ndBrain.png)](assets/My2ndBrain.mp4 "Click to play the demo video")
 
 ---
 
-## 5. 致谢
-所有的代码是[hermes](https://github.com/NousResearch/hermes-agent)智能体和[Minimax-M3](https://github.com/MiniMax-AI/MiniMax-M3.git)生成的，其中界面部分使用了[ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill)来丰富UI效果。
+## 5. Acknowledgements
+
+All code was generated by [hermes](https://github.com/NousResearch/hermes-agent) and [Minimax-M3](https://github.com/MiniMax-AI/MiniMax-M3.git). The UI was enhanced with the [ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill).
