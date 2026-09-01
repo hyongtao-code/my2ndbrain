@@ -49,11 +49,26 @@ function AppInner() {
     const [exportMode, setExportMode] = useState<"default" | "half">("default");
     const [detailMode, setDetailMode] = useState<"default" | "half">("default");
     // Derived from which modal is open + that modal's mode flag.
-    const anyModalOpen = !!(selected || showAdd || showImport || showExport);
-    const anyModalFullscreen = !!((selected && detailMode === "half") || addMode === "half" || importMode === "half" || exportMode === "half");
+    // data-modal-mode on the .app element reflects the size of the
+    // RIGHT column only (the column that hosts NodeDetail / Import
+    // / Export). AddNodeModal lives in its own sibling grid column
+    // (`far-right`) and reports its size via data-add-mode, so it
+    // does NOT contribute to data-modal-mode.
+    //
+    // The right column needs 50vw when:
+    //   - a node is selected AND detailMode === "half", OR
+    //   - ImportModal is open AND importMode === "half", OR
+    //   - ExportModal is open AND exportMode === "half".
+    // Otherwise it stays at 1/4 width (var(--col-right) = 320px),
+    // or collapses to 0 when nothing is open in the right column.
+    const rightModalOpen = !!(selected || showImport || showExport);
+    const rightModalInHalf =
+        (!!selected && detailMode === "half") ||
+        (showImport && importMode === "half") ||
+        (showExport && exportMode === "half");
     const computedModalMode: "default" | "half" | "minimized" =
-        !anyModalOpen ? "minimized" :
-        anyModalFullscreen ? "half" : "default";
+        !rightModalOpen ? "minimized" :
+        rightModalInHalf ? "half" : "default";
     // Assistant uses a direct setAssistantMode so the user can pick any
     // of the three sizes from the segmented control in the panel header.
     const refreshDrafts = useCallback(async () => {
@@ -150,6 +165,12 @@ function AppInner() {
 
     const selectNode = useCallback(async (id: string) => {
         setSelectedId(id);
+        // Per the user's request: clicking a search-dropdown option
+        // opens the detail panel at 1/2 (50vw). The user can then
+        // manually collapse back to 1/4 via the panel's segmented
+        // control if they want. We do NOT change the assistant
+        // mode — only the detail mode.
+        setDetailMode("half");
         try {
             const n = await api.node(id);
             setSelected(n);
@@ -186,6 +207,8 @@ function AppInner() {
             className="app"
             data-assistant-mode={assistantMode}
             data-modal-mode={computedModalMode}
+            data-add-open={showAdd}
+            data-add-mode={addMode}
         >
             <div className="stage" ref={stageRef}>
                 {graph && graph.nodes.length > 0 && (
@@ -256,7 +279,6 @@ function AppInner() {
                             <button
                                 className="search-clear"
                                 title="Clear"
-                                onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => { setSearchQuery(""); setSearchOpen(false); }}
                             ><IconClose /></button>
                         )}
@@ -266,12 +288,21 @@ function AppInner() {
                             {searchMatches.map((m, i) => (
                                 <button
                                     key={m.id}
+                                    type="button"
                                     className={"search-row" + (i === searchActiveIdx ? " is-active" : "")}
                                     role="option"
                                     aria-selected={i === searchActiveIdx}
-                                    onMouseDown={(e) => e.preventDefault()}
                                     onMouseEnter={() => setSearchActiveIdx(i)}
                                     onClick={() => {
+                                        // Click on a search row must select
+                                        // the node AND close the dropdown.
+                                        // Don't preventDefault on mousedown —
+                                        // it was supposed to keep the input
+                                        // from blurring, but it also stops
+                                        // the click event from firing on some
+                                        // browsers. The input's onBlur already
+                                        // uses a 150ms timeout to defer close,
+                                        // which is the right delay pattern.
                                         selectNode(m.id);
                                         setSearchQuery("");
                                         setSearchOpen(false);

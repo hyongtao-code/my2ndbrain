@@ -154,12 +154,19 @@ button { cursor: pointer; }
   height: 100vh;
   overflow: hidden;
   display: grid;
-  /* Default: assistant 1/4 (280px) + canvas 1fr + modal 1/4 (320px) */
-  grid-template-columns: var(--col-left) 1fr var(--col-right);
+  /* Default: assistant 1/4 (280px) + canvas 1fr + modal 1/4 (320px).
+     When both NodeDetail (.column-right) and AddNodeModal
+     (.column-far-right) are open simultaneously, the grid template
+     grows to 4 columns so the two panels sit side-by-side instead
+     of stacking on top of each other. See the
+     [data-add-open="true"] selector below for the 4-column
+     template; the rule here stays at 3 columns for the common
+     case of "at most one right-side panel open". */
+  grid-template-columns: var(--col-left) 1fr var(--col-right) 0px;
   grid-template-rows: var(--topbar-h) 1fr;
   grid-template-areas:
-    "topbar topbar topbar"
-    "left   canvas right";
+    "topbar topbar topbar topbar"
+    "left   canvas right  far-right";
   transition: grid-template-columns var(--dur-base) var(--ease-out-cubic);
 }
 /* ========================================================================
@@ -234,6 +241,105 @@ button { cursor: pointer; }
 .app[data-assistant-mode="half"][data-modal-mode="half"] {
   grid-template-columns: 50vw 1fr 50vw;
 }
+/* ============================================================
+   Far-right column (AddNodeModal)
+   - When data-add-open="true", the AddNodeModal occupies a 4th
+     grid column called `far-right`, sitting to the RIGHT of the
+     existing right column. This is what lets users have Add +
+     Detail open at the same time without one covering the other.
+   - The 4th column width is driven by data-add-mode:
+       "default"  -> 320px (1/4 width, matches .col-right)
+       "half"     -> 50vw   (right half, matches a half-width modal)
+   - When data-add-open="false" (or missing), the base 3-column
+     rule applies (the trailing 0px in the base template).
+   - The rules below override grid-template-columns from the base
+     to the 4-column shape. We only need 4 cases per data-add-mode
+     because the assistant/modal combo is already encoded in the
+     3-column shape and we just append the far-right width.
+
+   NOTE: these selectors intentionally REPLACE rather than append
+   to the 3-column rules above, because CSS Grid can't add a
+   column without re-stating the full template.
+   ============================================================ */
+.app[data-add-open="true"][data-add-mode="default"] {
+  /* 4-column template: [3-column base] + 320px far-right.
+     We collapse the 3-column base into a single 1fr canvas so
+     the canvas shrinks but stays in its column. */
+  grid-template-columns: var(--col-left) 1fr var(--col-right) 320px;
+}
+/* When Add is open but the right column is empty
+   (data-modal-mode="minimized" means no detail/import/export),
+   the trailing 320px on the right column is wasted space. The
+   user reported this as "Add is 1/2 but the left 1/4 of that 1/2
+   is just gray empty area". Drop the right column entirely so
+   the canvas can take the space Add is currently hovering over. */
+.app[data-add-open="true"][data-add-mode="default"][data-modal-mode="minimized"] {
+  grid-template-columns: var(--col-left) 1fr 0px var(--col-right);
+}
+.app[data-add-open="true"][data-add-mode="default"][data-assistant-mode="minimized"][data-modal-mode="minimized"] {
+  grid-template-columns: var(--rail-w) 1fr 0px var(--col-right);
+}
+.app[data-add-open="true"][data-add-mode="default"][data-assistant-mode="half"][data-modal-mode="minimized"] {
+  grid-template-columns: 50vw 1fr 0px var(--col-right);
+}
+.app[data-add-open="true"][data-add-mode="default"][data-modal-mode="half"] {
+  grid-template-columns: var(--col-left) 1fr 50vw 320px;
+}
+.app[data-add-open="true"][data-add-mode="default"][data-assistant-mode="minimized"] {
+  grid-template-columns: var(--rail-w) 1fr var(--col-right) 320px;
+}
+.app[data-add-open="true"][data-add-mode="default"][data-assistant-mode="half"] {
+  grid-template-columns: 50vw 1fr var(--col-right) 320px;
+}
+.app[data-add-open="true"][data-add-mode="default"][data-assistant-mode="minimized"][data-modal-mode="half"] {
+  grid-template-columns: var(--rail-w) 1fr 50vw 320px;
+}
+.app[data-add-open="true"][data-add-mode="default"][data-assistant-mode="half"][data-modal-mode="half"] {
+  grid-template-columns: 50vw 1fr 50vw 320px;
+}
+.app[data-add-open="true"][data-add-mode="half"] {
+  grid-template-columns: var(--col-left) 1fr var(--col-right) 50vw;
+}
+/* Same "right column is empty" optimization for the 1/2 mode:
+   when Add is 1/2 but no detail is open, drop the right column
+   entirely so the canvas takes the 320px that would otherwise
+   be a wasted grey area between assistant and Add. */
+.app[data-add-open="true"][data-add-mode="half"][data-modal-mode="minimized"] {
+  grid-template-columns: var(--col-left) 1fr 0px 50vw;
+}
+.app[data-add-open="true"][data-add-mode="half"][data-assistant-mode="minimized"] {
+  grid-template-columns: var(--rail-w) 1fr var(--col-right) 50vw;
+}
+.app[data-add-open="true"][data-add-mode="half"][data-assistant-mode="minimized"][data-modal-mode="minimized"] {
+  grid-template-columns: var(--rail-w) 1fr 0px 50vw;
+}
+.app[data-add-open="true"][data-add-mode="half"][data-assistant-mode="half"] {
+  grid-template-columns: 50vw 1fr var(--col-right) 50vw;
+}
+.app[data-add-open="true"][data-add-mode="half"][data-assistant-mode="half"][data-modal-mode="minimized"] {
+  grid-template-columns: 50vw 1fr 0px 50vw;
+}
+/* When both detail (right) and add (far-right) are in half mode,
+   the 4th column also needs 50vw — but total = 50+50+50vw > 100vw
+   on most screens, so canvas (1fr) collapses to 0. The canvas is
+   still rendered behind both panels (z-index: 1 vs panels' z: 2).
+   To avoid the far-right overflowing past the right edge of the
+   viewport, we cap each half-mode column at 25vw (= a quarter of
+   the viewport) when both are simultaneously in half mode. This
+   keeps total width at 25vw + 25vw = 50vw + assistant + canvas,
+   so the canvas gets at least 1fr to breathe. */
+.app[data-add-open="true"][data-add-mode="half"][data-modal-mode="half"] {
+  grid-template-columns: var(--col-left) 1fr 25vw 25vw;
+}
+.app[data-add-open="true"][data-add-mode="half"][data-assistant-mode="minimized"][data-modal-mode="half"] {
+  grid-template-columns: var(--rail-w) 1fr 25vw 25vw;
+}
+.app[data-add-open="true"][data-add-mode="half"][data-assistant-mode="half"][data-modal-mode="half"] {
+  /* assistant=50vw, right=25vw, far-right=25vw. Total = 50+25+25
+     = 100vw exactly, so canvas (1fr) collapses to 0. */
+  grid-template-columns: 50vw 1fr 25vw 25vw;
+}
+
 /* helper selectors are NOT used — we keep the old data-detail-open
    fallback for backward compat with anything that still toggles it. */
 .stage {
@@ -1239,9 +1345,62 @@ button { cursor: pointer; }
    2. Bump the padding from 18px (1/4 default) to 24px so the wider
       sheet doesn't feel cramped. */
 .column-right.is-fullscreen {
-  grid-row-start: 2;
-  grid-row-end: 3;
+  /* When NodeDetail (or any modal in this column) is in "half" mode,
+     expand to occupy the right HALF of the viewport. The parent
+     .app grid already places the right column at 50vw via the
+     .app[data-modal-mode="half"] rules — we just need to (a) pin
+     the row to the content row (2) so the sheet doesn't auto-place
+     into a non-existent row, (b) bump padding for the wider sheet,
+     and (c) NOT override grid-column — earlier versions forced
+     grid-column-start: 2 / grid-column-end: 4 here, which spanned
+     the canvas AND right columns and pushed the sheet into the
+     MIDDLE of the viewport (x ≈ col-left) instead of the right
+     edge. Just letting it stay in the right column (the grid-area
+     already says "right" in the base rule) is the correct fix. */
+  grid-row: 2 / 3;
   padding: 24px;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* ============================================================
+   Far-right column (AddNodeModal)
+   - Sibling column to .column-right. Lives in grid-area: far-right
+     so it can sit to the RIGHT of NodeDetail when both are open.
+   - Width is driven entirely by the parent .app grid template
+     (the [data-add-open="true"][data-add-mode="..."] rules above),
+     so we don't need any explicit width here — just pin to the
+     content row and inherit the column-right look.
+   - Without this column, opening AddNodeModal while NodeDetail is
+     already open would stack them on top of each other (both have
+     className column-right, both resolve to grid-area: right).
+   ============================================================ */
+.column-far-right {
+  grid-area: far-right;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-1);
+  border-left: 1px solid var(--line-strong);
+  padding: 18px;
+  overflow-y: auto;
+  align-self: stretch;
+  z-index: 2;
+  /* Same role as .column-right's `width: 100%`: fill the grid
+     cell instead of being content-sized. Without this, the inner
+     .modal-sheet's `width: 480px` would force the whole column to
+     be 480px wide regardless of what the parent grid template
+     asks for (e.g. 320px in default mode), and the panel would
+     overflow left into the canvas column. */
+  width: 100%;
+  max-width: 100%;
+  transition: grid-column-start var(--dur-base) var(--ease-out-cubic),
+              grid-column-end var(--dur-base) var(--ease-out-cubic);
+}
+.column-far-right.is-fullscreen {
+  grid-row: 2 / 3;
+  padding: 24px;
+  width: 100%;
+  max-width: 100%;
 }
 
 /* ============================================================
@@ -1859,8 +2018,18 @@ button { cursor: pointer; }
   display: flex;
   flex-direction: column;
   gap: 2px;
+  /* The topbar sets pointer-events: none on the whole bar so the
+     sphere can receive clicks underneath. The .search-input above
+     opts back in, but the dropdown is a sibling of .search-input
+     inside .search-wrap — so it inherits `none` from .topbar and
+     stops receiving mouse events. Result: rows could not be
+     hovered or clicked (the only thing that "worked" was the
+     React state path that fires from the input's onBlur).
+     Re-enable pointer events on the dropdown AND its rows. */
+  pointer-events: auto;
 }
 .search-row {
+  pointer-events: auto;
   display: grid;
   grid-template-columns: 1fr auto auto;
   align-items: center;
