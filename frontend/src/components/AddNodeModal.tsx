@@ -50,7 +50,7 @@ export default function AddNodeModal({ onClose, onCreated, modalMode = "default"
     };
 
     return (
-        <div className={"column-right modal-sheet add-modal" + (modalMode === "half" ? " is-fullscreen" : "")} role="dialog" aria-modal="true">
+        <div className={"column-far-right modal-sheet add-modal" + (modalMode === "half" ? " is-fullscreen" : "")} role="dialog" aria-modal="true">
             <div className="panel-title">
                 <span>{preview ? t("addModal.titleDone") : t("addModal.title")}</span>
                 <div style={{ display: "flex", gap: 4 }}>
