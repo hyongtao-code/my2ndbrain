@@ -4,16 +4,20 @@
 # What it does:
 #   1. Sanity-check prerequisites.
 #   2. Ensure .env exists (copies from .env.example if missing).
-#   3. Verify the backend can reach PostgreSQL (or surface a clear error).
-#   4. Start FastAPI on :8000 (idempotent — reuses if up).
+#   2.5. Run scripts/setup_pg.sh check (PG reachable + pgvector loaded).
+#   2.7. If backend/.venv is missing, run `uv sync` to build it from uv.lock.
+#   3. Start FastAPI on :8000 using .venv/bin/python (idempotent — reuses if up).
+#   4. Ensure frontend/node_modules exists; if not, `npm install --legacy-peer-deps`.
 #   5. Start Vite on :5173 (idempotent — reuses if up).
 #   6. Print the URLs.
 #
 # Stop everything: ./start.sh stop
 # reset no longer wipes data (was destructive — see cmd_reset below).
 #
-# Requirements: bash 4+, python3, node, npm.
-# PostgreSQL must already be running with a user/db that matches .env.
+# Requirements: bash 4+, python3 (system, just for dev.sh preflight),
+# node, npm, plus uv on PATH for backend deps (auto-bootstrapped on
+# first start). PostgreSQL must already be running with a user/db
+# that matches .env (validated by scripts/setup_pg.sh).
 
 set -euo pipefail
 
@@ -139,6 +143,49 @@ cmd_start() {
     # 2. .env
     ensure_env
 
+    # 2.5 PostgreSQL reachable + pgvector installed.
+    # We delegate the full diagnosis to scripts/setup_pg.sh so the
+    # user gets a precise, actionable error message (apt install
+    # command, createuser command, ALTER USER command, etc.) instead
+    # of a generic "connection refused" from the backend.
+    if [[ -x "$SCRIPT_DIR/scripts/setup_pg.sh" ]]; then
+        if ! "$SCRIPT_DIR/scripts/setup_pg.sh" check; then
+            info "run './scripts/setup_pg.sh doctor' for the verbose walkthrough"
+            fail "PostgreSQL is not ready — see [fail] lines above"
+        fi
+    else
+        warn "scripts/setup_pg.sh missing — skipping DB preflight (start.sh may fail)"
+    fi
+
+    # 2.7 Backend Python deps via uv. backend/uv.lock is committed,
+    # so `uv sync` produces a reproducible .venv/ from the lock.
+    # We bootstrap the .venv if it's missing OR if it was wiped by
+    # `git clean -xdf`. dev.sh uses the venv's python to launch
+    # uvicorn (step 3 below) — never system python3 — so deps are
+    # always found without manual pip work.
+    #
+    # IMPORTANT: `--no-dev` is required. The pyproject.toml's
+    # [dependency-groups] dev lists `sentence-transformers>=3.0`,
+    # which transitively pulls torch + nvidia-cublas/cudnn/triton
+    # (~1.8 GB). The runtime code in app/services/embedding.py
+    # imports sentence-transformers inside a try/except and falls
+    # back to a TF-IDF embedder when it's missing, so production
+    # runs do NOT need it. Only enable if you've set HF_HUB_OFFLINE=0
+    # and actually want the on-disk semantic model.
+    if command -v uv >/dev/null 2>&1; then
+        if [[ ! -x "$BACKEND_DIR/.venv/bin/python" ]]; then
+            info "backend/.venv missing — running 'uv sync --no-dev' (skips torch/sentence-transformers in [dependency-groups].dev)"
+            (cd "$BACKEND_DIR" && uv sync --no-dev) || fail "uv sync --no-dev failed"
+        fi
+    else
+        # No uv on PATH — fall back to system python3. Only works if
+        # the user already installed deps by hand (uv pip install --system,
+        # or pip install -r requirements.txt). We surface this as a
+        # warning so the failure mode is obvious if it later crashes
+        # on an ImportError.
+        warn "'uv' not on PATH; will launch system python3. If backend fails with ImportError, install uv (https://astral.sh/uv) and re-run."
+    fi
+
     # 3. backend (FastAPI on :8000)
     if pid_alive "$BACKEND_PID" && curl -sf "http://$BACKEND_HOST:$BACKEND_PORT/api/health" >/dev/null 2>&1; then
         ok "backend already running (pid=$(cat "$BACKEND_PID"))"
@@ -162,8 +209,17 @@ cmd_start() {
                 # calls, which come from HTTPS_PROXY (kept). The
                 # frontend Vite process still has ALL_PROXY intact
                 # (browser-side fetches don't go through httpx).
-                unset ALL_PROXY all_proxy
-                PYTHONPATH=. nohup python3 -m uvicorn app.main:app \
+            unset ALL_PROXY all_proxy
+            # Prefer the uv-managed venv python so deps from uv.lock
+            # are picked up. Fall back to system python3 only if the
+            # venv doesn't exist (and warn the user — see step 2.7).
+            if [[ -x "$BACKEND_DIR/.venv/bin/python" ]]; then
+                BACKEND_PY="$BACKEND_DIR/.venv/bin/python"
+            else
+                BACKEND_PY="$(command -v python3)"
+                warn "backend/.venv missing; using system $BACKEND_PY (deps may not resolve)"
+            fi
+            PYTHONPATH=. nohup "$BACKEND_PY" -m uvicorn app.main:app \
                 --host "$BACKEND_HOST" --port "$BACKEND_PORT" \
                 --log-level info \
                 > "$BACKEND_LOG" 2>&1 &
@@ -175,7 +231,11 @@ cmd_start() {
     # 4. frontend (Vite on :5173)
     if [[ ! -d "$FRONTEND_DIR/node_modules" ]]; then
         warn "node_modules missing — running npm install"
-        (cd "$FRONTEND_DIR" && npm install --no-audit --no-fund --silent) \
+        # --legacy-peer-deps is REQUIRED: vite 8 conflicts with
+        # @vitejs/plugin-react 4's peer dep range (^4-^7). Without
+        # it npm refuses the install but exits 0 with --silent
+        # and node_modules stays empty, breaking the frontend.
+        (cd "$FRONTEND_DIR" && npm install --legacy-peer-deps --no-audit --no-fund) \
             || fail "npm install failed"
     fi
     if pid_alive "$FRONTEND_PID" && curl -sf "http://$FRONTEND_HOST:$FRONTEND_PORT/" >/dev/null 2>&1; then

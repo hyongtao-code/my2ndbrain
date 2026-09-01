@@ -6,13 +6,32 @@
 
 ---
 
-## 0. 一键启动
+## 0. 预备环境与启动
+
+1. 安装 PG + pgvector + node20 + uv:
+```bash
+sudo apt-get install -y postgresql-16 postgresql-16-pgvector curl git
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+2. 启动 PG，创建 user/db:
+```bash
+sudo pg_ctlcluster 16 main start
+sudo -u postgres psql <<'SQL'
+CREATE USER my2ndbrain WITH PASSWORD 'change-me';
+CREATE DATABASE my2ndbrain OWNER my2ndbrain;
+ALTER USER my2ndbrain CREATEDB;
+\c my2ndbrain
+CREATE EXTENSION IF NOT EXISTS vector;
+SQL
+```
 
 ```bash
 git clone https://github.com/hyongtao-code/my2ndbrain.git && cd my2ndbrain
 ./compose.sh start                    # Docker compose
 # 或者:
-./start.sh start                      # 本地直接启动
+./start.sh start                      # 本地直接启动，自动npm install和uv sync
 ```
 
 打开 `http://localhost:8000/`。
