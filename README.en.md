@@ -2,9 +2,10 @@
 
 > An AI-driven personal knowledge graph + long-term memory system — turn scattered notes, learnings, experiences, and ideas into an explorable, growing, comprehensible 3D personal knowledge universe.
 
-<p align="right">
-  [🇨🇳 中文](./README.md) · [🇺🇸 English](./README.en.md)
-</p>
+<div align="center">
+  <a href="./README.md"><b>🇨🇳 中文</b></a> &nbsp;
+  <a href="./README.en.md"><b>🇺🇸 English</b></a>
+</div>
 
 ![screenshot](assets/My2ndBrain.png)
 
