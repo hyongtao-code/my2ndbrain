@@ -13,7 +13,7 @@
 
 ## 0. Prerequisites & Start
 
-**1. Install PG + pgvector + node20 + uv** (one-time, on Ubuntu/Debian):
+### 0.1. Install PG + pgvector + node20 + uv (one-time, on Ubuntu/Debian)
 
 ```bash
 sudo apt-get install -y postgresql-16 postgresql-16-pgvector curl git
@@ -22,7 +22,7 @@ sudo apt-get install -y nodejs
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-**2. Start PG and create the user/db**:
+### 0.2. Start PG and create the user/db
 
 ```bash
 sudo pg_ctlcluster 16 main start
@@ -35,7 +35,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 SQL
 ```
 
-**3. Clone and start**:
+### 0.3. Clone and start
 
 ```bash
 git clone https://github.com/hyongtao-code/my2ndbrain.git && cd my2ndbrain
