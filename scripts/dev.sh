@@ -157,33 +157,18 @@ cmd_start() {
         warn "scripts/setup_pg.sh missing — skipping DB preflight (start.sh may fail)"
     fi
 
-    # 2.7 Backend Python deps via uv. backend/uv.lock is committed,
-    # so `uv sync` produces a reproducible .venv/ from the lock.
-    # We bootstrap the .venv if it's missing OR if it was wiped by
-    # `git clean -xdf`. dev.sh uses the venv's python to launch
-    # uvicorn (step 3 below) — never system python3 — so deps are
-    # always found without manual pip work.
-    #
-    # IMPORTANT: `--no-dev` is required. The pyproject.toml's
-    # [dependency-groups] dev lists `sentence-transformers>=3.0`,
-    # which transitively pulls torch + nvidia-cublas/cudnn/triton
-    # (~1.8 GB). The runtime code in app/services/embedding.py
-    # imports sentence-transformers inside a try/except and falls
-    # back to a TF-IDF embedder when it's missing, so production
-    # runs do NOT need it. Only enable if you've set HF_HUB_OFFLINE=0
-    # and actually want the on-disk semantic model.
+    # 2.7 Backend Python deps via uv. .venv/ is gitignored so `git
+    # clean -xdf` wipes it; we re-bootstrap from uv.lock here.
+    # `--no-dev` skips pyproject.toml's [dependency-groups] dev
+    # (sentence-transformers + 1.8 GB of torch/nvidia libs);
+    # embedding.py falls back to TF-IDF when ST is missing.
     if command -v uv >/dev/null 2>&1; then
         if [[ ! -x "$BACKEND_DIR/.venv/bin/python" ]]; then
-            info "backend/.venv missing — running 'uv sync --no-dev' (skips torch/sentence-transformers in [dependency-groups].dev)"
+            info "backend/.venv missing — running 'uv sync --no-dev'"
             (cd "$BACKEND_DIR" && uv sync --no-dev) || fail "uv sync --no-dev failed"
         fi
     else
-        # No uv on PATH — fall back to system python3. Only works if
-        # the user already installed deps by hand (uv pip install --system,
-        # or pip install -r requirements.txt). We surface this as a
-        # warning so the failure mode is obvious if it later crashes
-        # on an ImportError.
-        warn "'uv' not on PATH; will launch system python3. If backend fails with ImportError, install uv (https://astral.sh/uv) and re-run."
+        warn "'uv' not on PATH; will use system python3. If backend ImportErrors, install uv (https://astral.sh/uv) and re-run."
     fi
 
     # 3. backend (FastAPI on :8000)

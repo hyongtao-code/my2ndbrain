@@ -5,21 +5,11 @@ import * as THREE from "three";
 import type { GraphNode, GraphEdge } from "../types";
 
 // ============================================================================
-// My2ndBrain — Knowledge Sphere (DESIGN.md §4)
-// Visual spec lives in DESIGN.md. Any change here must be reflected there.
-//
-// Geometry      : IcosahedronGeometry(R, 6) for the planet body, no pole pinch.
-// Materials     : MeshStandardMaterial PBR for nodes + body, ShaderMaterial
-//                 fresnel for the atmospheric rim, additive BackSide mesh
-//                 for the back-haze silhouette.
-// Lighting      : One strong cool-white directional (key) + a faint cool-grey
-//                 directional (fill) + a single warm-amber directional (rim)
-//                 + ambient. Shadow cast on a hidden floor disc.
-// Motion        : 80 s/revolution auto-spin (slow, celestial). prefers-reduced-
-//                 motion freezes spin and reduces hover durations.
-// Performance   : edge geometry is one merged BufferGeometry for ALL edges,
-//                 not per-edge. Star layer is two pre-built arrays. 612 stars
-//                 total (600 faint + 12 hero). All twinkling in JS, not shader.
+// Knowledge Sphere (DESIGN.md §4). 3D globe: icosahedron body + procedural
+// fresnel rim + 600 faint + 12 hero stars (pre-baked, JS twinkle). Edges
+// drawn as a single merged BufferGeometry, not per-edge. Auto-spin
+// 80s/rev; respects prefers-reduced-motion. Visual spec lives in
+// DESIGN.md — keep them in sync.
 // ============================================================================
 
 type Props = {
@@ -201,13 +191,6 @@ export default function KnowledgeSphere(props: Props) {
       {/* Ambient: extremely weak, just enough to keep shadow side readable. */}
       <ambientLight intensity={0.10} color="#0B0C10" />
 
-      {/* CameraParallax removed — see git history. It fought with
-         OrbitControls' update() which rewrites camera.position
-         every frame from spherical coordinates, so any mouse
-         parallax drift was getting amplified into a permanent
-         camera offset that the user perceived as "sphere grows
-         every drag". */}
-
       {/* ─── Planet body (DESIGN.md §4.2) ─────────────────────────────── */}
       <SpherePlanet />
 
@@ -243,34 +226,22 @@ export default function KnowledgeSphere(props: Props) {
       </SphereGroup>
 
       <OrbitControls
-        /* DESIGN.md §2.1 "central sphere first": the sphere is the
-           centerpiece and its scale is intentional. Disable EVERY
-           form of camera manipulation except left-drag rotation
-           so the user can't accidentally zoom in or pan out. The
-           earlier `enableZoom={false}` was not enough: when the
-           user dragged with the *middle* mouse button (or a
-           touchpad gesture that the browser maps to MIDDLE), the
-           mouseButtons default has MIDDLE → DOLLY (zoom), and the
-           camera crept closer to the sphere every drag. Same for
-           RIGHT → PAN, which we already disabled via enablePan. By
-           remapping MIDDLE and RIGHT to -1 (no action), the only
-           active interaction is left-drag = rotate. */
+        /* DESIGN.md §2.1: lock the view — sphere is the centerpiece,
+           user can only left-drag to rotate. zoom/pan disabled; the
+           mouseButtons remap also disables middle+right to stop the
+           sphere "creeping closer" on a stray middle-click. */
         enablePan={false}
         enableZoom={false}
         enableDamping
         dampingFactor={0.12}
         rotateSpeed={0.3}
-        /* DESIGN.md §4.8: limit vertical rotation to roughly a
-           hemisphere so the user can tilt up/down to see the
-           planet from above/below but never flip past the poles
-           (which would invert the texture + look weird). */
+        /* §4.8: clamp vertical rotation to one hemisphere — never
+           flip past the poles. */
         minPolarAngle={Math.PI * 0.2}
         maxPolarAngle={Math.PI * 0.8}
         mouseButtons={{
-          // -1 disables the button in three-stdlib OrbitControls
-          // (see the `mouseAction = -1; switch (...) default:` branch in
-          // OrbitControls.js). The TS type only allows MOUSE | null but
-          // the runtime accepts -1, so cast through MOUSE.
+          // -1 disables the button (runtime accepts it even though
+          // the TS type only allows MOUSE | null).
           LEFT: THREE.MOUSE.ROTATE,
           MIDDLE: -1 as unknown as THREE.MOUSE,
           RIGHT: -1 as unknown as THREE.MOUSE,

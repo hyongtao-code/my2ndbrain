@@ -1,40 +1,15 @@
-"""LLM-powered knowledge-graph curation features (Step 2 of the
-chat-LLM roadmap). Exposed via /api/llm/curate/* endpoints.
+"""LLM-powered knowledge-graph curation, exposed via /api/llm/curate/*.
 
-All endpoints use the active LLM (MiniMax-M3 by default). When the
-LLM is the local heuristic, every call returns a structured
-fallback so the UI can still render something useful.
+Three endpoints (request/response shapes are auto-documented in
+Swagger at /docs — see the FastAPI route decorators below):
+  POST /api/llm/curate/clean-draft     — polish one draft into a node
+  POST /api/llm/curate/find-merges     — surface a merge candidate pair
+  POST /api/llm/curate/find-edges      — suggest up to 3 new edges
 
-Three endpoints:
-
-  POST /api/llm/curate/clean-draft
-      body: {"draft_id": "<uuid>"}
-      Picks the user's draft, asks the LLM to produce ONE polished
-      KnowledgeNode (title / content / category / keywords). Returns
-      {title, content, category, keywords, rationale}. The user
-      can then confirm and we ingest it.
-
-  POST /api/llm/curate/find-merges
-      body: {"limit": 10, "sample_strategy": "popular"|"random"|"oldest"}
-      Samples ~10 nodes from the graph, asks the LLM which pair is
-      a clear duplicate / merger candidate. Returns a single
-      suggestion {action, rationale, nodes: [id1, id2]}.
-
-  POST /api/llm/curate/find-edges
-      body: {"limit": 10, "sample_strategy": "popular"|"random"|"oldest"}
-      Samples ~10 nodes from a single category, asks the LLM which
-      new edges would make sense (citing nodes by id). Returns up
-      to 3 edge suggestions.
-
-Design notes:
-  - We never call DELETE on user data. All endpoints only READ and
-    return suggestions. The UI then asks for explicit confirmation
-    before any write happens (via the existing POST /api/nodes
-    ingest path or POST /api/llm/link).
-  - Sampling is done with deterministic randomness (sort by a
-    hash of (id, day)) so the user sees different suggestions on
-    different days but the same suggestion across a session if
-    they re-click.
+All endpoints only READ; the UI asks for explicit confirmation
+before any write. Sampling uses hash(id, day) as a salt so users
+see different suggestions on different days but stable ones
+within a session.
 """
 from __future__ import annotations
 

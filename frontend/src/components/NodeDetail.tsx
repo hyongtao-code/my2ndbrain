@@ -5,7 +5,7 @@ import { useI18n } from "../i18n";
 import { api } from "../lib/api";
 import MarkdownEditor from "./MarkdownEditor";
 import ModalSizeToggle from "./ModalSizeToggle";
-import { IconEdit, IconClose, IconLink, IconTrash } from "./icons";
+import { IconClose, IconLink } from "./icons";
 
 type Props = {
     node: NodeOut;
