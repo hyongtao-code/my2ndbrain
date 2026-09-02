@@ -45,9 +45,7 @@ git clone https://github.com/hyongtao-code/my2ndbrain.git && cd my2ndbrain
 ```
 
 Open `http://localhost:8000/`.
-
-> If `./start.sh start` fails on a brand-new box, see [`detail.md`](./detail.md) for the full step-by-step manual (Ubuntu apt commands, SQL, troubleshooting, recovery from `git clean -xdf`).
-> The `./compose.sh` (Docker) path is zero-config — first run auto-builds the image and starts PG alongside, with database/extension/role all provisioned by the entrypoint.
+See `http://localhost:5173/` for dev.
 
 ---
 
@@ -173,7 +171,7 @@ This repo provides two startup paths. Pick one:
 git clone https://github.com/hyongtao-code/my2ndbrain.git
 cd my2ndbrain
 
-# One command to start. Prereqs: PostgreSQL 16 + pgvector + Python 3.11 + Node 20 (see detail.md).
+# One command to start. Prereqs: PostgreSQL 16 + pgvector + Python 3.11 + Node 20
 ./start.sh start      # start backend + frontend
 ./start.sh stop       # stop both
 ./start.sh status     # show status + port usage
