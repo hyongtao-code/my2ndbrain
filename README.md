@@ -3,7 +3,7 @@
 > An AI-driven personal knowledge graph + long-term memory system — turn scattered notes, learnings, experiences, and ideas into an explorable, growing, comprehensible 3D personal knowledge universe.
 
 <div align="center">
-  <a href="./README.cn.md"><b>🇨🇳 中文</b></a> &nbsp;
+  <a href="./README.CN.md"><b>🇨🇳 中文</b></a> &nbsp;
   <a href="./README.md"><b>🇺🇸 English</b></a>
 </div>
 
@@ -224,9 +224,9 @@ Swagger   : http://<host>:8000/docs
 Data      : stored in named volume 'my2ndbrain-data'
 ```
 
-## 4. 📹 Demo video
+## 4. 📹 Demo show
 
-[![Demo Video — click to play](assets/My2ndBrain.png)](assets/My2ndBrain.mp4 "Click to play the demo video")
+![screenshot](assets/My2ndBrain.gif)
 
 ---
 

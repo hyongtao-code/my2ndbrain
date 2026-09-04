@@ -20,7 +20,6 @@ Thanks for your interest in MySecondBrain.
 
 - Use the GitHub issue templates.
 - Include reproduction steps for bugs.
-- For security issues, see `SECURITY.md` instead of filing a public issue.
 
 ## License
 

@@ -3,7 +3,7 @@
 > AI 驱动的个人知识图谱 + 长期记忆系统 —— 把零散的笔记、学习、经验、灵感,自动长成一个可探索、可生长、可理解的三维个人知识宇宙。
 
 <div align="center">
-  <a href="./README.cn.md"><b>🇨🇳 中文</b></a> &nbsp;
+  <a href="./README.CN.md"><b>🇨🇳 中文</b></a> &nbsp;
   <a href="./README.en.md"><b>🇺🇸 English</b></a>
 </div>
 
@@ -216,9 +216,9 @@ Swagger   : http://<host>:8000/docs
 Data      : stored in named volume 'my2ndbrain-data'
 ```
 
-## 4. 📹 视频展示
+## 4. 📹 实例展示
 
-[![Demo Video — click to play](assets/My2ndBrain.png)](assets/My2ndBrain.mp4 "Click to play the demo video")
+![screenshot](assets/My2ndBrain.gif)
 
 ---
 
