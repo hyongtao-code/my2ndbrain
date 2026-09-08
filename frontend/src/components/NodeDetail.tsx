@@ -5,7 +5,7 @@ import { useI18n } from "../i18n";
 import { api } from "../lib/api";
 import MarkdownEditor from "./MarkdownEditor";
 import ModalSizeToggle from "./ModalSizeToggle";
-import { IconClose, IconLink } from "./icons";
+import { IconClose, IconEdit, IconLink, IconTrash } from "./icons";
 
 type Props = {
     node: NodeOut;
@@ -169,26 +169,45 @@ export default function NodeDetail({ node, onJump, onClose, onMutated, modalMode
         }
     };
 
+    const isCompact = modalMode !== "half";
+
     return (
         <div className={"column-right detail" + (modalMode === "half" ? " is-fullscreen" : "")}>
-            <div className="panel-title">
-                <span>{editing ? t("detail.editTitle") : t("detail.title")}</span>
-                <div style={{ display: "flex", gap: 6 }}>
+            <div className={"panel-title detail-title" + (isCompact ? " is-compact" : "")}>
+                <span className="detail-title-label">{editing ? t("detail.editTitle") : t("detail.title")}</span>
+                <div className="detail-title-actions">
                     <ModalSizeToggle mode={modalMode} onSetMode={onSetMode} />
                     {!editing && !confirmDelete && (
                         <>
-                            <button className="btn-icon" onClick={startEdit} title={t("detail.edit")}>
-                                {t("detail.edit")}
+                            <button
+                                className="btn-icon"
+                                onClick={startEdit}
+                                title={t("detail.edit")}
+                                aria-label={t("detail.edit")}
+                            >
+                                {isCompact ? <IconEdit /> : t("detail.edit")}
                             </button>
-                            <button className="btn-icon" onClick={() => setShowLinkPicker(true)} title={t("detail.addLink")}>
+                            <button className="btn-icon" onClick={() => setShowLinkPicker(true)} title={t("detail.addLink")} aria-label={t("detail.addLink")}>
                                 <IconLink />
                             </button>
-                            <button className="btn-icon" onClick={() => setConfirmDelete(true)} title={t("detail.delete")}>
-                                {t("detail.delete")}
+                            <button
+                                className="btn-icon"
+                                onClick={() => setConfirmDelete(true)}
+                                title={t("detail.delete")}
+                                aria-label={t("detail.delete")}
+                            >
+                                {isCompact ? <IconTrash /> : t("detail.delete")}
                             </button>
                         </>
                     )}
-                    <button className="btn-icon" onClick={onClose}>{t("detail.close")}</button>
+                    <button
+                        className="btn-icon"
+                        onClick={onClose}
+                        title={t("detail.close").replace("✕", "").trim()}
+                        aria-label={t("detail.close").replace("✕", "").trim()}
+                    >
+                        {isCompact ? <IconClose /> : t("detail.close")}
+                    </button>
                 </div>
             </div>
 

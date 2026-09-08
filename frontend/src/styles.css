@@ -482,6 +482,33 @@ button { cursor: pointer; }
 }
 .panel-title .btn-icon:hover { color: var(--text-0); border-color: var(--accent); }
 
+/* Detail-panel title: in 1/4 mode the action buttons shrink to icon-only
+   so the "知识详情" label gets more breathing room. Let the label claim
+   the remaining space and keep actions tight. */
+.detail-title {
+  gap: 8px;
+}
+.detail-title-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.detail-title-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+/* Icon-only variant: square-ish padding keeps the row at the same
+   height as the label. */
+.detail-title.is-compact .btn-icon {
+  padding: 3px 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* ============================================================
    Node detail
    ============================================================ */
