@@ -59,9 +59,9 @@ export default function NodeDetail({ node, onJump, onClose, onMutated, modalMode
         // <datalist> can autocomplete. Cached in component state.
         api.listNodes()
             .then((rows) => {
-                // Defensive: some rows might be missing category (e.g.
-                // old data created before the field existed). Filter
-                // out empty / whitespace-only values explicitly.
+                // Defensive: some old rows may be missing `category`.
+                // Drop empty/whitespace values so the datalist doesn't
+                // show them.
                 const cats = new Set<string>();
                 for (const r of (rows as Array<{ category?: string }>)) {
                     const c = (r.category || "").trim();
@@ -127,12 +127,10 @@ export default function NodeDetail({ node, onJump, onClose, onMutated, modalMode
     };
 
     // Remove a directed edge between `node.id` and `targetId`. The
-    // backend (POST /api/llm/unlink) accepts the two ids as an
-    // unordered pair and deletes whichever directed edge exists in
-    // either direction, so callers don't have to figure out which
-    // side they're on. Idempotent. After a successful delete we
-    // re-fetch the node detail so the neighbor list shrinks without
-    // the user having to close and reopen the panel.
+    // backend (POST /api/llm/unlink) accepts the pair unordered and
+    // deletes whichever directed edge exists in either direction;
+    // idempotent. Re-fetch the node so the neighbour list shrinks
+    // without the user having to close and reopen the panel.
     const doUnlink = async (targetId: string) => {
         try {
             const r = await fetch(
@@ -145,8 +143,8 @@ export default function NodeDetail({ node, onJump, onClose, onMutated, modalMode
             }
             const body = await r.json().catch(() => ({}));
             if (body?.deleted === 0) {
-                // Edge was already absent (shouldn't normally happen
-                // if the row was visible, but guard against it).
+                // Edge was already absent (shouldn't normally happen if
+                // the row was visible, but guard against it).
                 setBanner({
                     kind: "err",
                     text: t("detail.unlinkFailed", { message: "edge already absent" }),
@@ -155,7 +153,7 @@ export default function NodeDetail({ node, onJump, onClose, onMutated, modalMode
             }
             setBanner({ kind: "ok", text: t("detail.unlinkSuccess") });
             // Re-fetch this node's full detail so the neighbor row
-            // disappears immediately, and ask the parent to refresh
+            // disappears immediately, then ask the parent to refresh
             // the sphere graph (which re-draws the edges).
             try {
                 const refresh = await fetch(`/api/nodes/${node.id}`);
@@ -339,7 +337,6 @@ function LinkPicker({
     const [err, setErr] = useState<string | null>(null);
 
     useEffect(() => {
-        // Use the api.graph to get all nodes (simple + good enough for small graphs)
         api.graph(undefined).then((g) => {
             setOptions(g.nodes
                 .filter((x) => x.id !== sourceId)
@@ -415,11 +412,9 @@ function LinkPicker({
 }
 
 
-// -------------------------------------------------------------
-// CategoryCombobox — a small dark-theme-styled input with a built-in
-// dropdown of existing categories. The user can also type any
-// custom value (it's a real <input>, not a <select>).
-// -------------------------------------------------------------
+// CategoryCombobox — a small dark-theme input with a dropdown of
+// existing categories. Free text is allowed (it's a real <input>,
+// not a <select>).
 type ComboboxProps = {
     value: string;
     onChange: (v: string) => void;
@@ -444,7 +439,6 @@ function CategoryCombobox({ value, onChange, options, placeholder = "(empty = au
         return options.filter((o) => o !== v);
     }, [options, value]);
     const ref = useRef<HTMLDivElement>(null);
-    // Close on outside click.
     useEffect(() => {
         if (!open) return;
         const onDown = (e: MouseEvent) => {

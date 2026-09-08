@@ -22,8 +22,7 @@ function wrapSelection(textarea: HTMLTextAreaElement, before: string, after = be
     const next = textarea.value.slice(0, start) + before + selected + after + textarea.value.slice(end);
     const cursorStart = start + before.length;
     const cursorEnd = cursorStart + selected.length;
-    // set the value via React-friendly callback, but caller controls state.
-    // We just provide the resulting string and let the caller update state.
+    // Returns the next string + cursor positions. Caller updates state.
     return { next, cursorStart, cursorEnd };
 }
 
@@ -39,7 +38,7 @@ export default function MarkdownEditor({ value, onChange, placeholder, rows = 8,
         }
         const { next, cursorStart, cursorEnd } = wrapSelection(ta, before, after);
         onChange(next);
-        // restore selection after React re-renders the textarea
+        // Restore selection after React re-renders the textarea.
         requestAnimationFrame(() => {
             ta.focus();
             ta.setSelectionRange(cursorStart, cursorEnd);
@@ -48,7 +47,7 @@ export default function MarkdownEditor({ value, onChange, placeholder, rows = 8,
 
     const html = useMemo(() => {
         try {
-            // marked returns string | Promise<string>; we always want sync.
+            // marked returns string | Promise<string>; we force sync mode.
             return marked.parse(value || "", { async: false, breaks: true }) as string;
         } catch {
             return "<pre>" + escapeHtml(value || "") + "</pre>";

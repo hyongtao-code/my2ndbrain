@@ -14,7 +14,7 @@ class NodeCreate(BaseModel):
     keywords: list[str] | None = None
     importance: float = Field(default=1.0, ge=0.0, le=10.0)
     source: str = "manual"
-    auto_link: bool = True                 # run AI auto-link after insert
+    auto_link: bool = True
 
 
 class NodeUpdate(BaseModel):
@@ -45,7 +45,6 @@ class NodeSummary(BaseModel):
     category: str
     keywords: list[str]
     importance: float
-    # coordinates on the sphere — set by /api/graph layout service
     x: float
     y: float
     z: float
@@ -58,8 +57,6 @@ class GraphPayload(BaseModel):
     clusters: list[dict]
     stats: dict
 
-
-# -------- Edge --------
 
 class EdgeCreate(BaseModel):
     source_node_id: str
@@ -78,8 +75,6 @@ class EdgeOut(BaseModel):
     auto_generated: bool
 
 
-# -------- Cluster --------
-
 class ClusterOut(BaseModel):
     id: str
     name: str
@@ -88,8 +83,6 @@ class ClusterOut(BaseModel):
     color: str
     size: int
 
-
-# -------- AI assistant --------
 
 class AssistantRequest(BaseModel):
     question: str
@@ -109,8 +102,6 @@ class IngestResponse(BaseModel):
     cluster_suggestion: dict
 
 
-# -------- Skill --------
-
 class SkillOut(BaseModel):
     id: str
     name: str
@@ -119,8 +110,6 @@ class SkillOut(BaseModel):
     trigger: str
     based_on_nodes: list[str]
     created_at: datetime | None
-
-# -------- Draft --------
 
 class DraftCreate(BaseModel):
     content: str = Field(..., min_length=1)
@@ -143,8 +132,6 @@ class DraftOut(BaseModel):
     updated_at: datetime | None
 
 
-# -------- Draft promotion (curation) --------
-
 class PromoteRequest(BaseModel):
     """Promote one or more drafts into real KnowledgeNodes.
 
@@ -162,8 +149,8 @@ class PromoteRequest(BaseModel):
 class PromoteResult(BaseModel):
     """One row in the PromoteResponse.results list."""
     draft_id: str
-    merged_with: list[str] = Field(default_factory=list)  # other draft ids merged into this one
-    node: dict | None = None   # _node_to_dict() output, only on success
+    merged_with: list[str] = Field(default_factory=list)
+    node: dict | None = None
     error: str | None = None
 
 

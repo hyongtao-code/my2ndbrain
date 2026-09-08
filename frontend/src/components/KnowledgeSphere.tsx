@@ -4,13 +4,11 @@ import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import type { GraphNode, GraphEdge } from "../types";
 
-// ============================================================================
 // Knowledge Sphere (DESIGN.md §4). 3D globe: icosahedron body + procedural
 // fresnel rim + 600 faint + 12 hero stars (pre-baked, JS twinkle). Edges
 // drawn as a single merged BufferGeometry, not per-edge. Auto-spin
 // 80s/rev; respects prefers-reduced-motion. Visual spec lives in
 // DESIGN.md — keep them in sync.
-// ============================================================================
 
 type Props = {
   nodes: GraphNode[];
@@ -26,9 +24,7 @@ type Props = {
 
 const RADIUS = 5;
 
-// ---------- helpers ---------------------------------------------------------
-
-/** Great-circle arc from a to b, bulging outward by lift. */
+// Great-circle arc from a to b, bulging outward by lift.
 function greatCircleArc(
   a: THREE.Vector3,
   b: THREE.Vector3,
@@ -59,7 +55,7 @@ function greatCircleArc(
   return out;
 }
 
-/** Per-node properties derived from importance (DESIGN.md §4.5). */
+// Per-node properties derived from importance (DESIGN.md §4.5).
 function nodeRadius(importance: number | null | undefined): number {
   const v = Math.max(0, Math.min(1, importance ?? 0.5));
   return 0.08 + 0.24 * Math.pow(v, 0.7);
@@ -72,19 +68,16 @@ function nodeEmissive(importance: number | null | undefined): number {
   const v = Math.max(0, Math.min(1, importance ?? 0.5));
   return 0.18 * Math.pow(v, 1.5);
 }
-/** Outward "depth" — important nodes sit slightly forward. */
+// Outward "depth" — important nodes sit slightly forward.
 function surfaceLift(importance: number | null | undefined): number {
   const v = Math.max(0, Math.min(1, importance ?? 0.5));
   return v * 0.18 - 0.05;
 }
 
-// ---------- starfield --------------------------------------------------------
-
 const HERO_STARS = 12;
 const FAINT_STARS = 600;
-// Pre-computed once at module load (deterministic). Both layers use
-// Fibonacci-sphere distribution so the points are evenly spread with
-// no clumping at the poles.
+// Both layers use Fibonacci-sphere distribution so points are evenly
+// spread with no clumping at the poles.
 function fibPoint(i: number, total: number, radius: number): THREE.Vector3 {
   const phi = Math.acos(2 * ((i + 0.5) / total) - 1);
   const theta = Math.PI * (1 + Math.sqrt(5)) * i;
@@ -99,11 +92,6 @@ const FAINT_POSITIONS: THREE.Vector3[] = Array.from({ length: FAINT_STARS },
 const HERO_POSITIONS: THREE.Vector3[] = Array.from({ length: HERO_STARS },
   (_, i) => fibPoint(i + 17, HERO_STARS, 70));  // offset 17 to avoid alignment
 
-// ---------- ambient + camera parallax --------------------------------------
-
-// Module-level mouse position so useFrame can read it without
-// re-creating closures. Populated by the pointermove listener in
-// CameraParallax.
 const _mouse = { x: 0, y: 0 };
 function CameraParallax() {
   const { camera, gl } = useThree();
@@ -129,8 +117,6 @@ function CameraParallax() {
   return null;
 }
 
-// ---------- atomospheric rim shader ----------------------------------------
-
 const ATMOSPHERE_VERT = /* glsl */ `
 varying vec3 vNormal;
 varying vec3 vViewDir;
@@ -153,9 +139,6 @@ void main() {
 }
 `;
 
-// ============================================================================
-// Component
-// ============================================================================
 export default function KnowledgeSphere(props: Props) {
   return (
     <Canvas
@@ -167,8 +150,9 @@ export default function KnowledgeSphere(props: Props) {
       {/* Clear colour matches --bg-void (DESIGN.md §4.1). */}
       <color attach="background" args={["#050608"]} />
 
-      {/* ─── Lighting (DESIGN.md §4.3) ─────────────────────────────────── */}
-      {/* Main: cool white, top-front-left. Strong so terminator is visible. */}
+      {/* Lighting (DESIGN.md §4.3). Main cool white top-front-left, dim
+          cool fill opposite, warm rim key (only warm light in scene),
+          weak ambient so the shadow side stays readable. */}
       <directionalLight
         position={[-7, 6, 7]}
         intensity={1.1}
@@ -184,17 +168,14 @@ export default function KnowledgeSphere(props: Props) {
         shadow-camera-bottom={-10}
         shadow-bias={-0.0005}
       />
-      {/* Fill: opposite side, dim, cool grey — keeps shadow side non-black. */}
       <directionalLight position={[6, -2, -5]} intensity={0.18} color="#9DA0AC" />
-      {/* Rim: warm key — the only warm light in the scene. */}
       <directionalLight position={[5, 1, -8]} intensity={0.45} color="#F3C892" />
-      {/* Ambient: extremely weak, just enough to keep shadow side readable. */}
       <ambientLight intensity={0.10} color="#0B0C10" />
 
-      {/* ─── Planet body (DESIGN.md §4.2) ─────────────────────────────── */}
+      {/* Planet body (DESIGN.md §4.2). */}
       <SpherePlanet />
 
-      {/* ─── Floor disc (receives shadow so planet appears to hover) ── */}
+      {/* Floor disc receives shadow so the planet appears to hover. */}
       <mesh
         rotation={[-Math.PI / 2, 0, 0]}
         position={[0, -5.1, 0]}
@@ -204,13 +185,12 @@ export default function KnowledgeSphere(props: Props) {
         <meshStandardMaterial color="#0B0C10" roughness={1} />
       </mesh>
 
-      {/* ─── Starfield (DESIGN.md §4.7) ──────────────────────────────── */}
-      {/* Background sky does NOT rotate with the planet. */}
+      {/* Starfield (DESIGN.md §4.7) — background sky does NOT rotate
+          with the planet. */}
       <Starfield autoSpin={props.autoSpin} />
 
-      {/* ─── Slow celestial auto-rotation (DESIGN.md §4.8) ─────────── */}
-      {/* Everything inside SphereGroup rotates as a single celestial
-          body: the planet, the atmosphere, the edges, and the nodes. */}
+      {/* SphereGroup: planet + atmosphere + edges + nodes rotate as one
+          celestial body (DESIGN.md §4.8). */}
       <SphereGroup autoSpin={props.autoSpin}>
         <SpherePlanet />
         <AtmosphereRim />
@@ -226,17 +206,17 @@ export default function KnowledgeSphere(props: Props) {
       </SphereGroup>
 
       <OrbitControls
-        /* DESIGN.md §2.1: lock the view — sphere is the centerpiece,
-           user can only left-drag to rotate. zoom/pan disabled; the
-           mouseButtons remap also disables middle+right to stop the
-           sphere "creeping closer" on a stray middle-click. */
+        // DESIGN.md §2.1: lock the view — sphere is the centerpiece;
+        // user can only left-drag to rotate. Zoom/pan disabled, and
+        // middle/right mouse buttons are remapped away so the sphere
+        // doesn't drift closer on a stray middle-click.
         enablePan={false}
         enableZoom={false}
         enableDamping
         dampingFactor={0.12}
         rotateSpeed={0.3}
-        /* §4.8: clamp vertical rotation to one hemisphere — never
-           flip past the poles. */
+        // §4.8: clamp vertical rotation to one hemisphere — never
+        // flip past the poles.
         minPolarAngle={Math.PI * 0.2}
         maxPolarAngle={Math.PI * 0.8}
         mouseButtons={{
@@ -251,9 +231,6 @@ export default function KnowledgeSphere(props: Props) {
   );
 }
 
-// ============================================================================
-// Sphere planet (the visible planet body)
-// ============================================================================
 function SpherePlanet() {
   return (
     <group>
@@ -283,9 +260,6 @@ function SpherePlanet() {
   );
 }
 
-// ============================================================================
-// Atmospheric fresnel rim — the "almost imperceptible" outer halo
-// ============================================================================
 function AtmosphereRim() {
   const mat = useMemo(() => {
     return new THREE.ShaderMaterial({
@@ -309,9 +283,6 @@ function AtmosphereRim() {
   );
 }
 
-// ============================================================================
-// Sphere group — slow celestial auto-rotation
-// ============================================================================
 function SphereGroup({
   autoSpin,
   children,
@@ -345,9 +316,6 @@ function SphereGroup({
   return <group ref={group}>{children}</group>;
 }
 
-// ============================================================================
-// Knowledge graph (edges + nodes)
-// ============================================================================
 function KnowledgeGraph({
   nodes,
   edges,
@@ -371,7 +339,6 @@ function KnowledgeGraph({
     return m;
   }, [nodes]);
 
-  // Per-edge arc geometry, computed once per (nodes, edges) change.
   const arcData = useMemo(() => {
     return edges
       .map((e) => {
@@ -394,7 +361,6 @@ function KnowledgeGraph({
       }>;
   }, [edges, lookup, selectedId, hoveredId]);
 
-  // Single merged buffer geometry for the faint all-edges backdrop.
   const backdropGeom = useMemo(() => {
     const positions = new Float32Array(arcData.length * 48 * 2 * 3);
     let off = 0;
@@ -413,7 +379,6 @@ function KnowledgeGraph({
     return geom;
   }, [arcData]);
 
-  // Pre-compute per-node positions, radii, opacities, emissive.
   const nodeData = useMemo(() => {
     return nodes.map((n) => {
       const v = new THREE.Vector3(n.x, n.y, n.z);
@@ -429,7 +394,6 @@ function KnowledgeGraph({
     });
   }, [nodes]);
 
-  // Direct neighbours of the hovered node.
   const neighborIds = useMemo(() => {
     if (!hoveredId) return new Set<string>();
     const s = new Set<string>();
@@ -482,8 +446,8 @@ function KnowledgeGraph({
         const isHoverFaded = !!hoveredId && !isHover && !isNeighbor && !isSel;
         const isFaded = isSearchFaded || (isHoverFaded && !isSearchActive);
 
-        // Scale envelope: hover → 1.20 (slow), search → 1.25, select → 1.45.
-        // Done by mutating the group's scale each frame (lerp toward target).
+        // Scale envelope: hover → 1.20, search → 1.25, select → 1.45.
+        // Mutate the group's scale each frame, lerping toward target.
         const targetScale =
           isSel ? 1.45 : isSearchMatch ? 1.25 : isHover || isNeighbor ? 1.20 : 1.0;
         const targetEmissive = isSel
@@ -558,7 +522,7 @@ function NodeBubble({
 }) {
   const group = useRef<THREE.Group>(null);
   const matRef = useRef<THREE.MeshStandardMaterial>(null);
-  // Lerp toward target scale and emissive intensity each frame.
+  // Critically-damped lerp toward target scale + emissive each frame.
   useFrame((_, dt) => {
     if (!group.current) return;
     const k = 1 - Math.exp(-dt * 6);  // critically-damped feel
@@ -598,13 +562,10 @@ function NodeBubble({
   );
 }
 
-// ============================================================================
-// Starfield (DESIGN.md §4.7)
-// ============================================================================
 function Starfield({ autoSpin }: { autoSpin: boolean }) {
-  // Hero stars twinkle via a JS-side scale on each frame. We mutate
-  // the scale on a shared instanced group so the cost is one matrix
-  // update per frame, not 12 individual meshes.
+  // Hero stars twinkle via a JS-side scale on each frame, applied to
+  // a shared instanced group so the cost is one matrix update per
+  // frame instead of 12 individual meshes.
   const heroGroup = useRef<THREE.Group>(null);
   const t0 = useRef(performance.now() / 1000);
   useFrame(() => {

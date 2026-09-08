@@ -71,7 +71,7 @@ export type AssistantResponse = {
   answer: string;
   related_nodes: Array<{ id: string; title: string; summary: string; category: string; keywords: string[]; similarity: number }>;
   blind_spots?: { missing: string[]; covered: string[] };
-  // Optional: fields used by /api/assistant/organise (tree topic + total)
+  // Optional fields used by /api/assistant/organise (tree topic + total).
   topic?: string;
   total?: number;
   tree?: Record<string, Array<{ id: string; title: string; summary: string; category: string; keywords: string[]; importance: number }>>;
@@ -102,7 +102,7 @@ export type DraftOut = {
 export type PromoteResult = {
   draft_id: string;
   merged_with: string[];
-  node: any | null;        // NodeOut-shaped or null on failure
+  node: any | null;        // NodeOut-shaped, or null on failure
   error: string | null;
 };
 

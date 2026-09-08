@@ -18,8 +18,6 @@ from app.services.llm import (
 router = APIRouter(prefix="/api/llm", tags=["llm"])
 
 
-# ---------- schema ----------
-
 class LLMConfigIn(BaseModel):
     provider: str = Field(
         default="heuristic",
@@ -28,8 +26,6 @@ class LLMConfigIn(BaseModel):
     api_key: str = Field(default="")
     model: str = Field(default="gpt-4o-mini")
 
-
-# ---------- status ----------
 
 @router.get("/status")
 def status():
@@ -107,8 +103,6 @@ def test(payload: LLMSuggestIn | None = None):
     return test_connection(override=override or None)
 
 
-# ---------- suggest improvements ----------
-
 SUGGEST_SCHEMA = {
     "type": "object",
     "properties": {
@@ -129,7 +123,6 @@ def suggest_improvements(db: Session = Depends(get_db)):
     back to a heuristic if no LLM is configured.
     """
     cfg = resolve_provider()
-    # Build a compact representation of the graph
     nodes = list(db.scalars(select(KnowledgeNode).limit(50)).all())
     edges = list(db.scalars(select(KnowledgeEdge).limit(20)).all())
 
@@ -166,25 +159,21 @@ def suggest_improvements(db: Session = Depends(get_db)):
     )
 
     raw = complete(prompt, json_schema=SUGGEST_SCHEMA)
-    # Fall back to a heuristic pick if the LLM returned noop with no real reason
     if raw.get("action") == "noop" and "heuristic fallback" in (raw.get("rationale") or "").lower():
-        # Pick the top non-linked pair by embedding similarity
         nodes_with_emb = [n for n in nodes if n.embedding is not None]
         if len(nodes_with_emb) < 2:
             return {**raw, "provider": cfg["provider"]}
-        # Just compute the top pair
         import numpy as np
-        # Re-normalize all
         matrix = np.array([list(n.embedding) for n in nodes_with_emb], dtype="float32")
         matrix = matrix / np.linalg.norm(matrix, axis=1, keepdims=True)
-        # Take top 5 popular nodes (importance desc) and find best pair
+        # Top 8 by importance — big popular nodes are most likely to
+        # benefit from a suggested link.
         nodes_with_emb.sort(key=lambda n: -float(getattr(n, "importance", 0) or 0))
         sample = nodes_with_emb[:8]
         best = None
         for i in range(len(sample)):
             for j in range(i + 1, len(sample)):
                 a, b = sample[i], sample[j]
-                # Check they're not already linked
                 linked = any(
                     (e.source_node_id == a.id and e.target_node_id == b.id) or
                     (e.source_node_id == b.id and e.target_node_id == a.id)
@@ -192,7 +181,6 @@ def suggest_improvements(db: Session = Depends(get_db)):
                 )
                 if linked:
                     continue
-                # Cosine similarity
                 vi = np.array(list(a.embedding), dtype="float32")
                 vj = np.array(list(b.embedding), dtype="float32")
                 sim = float(np.dot(vi, vj) / (np.linalg.norm(vi) * np.linalg.norm(vj) + 1e-9))
@@ -290,8 +278,10 @@ def unlink_two_nodes(
         raise HTTPException(400, "invalid uuid")
     if sid == tid:
         raise HTTPException(400, "source and target must differ")
-    # The two ids are unordered — the edge can be either direction.
-    # Look in both sets; the first hit is the one to delete.
+    # The (source_id, target_id) pair is unordered: the edge may exist
+    # in either direction because NodeDetail surfaces neighbors from
+    # both edges_from and edges_to, so the UI may pass them in any
+    # order.
     src_node = db.get(KnowledgeNode, sid)
     if src_node:
         edge = next(

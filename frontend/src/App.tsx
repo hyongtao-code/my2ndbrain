@@ -25,42 +25,13 @@ function AppInner() {
     const [autoSpin, setAutoSpin] = useState(true);
     const [filterCategory, setFilterCategory] = useState<string>("");
     const [drafts, setDrafts] = useState<import("./types").DraftOut[]>([]);
-    // AI Assistant panel can be a small floating tab in the bottom-left
-    // OR expanded to occupy the left 50vw of the screen. We lift this
-    // state up here so the FAB cluster can react (e.g. when the
-    // assistant panel is expanded over the canvas, the FAB still
-    // works because the panel sits on top of the sphere with its
-    // own z-index).
-    // Layout mode for the left AI Assistant column.
-    // "default" = 280px (1/4); "minimized" = 52px rail; "half" = 50vw (1/2)
     const [assistantMode, setAssistantMode] = useState<"default" | "minimized" | "half">("default");
-    // Layout mode for the right modal sheet (AddNode / NodeDetail).
-    // Derived from which modal is open + that modal's fullscreen flag —
-    // not stored, computed each render so it always matches reality.
-    //   closed      → "minimized" (column 0)
-    //   open        → "default"  (column 320px)
-    //   fullscreen  → "half"     (column 50vw)
-    // Per-modal size state. Each modal is independent (open with
-    // "default" = 1/4 or "half" = 1/2). The 4 booleans collapsed
-    // into 4 strings so the modal header can render two separate
-    // buttons (1/4 / 1/2) and highlight the active one.
+    // Per-modal layout mode. Each modal is independent (1/4 or 1/2),
+    // and the modal header renders a toggle to switch between them.
     const [addMode, setAddMode] = useState<"default" | "half">("default");
     const [importMode, setImportMode] = useState<"default" | "half">("default");
     const [exportMode, setExportMode] = useState<"default" | "half">("default");
     const [detailMode, setDetailMode] = useState<"default" | "half">("default");
-    // Derived from which modal is open + that modal's mode flag.
-    // data-modal-mode on the .app element reflects the size of the
-    // RIGHT column only (the column that hosts NodeDetail / Import
-    // / Export). AddNodeModal lives in its own sibling grid column
-    // (`far-right`) and reports its size via data-add-mode, so it
-    // does NOT contribute to data-modal-mode.
-    //
-    // The right column needs 50vw when:
-    //   - a node is selected AND detailMode === "half", OR
-    //   - ImportModal is open AND importMode === "half", OR
-    //   - ExportModal is open AND exportMode === "half".
-    // Otherwise it stays at 1/4 width (var(--col-right) = 320px),
-    // or collapses to 0 when nothing is open in the right column.
     const rightModalOpen = !!(selected || showImport || showExport);
     const rightModalInHalf =
         (!!selected && detailMode === "half") ||
@@ -69,8 +40,6 @@ function AppInner() {
     const computedModalMode: "default" | "half" | "minimized" =
         !rightModalOpen ? "minimized" :
         rightModalInHalf ? "half" : "default";
-    // Assistant uses a direct setAssistantMode so the user can pick any
-    // of the three sizes from the segmented control in the panel header.
     const refreshDrafts = useCallback(async () => {
         try {
             const list = await api.listDrafts(false);
@@ -94,7 +63,7 @@ function AppInner() {
 
     // If the active filter no longer matches any node in the graph
     // (e.g. last node in that category was deleted), drop the filter
-    // so the user is never stranded on an empty view without a way out.
+    // so the user is never stranded on an empty view.
     useEffect(() => {
         if (
             filterCategory &&
@@ -105,9 +74,8 @@ function AppInner() {
         }
     }, [graph, filterCategory]);
 
-    // Compute ids of nodes that match the current search query. Case
-    // insensitive substring against title / content / keywords. Empty
-    // query => null set (= no filtering, normal hover behaviour).
+    // ids of nodes that match the current search query (case-insensitive
+    // substring over title / category / keywords). null = no filter.
     const searchMatchIds = useMemo<Set<string> | null>(() => {
         const q = searchQuery.trim().toLowerCase();
         if (!q || !graph) return null;
@@ -123,11 +91,8 @@ function AppInner() {
         return out;
     }, [searchQuery, graph]);
 
-    // Top-N matches for the search dropdown. Same data as the
-    // highlight set, but ranked by a simple score so the user sees
-    // the best matches first instead of arbitrary graph order.
-    // Score: title-hit=3, category-hit=2, keyword-hit=1. Title prefix
-    // matches get a +1 bonus to mimic "starts with" feel.
+    // Top-5 search matches ranked by score (title=3, category=2,
+    // keyword=1, +1 for title-prefix hits).
     const searchMatches = useMemo<Array<{ id: string; title: string; category: string; score: number }>>(() => {
         const q = searchQuery.trim().toLowerCase();
         if (!q || !graph) return [];
@@ -165,11 +130,9 @@ function AppInner() {
 
     const selectNode = useCallback(async (id: string) => {
         setSelectedId(id);
-        // Per the user's request: clicking a search-dropdown option
-        // opens the detail panel at 1/2 (50vw). The user can then
-        // manually collapse back to 1/4 via the panel's segmented
-        // control if they want. We do NOT change the assistant
-        // mode — only the detail mode.
+        // Opening via the search dropdown always snaps the detail
+        // panel to 1/2; the user can collapse back to 1/4 with the
+        // panel's toggle. The assistant mode is left untouched.
         setDetailMode("half");
         try {
             const n = await api.node(id);
@@ -296,12 +259,7 @@ function AppInner() {
                                     onClick={() => {
                                         // Click on a search row must select
                                         // the node AND close the dropdown.
-                                        // Don't preventDefault on mousedown —
-                                        // it was supposed to keep the input
-                                        // from blurring, but it also stops
-                                        // the click event from firing on some
-                                        // browsers. The input's onBlur already
-                                        // uses a 150ms timeout to defer close,
+                                        // onBlur already defers close by 150ms,
                                         // which is the right delay pattern.
                                         selectNode(m.id);
                                         setSearchQuery("");
@@ -395,7 +353,7 @@ function AppInner() {
 
 // All inline SVG icons used by App.tsx live in ./icons.tsx so that
 // each icon (Close / Search / Brain / Plus / etc.) has exactly one
-// definition site. App.tsx imports the subset it actually uses.
+// definition site.
 
 export function App() {
     return (

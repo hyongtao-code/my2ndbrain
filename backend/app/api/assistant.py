@@ -18,8 +18,6 @@ assistant_router = APIRouter(prefix="/api/assistant", tags=["assistant"])
 skills_router = APIRouter(prefix="/api/skills", tags=["skills"])
 
 
-# -------- clusters --------
-
 @clusters_router.get("")
 def list_clusters(db: Session = Depends(get_db)):
     return [c.to_dict() for c in db.scalars(select(CategoryCluster)).all()]
@@ -30,8 +28,6 @@ def recompute(db: Session = Depends(get_db)):
     n = recompute_clusters(db)
     return {"recomputed": n}
 
-
-# -------- assistant --------
 
 @assistant_router.post("")
 def ask(payload: dict, db: Session = Depends(get_db)):
@@ -47,8 +43,6 @@ def organise(payload: dict, db: Session = Depends(get_db)):
     topic = (payload.get("topic") or "").strip() or None
     return organise_knowledge(db, topic=topic)
 
-
-# -------- skills --------
 
 @skills_router.get("")
 def list_skills(db: Session = Depends(get_db)):

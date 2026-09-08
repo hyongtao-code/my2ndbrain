@@ -66,7 +66,6 @@ export const api = {
   }),
   clusters: () => http<any[]>("/api/clusters"),
   recomputeClusters: () => http<{ recomputed: number }>("/api/clusters/recompute", { method: "POST" }),
-  // --- curate (LLM-powered suggestions) ---
   cleanDraft: (draft_id: string) =>
     http<{
       provider: string;
@@ -106,7 +105,6 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ limit, sample_strategy }),
     }),
-  // LLM-backed retrieval-augmented Q&A (Step 3 of the chat-LLM roadmap)
   askLLM: (question: string, top_k = 8) =>
     http<{
       provider: string;

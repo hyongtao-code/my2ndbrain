@@ -32,7 +32,7 @@ class KnowledgeNode(Base):
     content = Column(Text, nullable=False, default="")
     summary = Column(Text, default="")
     category = Column(String(128), index=True, default="未分类")
-    keywords = Column(JSONB, default=list)            # ["RLHF", "PPO", ...]
+    keywords = Column(JSONB, default=list)
     embedding = Column(Vector(384))                   # populated by embedding service
     importance = Column(Float, default=1.0)           # 0..1, used for bubble size
     source = Column(String(64), default="manual")     # manual | import | assistant
@@ -73,7 +73,7 @@ class KnowledgeEdge(Base):
     id = _uuid_pk()
     source_node_id = Column(UUID(as_uuid=True), ForeignKey("knowledge_node.id", ondelete="CASCADE"), nullable=False, index=True)
     target_node_id = Column(UUID(as_uuid=True), ForeignKey("knowledge_node.id", ondelete="CASCADE"), nullable=False, index=True)
-    relation_type = Column(String(64), default="related")   # related | derived_from | contradicts | part_of
+    relation_type = Column(String(64), default="related")
     similarity_score = Column(Float, default=0.0)
     auto_generated = Column(Integer, default=1)             # bool flag stored as int
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -126,7 +126,7 @@ class AISkill(Base):
     id = _uuid_pk()
     name = Column(String(255), nullable=False)
     summary = Column(Text, default="")
-    body = Column(Text, default="")          # the generated skill markdown
+    body = Column(Text, default="")
     trigger = Column(String(255), default="")
     based_on_nodes = Column(JSONB, default=list)  # node ids it was distilled from
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -156,7 +156,7 @@ class KnowledgeDraft(Base):
 
     id = _uuid_pk()
     content = Column(Text, nullable=False, default="")
-    source = Column(String(32), default="chat")  # chat | paste | import
+    source = Column(String(32), default="chat")
     pinned = Column(Integer, default=0)            # bool stored as int
     promoted_to_node_id = Column(
         UUID(as_uuid=True), ForeignKey("knowledge_node.id", ondelete="SET NULL"),
