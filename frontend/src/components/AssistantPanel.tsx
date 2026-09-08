@@ -72,10 +72,7 @@ export default function AssistantPanel({ onJump, drafts, refreshDrafts, assistan
                     <span className="assistant-title-text">{t("assistant.title")}</span>
                 </div>
                 <div className="assistant-header-actions">
-                    {/* Segmented control — 3 independent buttons so the user
-                       can jump straight to any size (minimized / 1/4 / 1/2)
-                       instead of cycling through them. The current mode is
-                       highlighted with the active class. */}
+                    {/* Segmented control: one button per size (min / 1/4 / 1/2). */}
                     <div className="assistant-size-toggle" role="group" aria-label={t("assistant.sizeGroup")}>
                         <button
                             className={"assistant-size-btn" + (assistantMode === "minimized" ? " active" : "")}
@@ -93,7 +90,6 @@ export default function AssistantPanel({ onJump, drafts, refreshDrafts, assistan
                             aria-label={t("assistant.sizeQuarter")}
                             aria-pressed={assistantMode === "default"}
                         >
-                            {/* 1/4 icon: a square occupying the leftmost quarter */}
                             <svg width={14} height={14} viewBox="0 0 16 16" fill="none"
                                  stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
                                  strokeLinejoin="round">
@@ -108,7 +104,6 @@ export default function AssistantPanel({ onJump, drafts, refreshDrafts, assistan
                             aria-label={t("assistant.sizeHalf")}
                             aria-pressed={assistantMode === "half"}
                         >
-                            {/* 1/2 icon: square split, left half filled */}
                             <svg width={14} height={14} viewBox="0 0 16 16" fill="none"
                                  stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
                                  strokeLinejoin="round">
@@ -159,20 +154,16 @@ export default function AssistantPanel({ onJump, drafts, refreshDrafts, assistan
     );
 }
 
-// ============================================================
 // Ask tab — plain local recall (no LLM call)
-// ============================================================
-// Chat message type — kept local to AskTab so the conversation
-// state is preserved across tab switches inside the same panel.
 type ChatMessage = {
-    id: string;            // uuid-like timestamp
+    id: string;
     role: "user" | "assistant" | "system";
-    text: string;          // for assistant: the LLM's answer; for user: the question
-    provider?: string;     // for assistant: which LLM answered
+    text: string;
+    provider?: string;
     related_nodes?: Array<{ id: string; title: string; category: string; summary: string; similarity: number }>;
-    used_nodes?: string[]; // ids of notes the LLM cited
-    loading?: boolean;     // true for the "assistant typing..." placeholder
-    error?: boolean;       // true if the call failed
+    used_nodes?: string[];
+    loading?: boolean;
+    error?: boolean;
 };
 
 function AskTab({ onJump, locale }: {
@@ -189,9 +180,8 @@ function AskTab({ onJump, locale }: {
     // component itself doesn't unmount.
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [skills, setSkills] = useState<any[]>([]);
-    // Auto-scroll to bottom when new messages arrive or the
-    // panel toggles expanded/collapsed (the scrollHeight can
-    // change when the height does).
+    // Auto-scroll to bottom on new messages or panel resize
+    // (scrollHeight changes when the panel height does).
     const scrollRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
         const el = scrollRef.current;
@@ -414,19 +404,16 @@ function SuggestTab({ onJump, drafts, refreshDrafts }: {
     };
 
     const doClean = async () => {
-        // Always refresh drafts first so the click is never racy
-        // with the App.tsx initial fetch on mount, and so we
-        // always see the latest list (e.g. after the user just
-        // saved a new draft in the Draft tab). This is what was
-        // causing the "❌ 没有可用的草稿 (草稿箱是空的)" error:
-        // the user clicked before refreshDrafts() had finished
-        // and the AssistantPanel's drafts prop was still [].
+        // Always refresh first so the click never races the initial
+        // mount-fetch on App.tsx; this was the source of the
+        // "❌ 没有可用的草稿" error when the user clicked before
+        // refreshDrafts() had completed.
         setBusy("clean");
         try {
             await refreshDrafts();
         } catch {
-            // refresh failure is non-fatal; we'll fall through and
-            // let pickDraftId decide based on whatever we already had.
+            // refresh failure is non-fatal; pickDraftId falls back
+            // to whatever was already in state.
         }
         const did = pickDraftId();
         if (!did) {
@@ -483,9 +470,6 @@ function SuggestTab({ onJump, drafts, refreshDrafts }: {
         setBusy("merge");
         setApplyMsg(null);
         setMergeResult(null);
-        // Refresh drafts too so SuggestTab sees the latest state.
-        // No-op for merge itself; only doClean needs drafts, but
-        // we keep the suggestion set fresh across all three actions.
         try { await refreshDrafts(); } catch {}
         try {
             const r = await api.findMerges(10, "random");
@@ -665,9 +649,6 @@ function SuggestTab({ onJump, drafts, refreshDrafts }: {
     );
 }
 
-// ============================================================
-// Settings tab — set OpenAI key (in-memory only)
-// ============================================================
 function SettingsTab() {
     const t = useTranslations();
     const [status, setStatus] = useState<LLMStatus | null>(null);
@@ -687,14 +668,14 @@ function SettingsTab() {
             setProvider(d.provider);
             setModel(d.model || (d.providers || []).find(p => p.name === d.provider)?.default_model || "");
         } catch (e) {
-            // backend not reachable
+            // backend not reachable — UI shows idle state
         }
     };
 
     useEffect(() => { refresh(); }, []);
 
-    // When the user picks a different provider, auto-fill the model field
-    // with that provider's default so they do not have to type it in.
+    // Auto-fill the model field with the provider's default so the
+    // user doesn't have to type it in.
     const onProviderChange = (newProvider: string) => {
         setProvider(newProvider);
         const meta = (status?.providers || []).find(p => p.name === newProvider);
@@ -735,9 +716,9 @@ function SettingsTab() {
     const runTest = async () => {
         setTesting(true);
         setTestResult(null);
-        // Always send the current form values, even if apiKey is empty.
-        // This way the user gets feedback about the values they just
-        // typed in, not whatever is in the backend runtime override.
+        // Send the form values, even if apiKey is empty. This way the
+        // user gets feedback about what they just typed, not whatever
+        // is already in the runtime override.
         const body = {
             provider,
             api_key: apiKey,
@@ -773,7 +754,7 @@ function SettingsTab() {
         <div className="assistant-tab-body">
             <p className="assistant-hint">{t("assistant.settingsHint")}</p>
 
-            {/* Connection status light. Hover for vendor name + detail. */}
+            {/* Connection status light. Hover for vendor + detail. */}
             <div
                 className={`status-light ${isConnected ? "ok" : isFailed ? "bad" : "unknown"}`}
                 title={testResult
@@ -865,9 +846,6 @@ function SettingsTab() {
     );
 }
 
-// ============================================================
-// Draft tab — quick save-to-draft + list unpromoted drafts + promote
-// ============================================================
 function DraftTab({ onJump }: { onJump: (id: string) => void }) {
     const t = useTranslations();
     const [drafts, setDrafts] = useState<DraftOut[]>([]);

@@ -1,11 +1,7 @@
 // ExportModal — pick nodes (multi-select) and download them as a
-// .zip of .md files. The zip is generated server-side by
-// /api/nodes/export-md-batch and we hand the URL to a <a download>
-// to trigger the browser's "Save as" dialog. The user can pick
-// their Downloads folder, by default it lands there.
-//
-// We never write to the user's filesystem ourselves; the browser
-// takes care of the save dialog and the user picks the location.
+// .zip of .md files generated server-side by /api/nodes/export-md-batch.
+// The browser handles the save dialog; we never write to the
+// user's filesystem ourselves.
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "../lib/api";
@@ -101,7 +97,6 @@ export default function ExportModal({ onClose , modalMode = "default", onSetMode
             document.body.appendChild(a);
             a.click();
             a.remove();
-            // Free the blob URL after a tick so the download can start.
             setTimeout(() => URL.revokeObjectURL(url), 1000);
         } catch (e: any) {
             setError(e?.message || String(e));

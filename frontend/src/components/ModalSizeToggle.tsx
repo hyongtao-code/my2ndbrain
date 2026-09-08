@@ -28,7 +28,6 @@ export default function ModalSizeToggle({
                 aria-label={t("modal.sizeQuarter")}
                 aria-pressed={mode === "default"}
             >
-                {/* 1/4 icon: square outline + filled leftmost quarter */}
                 <svg width={14} height={14} viewBox="0 0 16 16" fill="none"
                      stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
                      strokeLinejoin="round" aria-hidden="true">
@@ -43,7 +42,6 @@ export default function ModalSizeToggle({
                 aria-label={t("modal.sizeHalf")}
                 aria-pressed={mode === "half"}
             >
-                {/* 1/2 icon: square outline + filled left half */}
                 <svg width={14} height={14} viewBox="0 0 16 16" fill="none"
                      stroke="currentColor" strokeWidth={1.4} strokeLinecap="round"
                      strokeLinejoin="round" aria-hidden="true">

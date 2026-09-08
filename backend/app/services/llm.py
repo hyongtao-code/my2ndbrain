@@ -13,42 +13,38 @@ from __future__ import annotations
 
 import json
 
-# --------- defensive proxy env sanitisation ---------
-# Some shell environments (and some launch wrappers like nohup
-# when invoked from a particular shell) rewrite ALL_PROXY from
-# "socks5://..." to "socks://...". httpx 0.28 only accepts the
-# schemes http, https, socks5, socks5h for proxy URLs, so a
-# "socks://" entry raises "ValueError: Unknown scheme for proxy
-# URL" the moment any httpx call fires. The backend does not
-# need SOCKS proxying — it talks to LLM providers over HTTPS
-# (via HTTPS_PROXY) and downloads the sentence-transformers
-# model once at startup (cached after). We therefore drop the
-# SOCKS entries from the inherited env at import time so the
-# backend always works. Users who need SOCKS should set
-# HTTPS_PROXY=http://... to a local SOCKS-to-HTTP gateway.
 import os as _os_sanitise
 import re
 from typing import Any
 
 from app.core.config import get_settings
 
+# Defensive proxy env sanitisation. Some shells / launch wrappers
+# rewrite ALL_PROXY from "socks5://..." to "socks://...", which httpx
+# 0.28 rejects with "Unknown scheme for proxy URL" the moment any
+# httpx call fires. We talk to LLM providers over HTTPS and only
+# need SOCKS if the user fronted it with a local SOCKS-to-HTTP gateway
+# (which they would set via HTTPS_PROXY). Drop any inherited
+# socks:// entries at import time so the backend always starts.
 for _proxy_var in ("all_proxy", "ALL_PROXY"):
     _proxy_val = _os_sanitise.environ.get(_proxy_var, "")
     if _proxy_val.startswith("socks://"):
         _os_sanitise.environ.pop(_proxy_var, None)
 del _os_sanitise, _proxy_var, _proxy_val
-# --------- provider registry ---------
-# Each provider has:
-#   - kind:        "openai-compat" or "gemini"
-#   - label:       human-readable vendor name
-#   - base_url:    API base (only used by openai-compat)
-#   - default_model: a sensible default to pre-fill the model field
-#   - api_key_label: placeholder hint shown next to the key input
+
+
+# Provider registry. Each entry:
+#   - kind:           "local" | "openai-compat" | "gemini"
+#   - label:          human-readable vendor name
+#   - base_url:       API base (only used by openai-compat / gemini)
+#   - default_model:  pre-fill for the model field in the UI
+#   - needs_api_key:  drives whether the API-key input is required
+#   - api_key_label:  placeholder hint shown next to the key input
 #
 # "openai-compat" providers reuse the OpenAI Chat Completions shape
 # (DeepSeek, Moonshot Kimi, Qwen DashScope, MiniMax M3 all conform).
 # "gemini" uses the Google Generative Language REST API.
-# We keep "ollama" registered too so users can target a local llama.cpp
+# We keep "ollama" registered so users can target a local llama.cpp
 # server via the same UI.
 PROVIDERS = {
     "heuristic": {
@@ -147,8 +143,8 @@ def provider_needs_api_key(name: str) -> bool:
     return PROVIDERS.get(name, {}).get("needs_api_key", False)
 
 
-# --------- runtime overrides (set by user via /api/llm/config) ---------
-# In-memory only: cleared on backend restart. Not persisted to DB.
+# In-memory runtime overrides. Set via POST /api/llm/config; cleared on
+# backend restart. Not persisted to DB.
 _runtime_overrides: dict[str, str] = {}
 
 
@@ -192,11 +188,11 @@ def resolve_provider() -> dict[str, Any]:
     }
 
 
-# --------- heuristic implementation ---------
-
 _STOPWORDS = set(["a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "has", "have", "he", "her", "his", "i", "if", "in", "is", "it", "its", "of", "on", "or", "our", "she", "that", "the", "they", "this", "to", "was", "we", "were", "what", "when", "which", "who", "why", "will", "with", "you", "your", "not", "no", "but", "do", "does", "did", "done", "been", "being", "am", "is", "are", "was", "were", "so", "than", "then", "there", "here", "these", "those", "some", "any", "all", "most", "more", "less", "much", "many", "very", "can", "could", "should", "would", "may", "might", "shall", "will"])
 
-# 简单的术语优先级字典 — 命中后会被识别为更"有意义"
+# Domain terms: a hit gives a token weight boost in `_domain_tokens`.
+# Generic English words fall back to a length-only rule; these names
+# are short and dense enough that they would otherwise be filtered out.
 _DOMAIN_HINTS = {
     "rlhf", "grpo", "ppo", "dpo", "kto", "rm", "reward model", "policy",
     "lora", "qlora", "adalora", "longlora", "peft",
@@ -236,17 +232,16 @@ def _jaccard(a: list[str], b: list[str]) -> float:
 
 def heuristic_complete(prompt: str, json_schema: dict | None) -> dict:
     """Pure local heuristic used as the default LLM. No network call."""
-    # JSON shape for suggest-improvements
     if json_schema and "action" in json_schema.get("properties", {}):
         return _heuristic_suggest(prompt)
-    # The title_check call from ingest_node passes a dict {"title":..., "content":...}
-    # as the second arg. Detect by presence of those keys (cheap duck-typing).
+    # `title_check` is called by ingest_node as llm_call("title_check",
+    # {"title": ..., "content": ...}) — the second arg is data, not a real
+    # JSON schema. Detect that legacy shape by duck-typing on its keys.
     if isinstance(json_schema, dict) and (
-        "ok" in json_schema.get("properties", {})  # real schema
-        or ("title" in json_schema and "content" in json_schema)  # legacy shape
+        "ok" in json_schema.get("properties", {})
+        or ("title" in json_schema and "content" in json_schema)
     ):
         return _heuristic_title_check(prompt, json_schema)
-    # Default: return whatever the prompt asks for as opaque dict.
     return {"_hint": "heuristic", "echo": (prompt or "")[:200]}
 
 
@@ -274,14 +269,11 @@ def _heuristic_title_check(prompt: str, json_schema: dict | None) -> dict:
             elif low.startswith("content:"):
                 content = line.split(":", 1)[1].strip()
 
-    # Domain-token overlap between title and content. If every key word in
-    # the title is also in the content (after tokenization) the title is
-    # consistent with the content.
     title_tokens = _domain_tokens(title)
     content_tokens = _domain_tokens(content)
     if not title_tokens:
-        # Title has no recognisable content words — fall back to a generic
-        # "ok" so the user does not see noise on every node add.
+        # Nothing meaningful to compare — say "ok" silently so the user
+        # is not warned every time they add a short title.
         return {
             "ok": True,
             "confidence": 0.0,
@@ -289,8 +281,6 @@ def _heuristic_title_check(prompt: str, json_schema: dict | None) -> dict:
             "suggestion": "",
         }
     overlap = _jaccard(title_tokens, content_tokens)
-    # If a big chunk of the title tokens are present in the content, the
-    # title is supported. Otherwise it might be misleading.
     ok = overlap >= 0.5
     if ok:
         reason = f"title vocabulary overlaps with content ({overlap:.0%})"
@@ -316,9 +306,9 @@ def _heuristic_suggest(prompt: str) -> dict:
     linked, and recommends either 'link' or 'merge' depending on the
     similarity score.
     """
-    # The prompt is built by the route; this fallback just returns a
-    # placeholder so the API contract is honoured. The real AI path
-    # (when an openai key is configured) is in `_openai_suggest`.
+    # The route already built the prompt; the heuristic has no real
+    # recommendation to make — return a placeholder so the API contract
+    # is honoured. The real AI path lives in `_openai_suggest`.
     return {
         "action": "noop",
         "rationale": "heuristic fallback: no LLM configured. Set an OpenAI key in /api/llm/config to get real suggestions.",
@@ -326,9 +316,8 @@ def _heuristic_suggest(prompt: str) -> dict:
     }
 
 
-# --------- OpenAI-compatible client (used by OpenAI / DeepSeek / Kimi /
-# Qwen / MiniMax / Ollama / anything else with a /chat/completions route) ---
-
+# OpenAI-compatible client. Used by OpenAI / DeepSeek / Kimi / Qwen /
+# MiniMax / Ollama / any provider exposing a /chat/completions route.
 def _openai_compat_suggest(prompt: str, json_schema: dict | None) -> dict:
     """Hit the configured provider's /chat/completions endpoint and return
     the parsed JSON content. Returns a fallback `{action:"noop",...}` dict
@@ -351,11 +340,11 @@ def _openai_compat_suggest(prompt: str, json_schema: dict | None) -> dict:
         ],
         "temperature": 0.2,
     }
-    # Only OpenAI itself supports response_format json_object reliably; the
-    # other providers may ignore it but the prompt asks for JSON anyway.
+    # Only OpenAI itself honours response_format reliably; the others
+    # ignore it but the prompt already asks for JSON.
     if cfg["provider"] == "openai":
         payload["response_format"] = {"type": "json_object"}
-    # MiniMax M3 emits a "<think>...</think>" reasoning block before
+    # MiniMax M3 emits a "..." reasoning block before
     # the actual answer, which breaks json.loads. The provider accepts
     # a non-standard {"thinking": {"type": "disabled"}} parameter to
     # suppress that block at the source. Send it whenever the user is
@@ -370,18 +359,16 @@ def _openai_compat_suggest(prompt: str, json_schema: dict | None) -> dict:
             r.raise_for_status()
             data = r.json()
         content = data["choices"][0]["message"]["content"]
-        # Defensive: strip any <think>...</think> block a model might
-        # still emit (different providers may have different flags).
+        # Belt-and-braces: strip a ... block a model might
+        # still emit even with thinking disabled, plus any ```json```
+        # fence the provider wraps around the answer.
         content = re.sub(r"<think>.*?</think>\s*", "", content, flags=re.DOTALL)
-        # Also strip ```json ... ``` fences some providers add.
         content = re.sub(r"^\s*```(?:json)?\s*", "", content)
         content = re.sub(r"\s*```\s*\Z", "", content)
         return json.loads(content)
     except Exception as e:
         return {"action": "noop", "rationale": f"{cfg['provider']} call failed: {e}", "nodes": []}
 
-
-# --------- free-form chat (used by AssistantPanel Ask-Tab) ---------
 
 def _openai_compat_chat(prompt: str, *, system: str | None = None) -> str:
     """Same transport as _openai_compat_suggest but returns the raw
@@ -415,7 +402,9 @@ def _openai_compat_chat(prompt: str, *, system: str | None = None) -> str:
             r.raise_for_status()
             data = r.json()
         content = data["choices"][0]["message"]["content"]
-        # Strip any reasoning block the model might still emit.
+        # Strip any reasoning block the model might still emit (different
+        # providers expose different flags; this regex is the last line
+        # of defence even when we already set thinking=disabled above).
         content = re.sub(r"<think>.*?</think>\s*", "", content, flags=re.DOTALL)
         return content.strip()
     except Exception as e:
@@ -455,7 +444,6 @@ def complete_chat(prompt: str, *, system: str | None = None) -> str:
         return _openai_compat_chat(prompt, system=system)
     if kind == "gemini":
         return _gemini_chat(prompt, system=system)
-    # local / unknown — heuristic
     return _heuristic_chat(prompt)
 
 
@@ -468,8 +456,6 @@ def _heuristic_chat(prompt: str) -> str:
         f"你的问题：{prompt[:200]})"
     )
 
-
-# --------- Gemini (Google Generative Language API) ---------
 
 def _gemini_suggest(prompt: str, json_schema: dict | None) -> dict:
     """Hit Gemini's generateContent endpoint. Returns parsed JSON."""
@@ -490,15 +476,12 @@ def _gemini_suggest(prompt: str, json_schema: dict | None) -> dict:
             r.raise_for_status()
             data = r.json()
         text = data["candidates"][0]["content"]["parts"][0]["text"]
-        # Gemini sometimes wraps JSON in ```json ... ``` fences — strip them.
         text = re.sub(r"^\s*```(?:json)?\s*", "", text)
         text = re.sub(r"\s*```\s*\Z", "", text)
         return json.loads(text)
     except Exception as e:
         return {"action": "noop", "rationale": f"gemini call failed: {e}", "nodes": []}
 
-
-# --------- public entry ---------
 
 def complete(prompt: str, json_schema: dict | None = None) -> dict:
     cfg = resolve_provider()
@@ -508,7 +491,6 @@ def complete(prompt: str, json_schema: dict | None = None) -> dict:
         return _openai_compat_suggest(prompt, json_schema)
     if kind == "gemini":
         return _gemini_suggest(prompt, json_schema)
-    # "local" or unknown → heuristic
     return heuristic_complete(prompt, json_schema)
 
 

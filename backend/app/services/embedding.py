@@ -60,9 +60,9 @@ class _TfidfSvdEmbedder(_BaseEmbedder):
 
     def __init__(self, dim: int):
         self.dim = dim
-        # Newer sklearn (>=1.4) always calls `tokenizer` once more on the
+        # sklearn >=1.4 always calls `tokenizer` once more on the
         # preprocessed doc and assumes the preprocessor returns a string.
-        # We do lowercase + trivial cleanup in preprocessor and let the
+        # We lowercase + trivial cleanup in preprocessor and let the
         # default `token_pattern` split into words.
         self.vectorizer = TfidfVectorizer(
             preprocessor=lambda s: (s or "").lower(),

@@ -27,7 +27,6 @@ def _on_connect(dbapi_connection, _):
 SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
 Base = declarative_base()
 
-# Re-export Vector so models don't need to import pgvector directly
 __all__ = ["Base", "Session", "SessionLocal", "Vector", "engine", "get_db"]
 
 

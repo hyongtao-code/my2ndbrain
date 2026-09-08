@@ -49,10 +49,10 @@ def read_node(node_id: str, db: Session = Depends(get_db)) -> dict:
     if not node:
         raise HTTPException(404, "node not found")
     d = _node_to_dict(node)
-    # Neighbors from BOTH directions (edges_from and edges_to). If
-    # a bidirectional pair exists (A→B AND B→A), dedup by target
-    # id so the UI doesn't render the same neighbor twice with
-    # different similarity scores. We keep the higher score.
+    # Neighbors from BOTH directions. If a bidirectional pair exists
+    # (A→B AND B→A), dedup by target id so the UI doesn't render the
+    # same neighbor twice with different similarity scores; keep the
+    # higher score.
     raw_neighbors = (
         [{"id": str(e.target_node_id),
           "score": float(e.similarity_score or 0.0),
@@ -91,7 +91,6 @@ def update_node(node_id: str, payload: NodeUpdate, db: Session = Depends(get_db)
         node.keywords = payload.keywords
     if payload.importance is not None:
         node.importance = payload.importance
-    # re-embed if title or content changed
     if payload.title is not None or payload.content is not None:
         node.embedding = embed_texts([f"{node.title}\n{node.content}"])[0].tolist()
     db.commit()

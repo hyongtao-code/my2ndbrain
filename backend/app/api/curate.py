@@ -31,8 +31,6 @@ from app.services.llm import complete_chat, resolve_provider
 router = APIRouter(prefix="/api/llm/curate", tags=["llm-curate"])
 
 
-# --------- shared helpers ---------
-
 def _heuristic_fallback_suggest(action: str, rationale: str = "未配置大模型，使用本地 heuristic") -> dict:
     """A deterministic fallback when no LLM is configured."""
     return {
@@ -59,7 +57,6 @@ def _sample_nodes(db: Session, limit: int, strategy: str) -> list[KnowledgeNode]
     reproducible for a given salt.
     """
     salt = secrets.token_hex(2)  # 4 hex chars; varies per request
-    # Cast to a deterministic ordering key that depends on salt.
     nodes = list(db.scalars(select(KnowledgeNode)).all())
     if not nodes:
         return []
@@ -68,12 +65,12 @@ def _sample_nodes(db: Session, limit: int, strategy: str) -> list[KnowledgeNode]
     elif strategy == "oldest":
         nodes.sort(key=lambda n: getattr(n, "created_at", None) or "")
     else:  # random
-        # Stable per-salt hash-based sort
+        # Stable per-salt hash-based sort.
         nodes.sort(key=lambda n: hash((salt, str(n.id))))
 
-    # If we have more than `limit` nodes, take a sliding window that
-    # depends on the salt so different calls return different
-    # subsets.
+    # If we have more than `limit` nodes, take a sliding window whose
+    # start offset depends on the salt so different calls return
+    # different subsets.
     if len(nodes) <= limit:
         return nodes
     span = len(nodes) - limit
@@ -108,8 +105,6 @@ def _pick_popular_category(db: Session) -> str | None:
     return max(counts.items(), key=lambda kv: kv[1])[0]
 
 
-# --------- shared prompt helpers ---------
-
 PROMPT_SYSTEM_NOTE = (
     "You are an AI curator for a personal knowledge graph. "
     "Output strict JSON only — no prose, no markdown fences."
@@ -122,12 +117,10 @@ def _extract_json(text: str) -> dict | None:
     text = re.sub(r"<think>.*?</think>\s*", "", text, flags=re.DOTALL)
     text = re.sub(r"^\s*```(?:json)?\s*", "", text)
     text = re.sub(r"\s*```\s*\Z", "", text)
-    # Try direct
     try:
         return json.loads(text)
     except Exception:
         pass
-    # Try to find the first {...} block
     m = re.search(r"\{[\s\S]*\}", text)
     if m:
         try:
@@ -136,8 +129,6 @@ def _extract_json(text: str) -> dict | None:
             return None
     return None
 
-
-# --------- POST /clean-draft ---------
 
 class CleanDraftIn(BaseModel):
     draft_id: str
@@ -184,11 +175,11 @@ def curate_clean_draft(payload: CleanDraftIn, db: Session = Depends(get_db)):
 
     cfg = resolve_provider()
     if cfg["provider"] == "heuristic":
-        # Local fallback: pick the first non-empty line as title and
-        # treat everything else as content.
+        # Local fallback: first non-empty line as title, everything else
+        # as content; leave category blank so the heuristic classifier
+        # fills it in later.
         lines = [l for l in raw.splitlines() if l.strip()]
         title = (lines[0][:30] if lines else "(untitled)").strip()
-        # naive category: leave blank so the heuristic classifier kicks in
         return {
             "provider": "heuristic",
             "title": title,
@@ -211,8 +202,6 @@ def curate_clean_draft(payload: CleanDraftIn, db: Session = Depends(get_db)):
         "rationale": (parsed.get("rationale") or "").strip(),
     }
 
-
-# --------- POST /find-merges ---------
 
 class FindMergesIn(BaseModel):
     limit: int = 10
@@ -307,8 +296,6 @@ def curate_find_merges(payload: FindMergesIn, db: Session = Depends(get_db)):
     }
 
 
-# --------- POST /find-edges ---------
-
 class FindEdgesIn(BaseModel):
     limit: int = 10
     sample_strategy: str = "random"
@@ -341,7 +328,8 @@ def curate_find_edges(payload: FindEdgesIn, db: Session = Depends(get_db)):
         }
 
     # Build a set of existing edges among these nodes so we don't
-    # propose duplicate links.
+    # propose duplicate links. Track both directions since edges are
+    # stored as ordered pairs but the UI may surface them either way.
     node_ids = {str(n.id) for n in nodes}
     edges = list(
         db.scalars(
@@ -375,8 +363,8 @@ def curate_find_edges(payload: FindEdgesIn, db: Session = Depends(get_db)):
 
     cfg = resolve_provider()
     if cfg["provider"] == "heuristic":
-        # Heuristic fallback: use embedding similarity within this
-        # category to propose top pairs.
+        # Heuristic fallback: top-K pairs by embedding similarity within
+        # this category, skipping pairs that are already linked.
         try:
             import numpy as np
             embs: list[list[float]] = []
@@ -457,8 +445,6 @@ def curate_find_edges(payload: FindEdgesIn, db: Session = Depends(get_db)):
     }
 
 
-# --------- Step 3: retrieval-augmented Q&A ---------
-
 class AskIn(BaseModel):
     question: str
     top_k: int = 8
@@ -475,19 +461,16 @@ def _retrieve_relevant_nodes(db: Session, question: str, top_k: int) -> list[dic
         .limit(top_k)
     )
     rows = db.execute(stmt).all()
-    # Skip rows whose embedding is degenerate (zero-norm). These
-    # are old test-residue nodes whose embedding never got
-    # populated and produce NaN distances. They never help with
-    # RAG anyway.
+    # Filter out rows whose embedding is degenerate (zero-norm). These
+    # are usually test-residue nodes whose embedding was never populated;
+    # they produce NaN distances and contribute nothing useful to RAG.
     def _is_finite(x: float) -> bool:
         return x is not None and not (isinstance(x, float) and (math.isnan(x) or math.isinf(x)))
     rows = [(n, d) for (n, d) in rows if _is_finite(d)]
     out = []
     for n, dist in rows:
-        # Sanitize NaN/inf to 0.0 (happens when a node's embedding
-        # is the zero vector, which makes cosine distance
-        # undefined). Without this the response crashes FastAPI's
-        # json.dumps with "Out of range float values are not JSON
+        # Sanitize NaN/inf to 0.0. Without this, FastAPI's json.dumps
+        # crashes with "Out of range float values are not JSON
         # compliant: nan".
         try:
             sim = 1.0 - float(dist)
@@ -519,7 +502,6 @@ def curate_ask(payload: AskIn, db: Session = Depends(get_db)):
 
     cfg = resolve_provider()
     if cfg["provider"] == "heuristic":
-        # Heuristic fallback: list the nodes with summaries.
         if not related:
             return {
                 "provider": "heuristic",
@@ -546,7 +528,6 @@ def curate_ask(payload: AskIn, db: Session = Depends(get_db)):
             "used_nodes": [],
         }
 
-    # Build the prompt with RAG context
     ctx_lines = []
     for i, r in enumerate(related, 1):
         ctx_lines.append(f"[{i}] id={r['id']} title={r['title']!r} category={r['category']!r}")
@@ -571,7 +552,8 @@ def curate_ask(payload: AskIn, db: Session = Depends(get_db)):
     )
     answer = complete_chat(prompt, system=system)
 
-    # Extract which notes we used (best effort)
+    # Best-effort extract: model is asked to emit "USED: [N] [M]" on the
+    # last line; parse that and map back to note ids.
     used: list[str] = []
     m = re.search(r"USED:\s*(.*)", answer)
     if m:
@@ -583,7 +565,7 @@ def curate_ask(payload: AskIn, db: Session = Depends(get_db)):
             except ValueError:
                 pass
     if not used:
-        # Conservative default: assume all retrieved notes were used.
+        # Conservative default: assume the top retrieved notes were used.
         used = [r["id"] for r in related[: min(3, len(related))]]
 
     return {

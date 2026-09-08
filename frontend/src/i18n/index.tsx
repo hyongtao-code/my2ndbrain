@@ -30,7 +30,7 @@ function detectInitial(): Locale {
             return stored as Locale;
         }
     } catch {
-        /* localStorage may be unavailable in private mode */
+        // localStorage may be unavailable in private mode.
     }
     const nav = window.navigator?.language?.toLowerCase() ?? "";
     if (nav.startsWith("en")) return "en";
@@ -65,15 +65,14 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
         try {
             window.localStorage.setItem(STORAGE_KEY, l);
         } catch {
-            /* ignore */
+            // ignore
         }
-        // Reflect in <html lang> so screen readers and CSS :lang() work.
         document.documentElement.lang = l;
     }, []);
 
     const value = useMemo(() => ({ locale, setLocale }), [locale, setLocale]);
 
-    // Keep <html lang> in sync with current locale.
+    // Keep <html lang> in sync with current locale (screen readers, CSS :lang()).
     useEffect(() => {
         document.documentElement.lang = locale;
     }, [locale]);

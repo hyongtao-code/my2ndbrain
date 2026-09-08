@@ -22,9 +22,9 @@ from app.services.knowledge import ingest_node
 router = APIRouter(prefix="/api/nodes", tags=["nodes"])
 
 
-# Frontmatter is optional but common in .md files. We strip a leading
-# YAML frontmatter block (--- ... ---) and use the FIRST non-empty
-# line of the body as the title.
+# YAML frontmatter is optional in .md files. We strip a leading
+# ``--- ... ---`` block so the heuristic does not parse YAML as part of
+# the title/content.
 _FRONTMATTER_RE = re.compile(r"\A---\s*\n.*?\n---\s*\n", re.DOTALL)
 
 
@@ -85,11 +85,11 @@ async def import_md(
     failed = 0
     for f in files:
         filename = f.filename or "(unnamed)"
-        # Read raw bytes, then decode as utf-8 (most common .md
-        # encoding); fall back to latin-1 if it fails so the user
-        # still gets *something* in there.
         try:
             raw = await f.read()
+            # .md is overwhelmingly UTF-8; if a file happens to be in a
+            # legacy encoding, fall back to latin-1 so the user still gets
+            # *something* instead of an import error.
             try:
                 content = raw.decode("utf-8")
             except UnicodeDecodeError:
@@ -103,13 +103,12 @@ async def import_md(
                 ))
                 failed += 1
                 continue
-            # Filename as fallback title
             title, body = _parse_md(content, filename)
             res = ingest_node(
                 db,
                 title=title,
                 content=body,
-                category="",          # heuristic will fill in
+                category="",
                 importance=5.0,
                 source="md-import",
                 auto_link=True,
@@ -153,8 +152,6 @@ def export_md(node_id: str, db: Session = Depends(get_db)) -> StreamingResponse:
     if not node:
         raise HTTPException(404, "node not found")
     body = node.content or ""
-    # Build a markdown document: title as # heading, then a
-    # frontmatter-ish metadata block (key: value), then the body.
     title = str(node.title)
     summary = str(node.summary or "")
     category = str(node.category or "")
@@ -165,7 +162,6 @@ def export_md(node_id: str, db: Session = Depends(get_db)) -> StreamingResponse:
         md_lines += [f"_category: {category}_", ""]
     md_lines += [body]
     md = "\n".join(md_lines)
-    # Strip filesystem-unsafe chars but keep CJK / unicode.
     safe_title = re.sub(r'[\x00-\x1f<>:"/\\|?*]+', "_", title).strip()[:80] or node_id[:8]
     filename_ascii = safe_title.encode("ascii", "replace").decode("ascii").replace("?", "_") or node_id[:8]
     filename_utf8 = quote(safe_title, safe="")
@@ -225,7 +221,6 @@ def export_md_batch(
                 md_lines += [f"_category: {category}_", ""]
             md_lines += [node.content or ""]
             md = "\n".join(md_lines)
-            # Strip filesystem-unsafe chars but keep CJK / unicode.
             safe = re.sub(r'[\x00-\x1f<>:"/\\|?*]+', "_", title).strip()[:80] or uid.hex[:8]
             # Ensure unique filename inside the zip
             arcname = f"{safe}.md"

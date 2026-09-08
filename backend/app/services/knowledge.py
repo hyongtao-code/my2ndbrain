@@ -27,10 +27,6 @@ from app.services.llm import llm_call
 settings = get_settings()
 
 
-# =========================================================
-# Node CRUD
-# =========================================================
-
 def _node_to_dict(node: KnowledgeNode) -> dict:
     d = node.to_dict()
     d["neighbor_count"] = len(node.edges_from) + len(node.edges_to)
@@ -62,10 +58,6 @@ def delete_node(db: Session, node_id: str) -> bool:
     return True
 
 
-# =========================================================
-# Ingest: title check, extract, embed, link
-# =========================================================
-
 def ingest_node(
     db: Session,
     *,
@@ -79,20 +71,15 @@ def ingest_node(
 ) -> dict:
     """Create a node with full AI pipeline. Returns ingest summary."""
 
-    # 1) AI title check
     title_check = llm_call("title_check", {"title": title, "content": content})
-
-    # 2) AI extraction (keywords + summary + category hint)
     extracted = llm_call("extract", {"title": title, "content": content})
 
     final_keywords = list(dict.fromkeys((keywords or []) + extracted.get("keywords", [])))
     final_category = category or extracted.get("category_hint") or "未分类"
 
-    # 3) Embedding
     embed_input = f"{title}\n{content}"
     vec = embed_texts([embed_input])[0].tolist()
 
-    # 4) Persist
     node = KnowledgeNode(
         title=title,
         content=content,
@@ -106,12 +93,10 @@ def ingest_node(
     db.add(node)
     db.flush()  # need node.id for edges
 
-    # 5) Auto-link to nearest neighbours
     suggested_links: list[dict] = []
     if auto_link:
         suggested_links = auto_link_new_node(db, node)
 
-    # 6) Cluster upsert
     cluster_suggestion = upsert_cluster(db, final_category, final_keywords)
 
     db.commit()
@@ -137,8 +122,8 @@ def auto_link_new_node(db: Session, node: KnowledgeNode, threshold: float | None
     target_vec = list(node.embedding) if node.embedding is not None else []
     target_kw = {k.lower() for k in (node.keywords or [])}
 
-    # SQLAlchemy ORM: pgvector's Vector column handles binding via
-    # cosine_distance / l2_distance / max_inner_product.
+    # pgvector's Vector column handles binding via cosine_distance /
+    # l2_distance / max_inner_product — see the SQLAlchemy ORM docs.
     dist_col = KnowledgeNode.embedding.cosine_distance(target_vec).label("dist")
     stmt = (
         select(KnowledgeNode, dist_col)
@@ -156,7 +141,9 @@ def auto_link_new_node(db: Session, node: KnowledgeNode, threshold: float | None
         except (TypeError, ValueError):
             dist_f = 1.0
         emb_sim = max(0.0, 1.0 - dist_f)
-        # jaccard over keywords — boosts "obviously related" cases like QLoRA/LoRA
+        # Jaccard over keywords nudges "obviously related" pairs
+        # (e.g. QLoRA / LoRA) over the threshold even when their
+        # embeddings are noisy.
         other_kw = {k.lower() for k in (other.keywords or [])}
         if target_kw or other_kw:
             jacc = len(target_kw & other_kw) / max(1, len(target_kw | other_kw))
@@ -166,7 +153,6 @@ def auto_link_new_node(db: Session, node: KnowledgeNode, threshold: float | None
         if sim < threshold:
             continue
         a, b = sorted([str(node.id), str(other.id)])
-        # avoid duplicates (ordered pair)
         existing = db.execute(
             select(KnowledgeEdge).where(
                 (KnowledgeEdge.source_node_id == uuid.UUID(a)) &
@@ -192,10 +178,6 @@ def auto_link_new_node(db: Session, node: KnowledgeNode, threshold: float | None
         })
     return applied
 
-
-# =========================================================
-# Clusters
-# =========================================================
 
 CLUSTER_COLORS = [
     "#7c5cff", "#00d4ff", "#ff5cad", "#ffd166", "#06d6a0",
@@ -238,7 +220,6 @@ def upsert_cluster(db: Session, name: str, keywords: list[str]) -> dict:
     else:
         merged = sorted(set((cluster.keywords or []) + keywords))
         cluster.keywords = merged
-    # refresh size
     cluster.size = db.execute(
         text("SELECT COUNT(*) FROM knowledge_node WHERE category = :c"), {"c": name}
     ).scalar_one()
@@ -260,14 +241,10 @@ def recompute_clusters(db: Session) -> int:
                     bag.append(kw)
         c.keywords = bag[:50]
         c.size = len(rows)
-        c.color = _pick_color(c.name)            # re-roll colour to avoid collisions
+        c.color = _pick_color(c.name)            # re-roll to avoid collisions
     db.commit()
     return len(clusters)
 
-
-# =========================================================
-# Graph layout (3D sphere)
-# =========================================================
 
 def _fibonacci_sphere(n: int) -> np.ndarray:
     """Place n points roughly evenly on a sphere using the Fibonacci spiral."""
@@ -298,8 +275,6 @@ def build_graph_payload(db: Session, category: str | None = None) -> dict:
     """
     if category is not None and category != "":
         all_nodes = list_nodes(db, limit=2000)
-        # Force-fetch the category attribute on each row so the SQLAlchemy
-        # Column doesn't trip up Pyright's strict boolean check.
         nodes = [
             n for n in all_nodes
             if (getattr(n, "category", None) or "未分类") == category
@@ -311,7 +286,6 @@ def build_graph_payload(db: Session, category: str | None = None) -> dict:
     n = len(nodes)
     base_pts = _fibonacci_sphere(n) * 5.0  # radius 5
 
-    # per-cluster centroid
     cluster_members: dict[str, list[int]] = defaultdict(list)
     for idx, nd in enumerate(nodes):
         cluster_members[nd.category or "未分类"].append(idx)
@@ -322,7 +296,6 @@ def build_graph_payload(db: Session, category: str | None = None) -> dict:
         if len(ids) < 2:
             continue
         centroid = base_pts[ids].mean(axis=0)
-        # re-normalise centroid to the sphere surface so we keep distance to origin
         norm = np.linalg.norm(centroid)
         if norm > 0:
             centroid = centroid / norm * RADIUS
@@ -332,10 +305,10 @@ def build_graph_payload(db: Session, category: str | None = None) -> dict:
             if norm > 0:
                 base_pts[i] = base_pts[i] / norm * RADIUS
 
-    # Sort categories by node-count desc so biggest gets the most saturated colour
+    # Largest clusters first → most saturated colour for the busiest group.
     sorted_names = sorted(cluster_members.keys(), key=lambda k: -len(cluster_members[k]))
     name_to_color = {name: _pick_color(name) for name in sorted_names}
-    # Resolve collisions by walking the palette
+    # Resolve hash collisions by walking the palette in order.
     used = set()
     final_colors: dict[str, str] = {}
     pool = list(CLUSTER_COLORS)
@@ -363,7 +336,6 @@ def build_graph_payload(db: Session, category: str | None = None) -> dict:
             "cluster_color": final_colors[cat],
         })
 
-    # edges — load all, then drop any that touch a node not in the filtered set
     all_edges = list(db.scalars(select(KnowledgeEdge)))
     if category:
         kept_ids = {str(n.id) for n in nodes}
@@ -405,10 +377,6 @@ def build_graph_payload(db: Session, category: str | None = None) -> dict:
     return {"nodes": n_descs, "edges": edge_descs, "clusters": cluster_descs, "stats": stats}
 
 
-# =========================================================
-# Assistant: organise, blind-spot, skill-gen
-# =========================================================
-
 def assistant_answer(db: Session, question: str, top_k: int = 8) -> dict:
     """Local 'RAG': embed the question, fetch nearest nodes, return a
     deterministic structured answer (no external LLM required)."""
@@ -433,7 +401,6 @@ def assistant_answer(db: Session, question: str, top_k: int = 8) -> dict:
             "similarity": round(1.0 - float(dist or 0.0), 4),
         })
 
-    # heuristic answer
     if not related:
         answer = "你的第二大脑里还没有相关知识。先新建一些节点，系统就能帮你组织了。"
     else:
@@ -445,8 +412,9 @@ def assistant_answer(db: Session, question: str, top_k: int = 8) -> dict:
             lines.append(f"  • 【{cat}】" + "、".join(titles[:5]))
         answer = "\n".join(lines)
 
-    # Blind-spot detection: collect every top-level keyword across all nodes
-    # and flag the ones NOT covered by the user's question cluster.
+    # Blind-spot: every top-level keyword across all nodes, minus the
+    # ones already covered by the question's focus categories. Tells the
+    # user which adjacent domains they have NOT explored.
     blindspot = detect_blindspots(db, focus_categories=[r["category"] for r in related])
     if blindspot["missing"]:
         answer += "\n\n⚠️  知识盲区提醒：\n" + "\n".join(f"  • {m}" for m in blindspot["missing"][:5])
@@ -488,7 +456,6 @@ def generate_skill(db: Session, focus: str | None = None) -> dict:
     if focus:
         cluster_name = focus
     else:
-        # pick the largest cluster
         rows = db.execute(text("""
             SELECT category, COUNT(*) AS n FROM knowledge_node
             GROUP BY category ORDER BY n DESC LIMIT 1
@@ -558,10 +525,6 @@ def organise_knowledge(db: Session, *, topic: str | None = None) -> dict:
         items.sort(key=lambda x: -x["importance"])
     return {"topic": topic, "tree": tree, "total": len(nodes)}
 
-# ============================================================
-# Drafts — transient inbox the user feeds before curation
-# ============================================================
-
 def create_draft(db: Session, *, content: str, source: str = "chat", pinned: bool = False) -> KnowledgeDraft:
     d = KnowledgeDraft(content=content, source=source, pinned=1 if pinned else 0)
     db.add(d)
@@ -572,7 +535,7 @@ def create_draft(db: Session, *, content: str, source: str = "chat", pinned: boo
 
 def list_drafts(db: Session, *, include_promoted: bool = False, limit: int = 500) -> list[KnowledgeDraft]:
     stmt = select(KnowledgeDraft).order_by(
-        KnowledgeDraft.pinned.desc(),  # pinned first
+        KnowledgeDraft.pinned.desc(),
         KnowledgeDraft.created_at.desc(),
     ).limit(limit)
     drafts = list(db.scalars(stmt).all())
@@ -610,8 +573,6 @@ def delete_draft(db: Session, draft_id: str) -> bool:
     db.commit()
     return True
 
-
-# ----- curation -----
 
 def _group_short_drafts(drafts: list[KnowledgeDraft]) -> list[list[KnowledgeDraft]]:
     """Heuristic: any two drafts with content <= 200 chars created within
@@ -654,7 +615,6 @@ def promote_drafts(
     """Turn a list of drafts into KnowledgeNodes.
     Returns a dict shaped like PromoteResponse.
     """
-    # 1. Load drafts
     drafts: list[KnowledgeDraft] = []
     for did in draft_ids:
         d = get_draft(db, did)
@@ -664,7 +624,6 @@ def promote_drafts(
     if not drafts:
         return {"results": [], "promoted_count": 0, "failed_count": len(draft_ids)}
 
-    # 2. Group: short drafts created close together get merged into one node
     groups = _group_short_drafts(drafts)
 
     results: list[dict] = []
@@ -673,18 +632,14 @@ def promote_drafts(
 
     for group in groups:
         try:
-            # Concatenate content if multiple drafts, join with double newline
             merged_content = "\n\n".join((d.content or "").strip() for d in group if d.content)
-            # If user provided a body override, use it instead of the AI/merged content
+            # body_override lets the user skip AI extraction entirely.
             content_for_ingest = body_override if body_override is not None else merged_content
-
-            # Use the first draft's source as the node source
             node_source = group[0].source or "draft"
 
-            # 3. Ingest via the standard pipeline (title check, auto-link, etc.)
             ingest_result = ingest_node(
                 db,
-                title=group[0].content[:60].strip() or "Untitled",  # initial title; AI extract may overwrite
+                title=group[0].content[:60].strip() or "Untitled",  # AI extract may overwrite
                 content=content_for_ingest,
                 category=None,  # let AI pick
                 keywords=None,
@@ -694,12 +649,10 @@ def promote_drafts(
             )
             new_node = ingest_result["node"]
 
-            # 4. Mark all drafts in this group as promoted + link to new node
             for d in group:
                 d.promoted_to_node_id = new_node["id"]
             db.commit()
 
-            # 5. Build per-group result
             results.append({
                 "draft_id": str(group[0].id),
                 "merged_with": [str(d.id) for d in group[1:]],

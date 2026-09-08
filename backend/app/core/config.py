@@ -9,7 +9,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 # .env is ignored by .gitignore (never committed); .env.example is the
 # canonical template users copy to .env and edit.
 def _repo_root() -> Path:
-    # this file lives at <repo>/backend/app/core/config.py
     return Path(__file__).resolve().parents[3]
 
 

@@ -1,12 +1,10 @@
 // ImportModal — upload .md files in batch and import them as new
-// knowledge nodes. Uses the browser file picker (input[type=file]) so
-// the user picks .md files from their local system; we never touch
-// the filesystem ourselves.
+// knowledge nodes via the browser file picker. We never touch the
+// filesystem ourselves; the user picks files locally.
 //
-// Read-only with respect to existing nodes: this modal only POSTs to
-// /api/nodes/import-md which only INSERTs new rows. The user can
-// delete imported nodes later via NodeDetail if they don't like the
-// result.
+// Read-only with respect to existing nodes: this modal only POSTs
+// to /api/nodes/import-md which only INSERTs new rows. Imported
+// nodes can be deleted later via NodeDetail.
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "../lib/api";
@@ -24,15 +22,15 @@ type Props = {
 
 type PendingFile = {
     file: File;
-    title: string;       // guessed from first heading / first line
-    body: string;        // full file content
+    title: string;
+    body: string;
     status: "ready" | "uploading" | "ok" | "error";
     error?: string;
     newNodeId?: string;
 };
 
 function guessTitleFromFilename(filename: string): string {
-    // Mirrors backend's _parse_md: title = filename without .md / .markdown
+    // Mirrors backend's _parse_md: title = filename without .md / .markdown.
     return filename.replace(/\.(md|markdown)$/i, "").trim() || filename;
 }
 
@@ -61,7 +59,6 @@ export default function ImportModal({ onClose, onCreated , modalMode = "default"
     const importAll = async () => {
         if (items.length === 0) return;
         setBusy(true);
-        // Backend takes multipart/form-data with all files at once.
         const form = new FormData();
         for (const it of items) form.append("files", it.file, it.file.name);
         try {
