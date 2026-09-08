@@ -31,7 +31,8 @@
   --accent:        #E5E7EE;
   --accent-soft:   rgba(229, 231, 238, 0.65);
   --accent-faint:  rgba(229, 231, 238, 0.18);
-  --accent-press:   #C9CCD6;
+  --accent-hover:  #101218;
+  --accent-press:  #1E2230;
   --accent-on:     #08090C;
 
   /* —— Warm key light (sphere only) —— */
@@ -606,8 +607,11 @@ button { cursor: pointer; }
   transition: background var(--dur-instant) var(--ease-out-cubic),
               transform 60ms var(--ease-out-cubic);
 }
-.btn-primary:hover  { background: var(--accent-hover); }
-.btn-primary:active { background: var(--accent-press); transform: scale(0.98); }
+/* The primary button turns dark on interaction, so keep its label
+   light in every pressed state. This also preserves contrast when
+   the hover/press background variables are changed independently. */
+.btn-primary:hover  { background: var(--bg-0); color: var(--text-0); }
+.btn-primary:active { background: var(--bg-2); color: var(--text-0); transform: scale(0.98); }
 .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
 .btn-secondary {
   background: transparent;
